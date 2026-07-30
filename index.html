@@ -7,6 +7,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#14161d" />
     <meta name="description" content="Offline sudoku with honest difficulty." />
+
+    <!-- iOS home screen. Safari ignores the manifest for all of this, which is
+         the part that usually gets missed: without these tags the app opens in
+         a browser chrome with a white status bar. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Zsudoku" />
+
+    <!-- iOS ignores the manifest icons for the home screen and uses this one.
+         It must be a real PNG with no alpha channel. -->
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="%BASE_URL%favicon-32.png" />
+
     <title>Zsudoku</title>
   </head>
   <body>
