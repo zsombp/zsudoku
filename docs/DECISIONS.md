@@ -4,6 +4,25 @@ Newest first. Every entry records what was decided, why, and what it rules out. 
 
 ---
 
+## 2026-07-30: what this project is for
+
+Zsomb's own words: he loves sudoku and is tired of ads and paywalled features,
+so he is building the one he wants. It is for him, on his phone and his Mac.
+
+Three standing constraints follow from that, and they outrank any feature:
+
+1. **Nothing gets paid for.** Free hosting, free tooling, no App Store, no
+   developer account, no native wrapper. A PWA is the whole delivery mechanism.
+2. **Maintenance has to stay near zero.** Every dependency is a future chore, so
+   the dependency list stays at seven and nothing gets added without a real
+   reason. No CI beyond a deploy, no update bots, no services with a dashboard
+   to check.
+3. **No audience.** No sharing, no accounts, no leaderboards, no telemetry, no
+   error reporting. One player.
+
+Rules out: anything that would need a paid tier to keep working, and any
+"engagement" feature that assumes other people exist.
+
 ## 2026-07-30: initial decisions from reading the handoff
 
 ### Project lives in its own repo, handoff stays read-only
