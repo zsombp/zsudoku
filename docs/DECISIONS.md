@@ -83,8 +83,24 @@ Zsomb additionally asked for recommendations on top of the analytics. This is th
 
 Rules out: localStorage for the game history, and any summary-only data model that would have to be migrated later.
 
-### Deploy target deferred to Phase 1
+### GitHub Pages from a public repo
 
-Build locally first, choose the host when there is something to install. GitHub Pages, Vercel and Netlify all remain on the table. Note for when it comes up: Pages from a private repo needs a paid GitHub plan, so free Pages means a public repo; Vercel and Netlify serve private repos on their free tiers.
+Resolved at Phase 1. Live at https://zsombp.github.io/zsudoku/, repo
+`zsombp/zsudoku`, deploying from `main` on push.
 
-Status: **open, revisit at Phase 1.**
+Chosen over Cloudflare Pages and Vercel because it is the only option with no
+new account, no extra dashboard and nothing that can lapse. `gh` was already
+authenticated. Free Pages requires a public repo, which for a personal sudoku
+costs nothing; nothing personal goes in the repo.
+
+Rules out: private source, and any hosting feature that would need a paid tier.
+
+### base is keyed on mode, not command
+
+`vite preview` runs as command `serve`, so `command === 'build' ? '/zsudoku/' : '/'`
+served the built app from the root while its HTML pointed at `/zsudoku/`. Assets
+fell through to the SPA fallback and the service worker refused to register.
+Keyed on `mode === 'development'` instead.
+
+Worth recording because a broken base looks like a working preview right up
+until the install fails on the phone.

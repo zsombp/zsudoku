@@ -2,7 +2,11 @@
 
 Personal offline sudoku PWA for Zsomb. One player, no backend, no accounts, no ads, no network. Runs installed on iPhone and on macOS.
 
-Read `docs/PLAN.md` for the phased build and `docs/DECISIONS.md` for what was decided and why. `CHANGELOG.md` is newest first.
+**Live: https://zsombp.github.io/zsudoku/** — repo `zsombp/zsudoku`, public, deploys from `main` on push. Install on iPhone via Safari, Share, Add to Home Screen.
+
+Read `docs/PLAN.md` for the phased build and `docs/DECISIONS.md` for what was decided and why. `CHANGELOG.md` is newest first. Current phase: 2, the honest difficulty engine.
+
+It costs nothing and must keep costing nothing. Seven dependencies; adding an eighth needs a real reason.
 
 ## Non-negotiables
 
