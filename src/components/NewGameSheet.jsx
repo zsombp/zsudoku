@@ -1,4 +1,4 @@
-import { DIFFS, DIFF_ORDER } from '../logic/difficulty.js'
+import { TIERS } from '../logic/difficulty.js'
 import { fmtMs } from '../lib/format.js'
 
 export default function NewGameSheet({ records, canRestart, onPick, onRestart, onClose }) {
@@ -6,12 +6,15 @@ export default function NewGameSheet({ records, canRestart, onPick, onRestart, o
     <div className="modalVeil" onClick={onClose}>
       <div className="sheet" role="dialog" aria-label="New game" onClick={e => e.stopPropagation()}>
         <div className="sheetTitle">New game</div>
-        {DIFF_ORDER.map(d => (
-          <button key={d} className="sheetBtn" onClick={() => onPick(d)}>
-            <b>{d}</b>
-            <span>
-              {DIFFS[d].tech}
-              {records[d] !== undefined ? ` · best ${fmtMs(records[d])}` : ''}
+        {TIERS.map(t => (
+          <button key={t.name} className="sheetBtn tier" onClick={() => onPick(t.name)}>
+            <span className="tierMain">
+              <b>{t.name}</b>
+              <span className="tierBlurb">{t.blurb}</span>
+            </span>
+            <span className="tierMeta">
+              {t.tech}
+              {records[t.name] !== undefined && <em>best {fmtMs(records[t.name])}</em>}
             </span>
           </button>
         ))}

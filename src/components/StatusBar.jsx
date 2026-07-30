@@ -1,17 +1,23 @@
 import { Pause, Play } from './Icons.jsx'
 import { fmtMs } from '../lib/format.js'
+import { TECHNIQUES } from '../logic/techniques.js'
 
-export default function StatusBar({ label, tech, requested, ms, paused, canPause, onTogglePause }) {
-  // The label is the grader's verdict. When it disagrees with what was asked
-  // for, say so rather than quietly showing the requested level.
-  const mismatched = requested && requested !== label
+export default function StatusBar({ graded, tech, requested, hardest, ms, paused, canPause, onTogglePause }) {
+  // The label is always the grader's verdict on this puzzle. When it disagrees
+  // with what was asked for, say so out loud: quietly showing the requested
+  // tier instead would be the exact lie this engine exists to avoid.
+  const mismatched = requested && requested !== graded
 
   return (
     <div className="statusRow">
       <div className="chip">
-        <b>{label}</b>
-        <span className="tech">{tech}</span>
-        {mismatched && <span className="asked" title={`You asked for ${requested}`}>asked {requested}</span>}
+        <b>{graded}</b>
+        <span className="tech">{hardest ? TECHNIQUES[hardest].label : tech}</span>
+        {mismatched && (
+          <span className="asked" title={`You asked for ${requested}. This puzzle graded ${graded}.`}>
+            asked {requested}
+          </span>
+        )}
       </div>
       <div className="timerWrap">
         <span className="timer">{fmtMs(ms)}</span>

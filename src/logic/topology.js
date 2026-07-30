@@ -21,6 +21,24 @@ for (let b = 0; b < 9; b++) {
 
 export const UNITS = [...ROWS, ...COLS, ...BOXES]
 
+// Which row, column and box each unit is, so a technique can say "the middle
+// left box" rather than "unit 21". The hint engine in Phase 3 reads this.
+export const UNIT_META = [
+  ...ROWS.map((_, i) => ({ type: 'row', index: i })),
+  ...COLS.map((_, i) => ({ type: 'col', index: i })),
+  ...BOXES.map((_, i) => ({ type: 'box', index: i })),
+]
+
+const BAND = ['top', 'middle', 'bottom']
+const STACK = ['left', 'centre', 'right']
+
+/** Human name for a unit, for hint text. */
+export function unitName({ type, index }) {
+  if (type === 'row') return `row ${index + 1}`
+  if (type === 'col') return `column ${index + 1}`
+  return `the ${BAND[Math.floor(index / 3)]} ${STACK[index % 3]} box`
+}
+
 export const PEERS = Array.from({ length: 81 }, (_, i) => {
   const s = new Set()
   for (const u of UNITS) if (u.includes(i)) for (const j of u) if (j !== i) s.add(j)

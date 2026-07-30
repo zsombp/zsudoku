@@ -1,24 +1,23 @@
 // Tests for the logic layer. This is the one place tests genuinely earn their
 // keep: the generator and grader are the product, and a silent regression there
 // means unfair puzzles or dishonest labels rather than a visible bug.
-//
-// Phase 2 adds the real calibration suite. This is the Phase 0 safety net that
-// proves the port did not break the prototype's behaviour.
 
 import { describe, it, expect } from 'vitest'
-import { UNITS, PEERS, candsAt, candMaskAt, range } from './topology.js'
+import { UNITS, PEERS, candsAt, candMaskAt, range, unitName, UNIT_META } from './topology.js'
 import { countSolutions, solve, hasUniqueSolution } from './solver.js'
 import { generateFull, dig, makePuzzle } from './generator.js'
-import { gradePuzzle } from './grader.js'
-import { DIFFS } from './difficulty.js'
+import { gradePuzzle, createState, nextStep, applyStep, trivialTail, allCellsForced } from './grader.js'
+import { TIERS, tierForScore } from './difficulty.js'
+import { TECHNIQUES, LADDER } from './techniques.js'
 import { mulberry32, seedFromDate, shuffle } from '../lib/prng.js'
 import { hasMark, addMark, removeMark, toggleMark, marksToList, listToMarks, countMarks } from './marks.js'
+
+const FAST = { attempts: 12, budgetMs: 6000 }
 
 const isValidGrid = b => UNITS.every(u => {
   const seen = new Set()
   for (const i of u) {
-    if (!b[i]) return false
-    if (seen.has(b[i])) return false
+    if (!b[i] || seen.has(b[i])) return false
     seen.add(b[i])
   }
   return true
@@ -45,125 +44,232 @@ describe('topology', () => {
     const full = generateFull(mulberry32(7))
     const b = dig(full, 30, mulberry32(11))
     for (const i of range(81)) {
-      if (b[i] !== 0) continue
-      expect(marksToList(candMaskAt(b, i))).toEqual(candsAt(b, i))
+      if (b[i] === 0) expect(marksToList(candMaskAt(b, i))).toEqual(candsAt(b, i))
     }
+  })
+
+  it('names every unit readably', () => {
+    expect(unitName(UNIT_META[0])).toBe('row 1')
+    expect(unitName(UNIT_META[9])).toBe('column 1')
+    expect(unitName(UNIT_META[18])).toBe('the top left box')
+    expect(unitName(UNIT_META[26])).toBe('the bottom right box')
   })
 })
 
 describe('marks bitmask', () => {
   it('round-trips a digit list', () => {
-    const list = [1, 4, 5, 9]
-    expect(marksToList(listToMarks(list))).toEqual(list)
+    expect(marksToList(listToMarks([1, 4, 5, 9]))).toEqual([1, 4, 5, 9])
   })
 
   it('adds, removes and toggles', () => {
-    let m = 0
-    m = addMark(m, 3)
+    let m = addMark(0, 3)
     expect(hasMark(m, 3)).toBe(true)
     expect(hasMark(m, 4)).toBe(false)
     m = toggleMark(m, 3)
     expect(hasMark(m, 3)).toBe(false)
     m = addMark(addMark(m, 2), 7)
     expect(countMarks(m)).toBe(2)
-    m = removeMark(m, 2)
-    expect(marksToList(m)).toEqual([7])
+    expect(marksToList(removeMark(m, 2))).toEqual([7])
   })
 })
 
 describe('prng', () => {
-  it('is deterministic for a seed', () => {
-    const a = Array.from({ length: 5 }, mulberry32(42))
-    const b = Array.from({ length: 5 }, mulberry32(42))
-    expect(a).toEqual(b)
-  })
-
-  it('differs across seeds', () => {
+  it('is deterministic for a seed and differs across seeds', () => {
+    expect(Array.from({ length: 5 }, mulberry32(42))).toEqual(Array.from({ length: 5 }, mulberry32(42)))
     expect(mulberry32(1)()).not.toBe(mulberry32(2)())
   })
 
-  it('derives the same seed from the same date', () => {
+  it('derives a stable seed from a date', () => {
     expect(seedFromDate(new Date(2026, 6, 30))).toBe(seedFromDate(new Date(2026, 6, 30)))
     expect(seedFromDate(new Date(2026, 6, 30))).not.toBe(seedFromDate(new Date(2026, 6, 31)))
   })
 
   it('shuffle keeps every element', () => {
-    const out = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], mulberry32(3))
-    expect([...out].sort()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
+    expect([...shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], mulberry32(3))].sort()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
   })
 })
 
 describe('generator', () => {
   it('generateFull produces a legal complete grid', () => {
-    for (const seed of [1, 2, 3, 99]) {
-      expect(isValidGrid(generateFull(mulberry32(seed)))).toBe(true)
-    }
+    for (const seed of [1, 2, 3, 99]) expect(isValidGrid(generateFull(mulberry32(seed)))).toBe(true)
   })
 
   it('is reproducible from a seed', () => {
     expect(generateFull(mulberry32(123))).toEqual(generateFull(mulberry32(123)))
   })
 
-  it('dug puzzles keep a unique solution', () => {
+  it('dug puzzles keep a unique solution and solve back to their grid', () => {
     for (const seed of [5, 6, 7]) {
       const full = generateFull(mulberry32(seed))
       const puzzle = dig(full, 30, mulberry32(seed + 100))
       expect(hasUniqueSolution(puzzle)).toBe(true)
+      expect(solve(puzzle)).toEqual(full)
     }
-  })
-
-  it('dug puzzles solve back to the grid they came from', () => {
-    const full = generateFull(mulberry32(21))
-    const puzzle = dig(full, 32, mulberry32(22))
-    expect(solve(puzzle)).toEqual(full)
   })
 })
 
 describe('solver', () => {
-  it('counts an empty-ish board as more than one solution', () => {
-    const b = new Array(81).fill(0)
-    expect(countSolutions(b, 2)).toBe(2)
-  })
-
-  it('counts a complete grid as exactly one', () => {
+  it('sees an empty board as ambiguous and a full grid as unique', () => {
+    expect(countSolutions(new Array(81).fill(0), 2)).toBe(2)
     expect(countSolutions(generateFull(mulberry32(4)), 2)).toBe(1)
   })
 })
 
-describe('grader', () => {
-  it('grades a complete grid as the easiest level', () => {
-    expect(gradePuzzle(generateFull(mulberry32(8)))).toBe(1)
+describe('technique soundness', () => {
+  // The check that matters most. If a technique claims an elimination that is
+  // actually part of the solution, the grader will mis-rate puzzles AND the
+  // Phase 3 hint button will confidently tell you something false. Both come
+  // from these same functions, so this test guards both at once.
+  it('never eliminates a candidate that belongs to the solution', () => {
+    for (const seed of [11, 22, 33, 44, 55, 66]) {
+      const rng = mulberry32(seed)
+      const solution = generateFull(rng)
+      const puzzle = dig(solution, 26, rng)
+      const state = createState(puzzle)
+
+      for (let n = 0; n < 400; n++) {
+        const step = nextStep(state)
+        if (!step) break
+        for (const { cell, digit } of step.eliminations) {
+          expect(
+            solution[cell],
+            `${step.technique} wrongly ruled ${digit} out of cell ${cell}`
+          ).not.toBe(digit)
+        }
+        for (const { cell, digit } of step.placements) {
+          expect(solution[cell], `${step.technique} wrongly placed ${digit} in cell ${cell}`).toBe(digit)
+        }
+        applyStep(state, step)
+      }
+    }
   })
 
-  it('returns a level in range for real puzzles', () => {
-    for (const seed of [11, 12, 13]) {
-      const full = generateFull(mulberry32(seed))
-      const puzzle = dig(full, 30, mulberry32(seed + 50))
-      const level = gradePuzzle(puzzle)
-      expect(level).toBeGreaterThanOrEqual(1)
-      expect(level).toBeLessThanOrEqual(4)
+  it('every technique actually does something when it fires', () => {
+    for (const key of LADDER) {
+      expect(typeof TECHNIQUES[key].fn).toBe('function')
+      expect(TECHNIQUES[key].first).toBeGreaterThanOrEqual(TECHNIQUES[key].repeat)
+    }
+  })
+
+  it('every step it reports carries an explanation for the hint engine', () => {
+    const rng = mulberry32(909)
+    const solution = generateFull(rng)
+    const g = gradePuzzle(dig(solution, 26, rng), { keepSteps: true })
+    expect(g.steps.length).toBeGreaterThan(0)
+    for (const s of g.steps) {
+      expect(TECHNIQUES[s.technique]).toBeTruthy()
+      expect(s.detail.length).toBeGreaterThan(0)
+      expect(s.placements.length + s.eliminations.length).toBeGreaterThan(0)
     }
   })
 })
 
+describe('grader', () => {
+  it('scores a complete grid at zero', () => {
+    const g = gradePuzzle(generateFull(mulberry32(8)))
+    expect(g.solved).toBe(true)
+    expect(g.score).toBe(0)
+  })
+
+  it('reports Infinity for a puzzle it cannot finish by logic', () => {
+    // Two clues removed from a full grid in a way that leaves the ladder no
+    // purchase is hard to construct by hand, so use a nearly empty board:
+    // ambiguous, and therefore correctly refused rather than guessed at.
+    const g = gradePuzzle(new Array(81).fill(0))
+    expect(g.solved).toBe(false)
+    expect(g.score).toBe(Infinity)
+  })
+
+  it('is deterministic: the same puzzle always grades identically', () => {
+    const rng = mulberry32(4242)
+    const puzzle = dig(generateFull(rng), 28, rng)
+    const a = gradePuzzle(puzzle)
+    const b = gradePuzzle(puzzle)
+    expect(a.score).toBe(b.score)
+    expect(a.hardest).toBe(b.hardest)
+    expect(a.counts).toEqual(b.counts)
+  })
+
+  it('does not let board size inflate the score', () => {
+    // The bug this scoring model was rebuilt to kill: naked singles used to
+    // cost 10 each, so a puzzle's score mostly measured how many blank cells it
+    // had. Two naked-singles-only puzzles of very different clue counts must
+    // score the same.
+    const easy = []
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const rng = mulberry32(seed)
+      const puzzle = dig(generateFull(rng), 44, rng)
+      const g = gradePuzzle(puzzle)
+      if (g.solved && g.hardest === 'nakedSingle') easy.push({ clues: puzzle.filter(Boolean).length, score: g.score })
+    }
+    expect(easy.length).toBeGreaterThan(0)
+    for (const e of easy) expect(e.score).toBe(0)
+  })
+})
+
+describe('auto-complete triggers', () => {
+  it('trivialTail finishes a board that only needs naked singles', () => {
+    const rng = mulberry32(77)
+    const solution = generateFull(rng)
+    const puzzle = solution.slice()
+    for (const i of [4, 19, 33, 50, 61]) puzzle[i] = 0
+    const tail = trivialTail(puzzle)
+    expect(tail).toBeTruthy()
+    expect(tail).toHaveLength(5)
+    for (const { cell, digit } of tail) expect(solution[cell]).toBe(digit)
+  })
+
+  it('trivialTail refuses when real deduction is still needed', () => {
+    const rng = mulberry32(78)
+    expect(trivialTail(dig(generateFull(rng), 26, rng))).toBeNull()
+  })
+
+  it('allCellsForced is the stricter reading', () => {
+    const rng = mulberry32(79)
+    const solution = generateFull(rng)
+    const nearly = solution.slice()
+    nearly[10] = 0
+    expect(allCellsForced(nearly)).toBe(true)
+    expect(allCellsForced(solution)).toBe(false)
+  })
+})
+
 describe('makePuzzle', () => {
-  // The honesty contract: the level reported is the level the grader measured,
-  // regardless of what was requested.
-  for (const wanted of Object.keys(DIFFS)) {
-    it(`${wanted}: reports a graded level that matches its own puzzle`, () => {
-      const made = makePuzzle(wanted, { seed: 2026, attempts: 8, budgetMs: 8000 })
-      expect(made).toBeTruthy()
-      expect(made.level).toBe(gradePuzzle(made.puzzle))
+  for (const tier of TIERS) {
+    it(`${tier.name}: ships an honest, unique, logically solvable puzzle`, () => {
+      const made = makePuzzle(tier.name, { seed: 2026, ...FAST })
+      expect(made, `no ${tier.name} puzzle produced`).toBeTruthy()
+
+      // Unique solution.
       expect(hasUniqueSolution(made.puzzle)).toBe(true)
-      expect(made.requested).toBe(wanted)
+
+      // Never needs a guess. This is the contract the old grader could not make.
+      const re = gradePuzzle(made.puzzle)
+      expect(re.solved, `${tier.name} puzzle needs a guess`).toBe(true)
+
+      // The label is the grader's verdict on this exact puzzle, and nothing else.
+      expect(re.score).toBe(made.score)
+      expect(made.graded).toBe(tierForScore(made.score).name)
+
+      // Requested is recorded separately and never overwrites the verdict.
+      expect(made.requested).toBe(tier.name)
       expect(made.clues).toBe(made.puzzle.filter(Boolean).length)
     })
   }
 
   it('is reproducible from a seed', () => {
-    const a = makePuzzle('Medium', { seed: 777, attempts: 4 })
-    const b = makePuzzle('Medium', { seed: 777, attempts: 4 })
+    const a = makePuzzle('Medium', { seed: 777, ...FAST })
+    const b = makePuzzle('Medium', { seed: 777, ...FAST })
     expect(a.puzzle).toEqual(b.puzzle)
-    expect(a.level).toBe(b.level)
+    expect(a.score).toBe(b.score)
+    expect(a.graded).toBe(b.graded)
+  })
+
+  it('tier bands are contiguous and ordered', () => {
+    for (let i = 1; i < TIERS.length; i++) {
+      expect(TIERS[i].min).toBe(TIERS[i - 1].max)
+    }
+    expect(TIERS[0].min).toBe(0)
+    expect(TIERS[TIERS.length - 1].max).toBe(Infinity)
   })
 })

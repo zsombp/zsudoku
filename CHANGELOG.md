@@ -2,6 +2,108 @@
 
 Newest first.
 
+## v0.3.0 - 2026-07-30 - Phase 2, the honest difficulty engine
+
+Four tiers became six, three techniques became twelve, and no puzzle that needs
+a guess can reach the board any more.
+
+### The ladder
+
+`src/logic/techniques.js`. Naked single, hidden single, pointing, box-line
+reduction (claiming), naked pair/triple/quad, hidden pair/triple, X-Wing,
+XY-Wing, Swordfish.
+
+Every technique returns a structured step: which technique, which cells, which
+unit, what it eliminates, and a sentence explaining it. That shape is the point.
+The grader and the Phase 3 hint button call the same function, so a hint can
+never contradict the difficulty rating.
+
+### The scoring model, and the mistake that shaped it
+
+The first attempt priced every technique by difficulty, naked singles included
+at 10 apiece. Calibration killed it on sight. Across 520 sampled grids the
+median score climbed smoothly from 360 at 46 clues to 611 at 22 clues, tracking
+the clue count almost independently of which techniques a puzzle needed. A
+puzzle has 81 minus clues placements, so if each carries a cost, the score
+mostly counts blank cells: a trivial 22-clue puzzle outscored a genuinely hard
+34-clue one. That is the same dishonesty Phase 2 exists to remove, in a
+different hat.
+
+Writing a digit that has only one possible value is bookkeeping, not deduction.
+Naked singles now cost zero, hidden singles very little, and first-use costs
+dwarf repeat costs, so the hardest thing you have to *spot* sets the tier while
+repeats refine within it. A regression test asserts naked-singles-only puzzles
+score exactly 0 at any clue count.
+
+### Bands measured, not guessed
+
+`npm run calibrate -- explore` samples the real score distribution. Boundaries
+sit in the gaps between technique clusters: p50 by hardest technique came out
+naked single 0, hidden single 40, pointing 212, claiming 370, naked pair 491,
+hidden pair 695, hidden triple 756, XY-Wing 1464, Swordfish 2168.
+
+### Nothing unfair ships
+
+Every tier rejects puzzles the ladder cannot finish. The generator now digs
+toward a score band rather than a clue count, and when it digs past the point of
+fairness it puts a clue back instead of shipping a guess. Clue count is an
+outcome, not a target.
+
+### Generation moved to a Web Worker
+
+The full ladder digs and re-grades repeatedly and Diabolical can take nine
+seconds, which on the main thread is a nine second frozen interface. One ready
+puzzle per tier is also generated ahead into localStorage, so New Game is
+usually instant even at the top tier.
+
+Verified by comparing timer jitter at idle against jitter during generation:
+both 999ms median in the preview pane, meaning generation adds exactly nothing
+to main-thread load. (The pane clamps timers to ~1s and suspends rAF, so the
+baseline comparison is the only valid probe here.)
+
+### Grader versioning
+
+`GRADER_VERSION` is part of the puzzle cache key and is stamped into saves.
+Scores only mean anything within one version of the ladder, and a pre-generated
+puzzle would otherwise keep displaying a label from a scoring system that no
+longer exists. Saved games from an older grader are regraded on load.
+
+### Also
+
+- Six-tier New Game sheet with a one-line description of what each tier asks.
+- The status chip now names the hardest technique the puzzle actually needs.
+- `scripts/distribution.mjs` removed, superseded by `scripts/calibrate.mjs`.
+- Fixed: `useGenerator` returned a fresh object each render, so `startNew` was
+  rebuilt constantly and effects keyed on it looped. Memoised.
+
+### Verified
+
+32 logic tests pass, including a soundness test asserting no technique ever
+eliminates a candidate that belongs to the solution. That one guards the
+difficulty ratings and the future hint text at the same time.
+
+`npm run calibrate -- 18`, 108 puzzles:
+
+| tier | exact hit | median score | median clues | median ms | worst ms | landed |
+|---|---|---|---|---|---|---|
+| Gentle | 100% | 0 | 45 | 0 | 3 | Gentle 18 |
+| Easy | 100% | 28 | 32 | 2 | 11 | Easy 18 |
+| Medium | 100% | 278 | 27 | 25 | 481 | Medium 18 |
+| Hard | 94% | 574 | 25 | 557 | 1623 | Hard 17, Medium 1 |
+| Expert | 100% | 1031 | 24 | 531 | 3473 | Expert 18 |
+| Diabolical | 100% | 1574 | 26 | 1593 | 9308 | Diabolical 18 |
+
+**Puzzles requiring a guess that reached the caller: 0.** That is the number
+that matters, and it is the one the previous engine could not deliver.
+
+The single Hard miss is labelled Medium, because it is Medium.
+
+Technique usage across the run: naked single 1457, hidden single 405, pointing
+41, claiming 18, XY-Wing 13, naked pair 9, hidden pair 8, X-Wing 4, naked triple
+1, hidden triple 1, Swordfish 1, naked quad 0. Naked quad never fired in this
+sample; it stays in the ladder because without it a puzzle needing one would be
+misjudged unfair and thrown away rather than graded.
+
 ## v0.2.0 - 2026-07-30 - Phase 1, live and installable
 
 Live at **https://zsombp.github.io/zsudoku/**. Repo `zsombp/zsudoku`, public,

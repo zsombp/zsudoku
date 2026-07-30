@@ -6,11 +6,13 @@ import StatusBar from './components/StatusBar.jsx'
 import NewGameSheet from './components/NewGameSheet.jsx'
 import { Moon, Sun, Play, Plus, Trophy } from './components/Icons.jsx'
 import { gameReducer, initialState, remainingCounts, currentLabel } from './state/gameReducer.js'
-import { makePuzzle } from './logic/generator.js'
-import { techFor } from './logic/difficulty.js'
+import { techFor, tierForScore } from './logic/difficulty.js'
+import { gradePuzzle } from './logic/grader.js'
+import { GRADER_VERSION } from './logic/techniques.js'
 import { useTimer } from './hooks/useTimer.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
 import { useSettings } from './hooks/useSettings.js'
+import { useGenerator } from './hooks/useGenerator.js'
 import { KEYS, getSync, set, requestPersistence } from './lib/storage.js'
 import { fmtMs } from './lib/format.js'
 
@@ -20,8 +22,10 @@ export default function App() {
   const [records, setRecords] = useState(() => getSync(KEYS.records) || {})
   const [showPicker, setShowPicker] = useState(false)
   const [newRecord, setNewRecord] = useState(false)
+  const [genError, setGenError] = useState(null)
 
   const timer = useTimer(state.status === 'playing', 0)
+  const generator = useGenerator()
 
   const stateRef = useRef(state)
   stateRef.current = state
@@ -44,9 +48,13 @@ export default function App() {
       board: s.board,
       marks: Array.from(s.marks),
       requested: s.requested,
-      level: s.level,
+      graded: s.graded,
+      score: s.score,
+      hardest: s.hardest,
+      counts: s.counts,
       clues: s.clues,
       seed: s.seed,
+      graderVersion: GRADER_VERSION,
       mistakes: s.mistakes,
       hints: s.hints,
       startedAt: s.startedAt,
@@ -70,19 +78,19 @@ export default function App() {
   // ---- generation ----
 
   const startNew = useCallback(
-    diff => {
+    async tier => {
       setShowPicker(false)
       setNewRecord(false)
-      dispatch({ type: 'generating', requested: diff })
-      // Yield a frame so the veil paints before the generator blocks the thread.
-      // Phase 2 moves this into a Web Worker, where it belongs.
-      setTimeout(() => {
-        const made = makePuzzle(diff)
+      dispatch({ type: 'generating', requested: tier })
+      try {
+        const made = await generator.request(tier)
         timerRef.current.reset(0)
         dispatch({ type: 'ready', made, now: Date.now() })
-      }, 30)
+      } catch (err) {
+        setGenError(String(err.message || err))
+      }
     },
-    []
+    [generator]
   )
 
   const restart = useCallback(() => {
@@ -97,13 +105,27 @@ export default function App() {
   useEffect(() => {
     requestPersistence()
     const saved = getSync(KEYS.game)
+    const tier = saved?.requested || 'Medium'
+    // A game saved under an older grader carries a score and tier from a
+    // scoring system that no longer exists. Regrade it rather than showing a
+    // label nothing can reproduce.
+    if (saved?.puzzle && saved.graderVersion !== GRADER_VERSION) {
+      const re = gradePuzzle(saved.puzzle)
+      saved.score = re.score
+      saved.hardest = re.hardest
+      saved.counts = re.counts
+      saved.graded = tierForScore(re.score)?.name || 'Medium'
+    }
     if (saved?.board && saved.puzzle && saved.solution && !saved.completed) {
       dispatch({ type: 'hydrate', saved })
       timerRef.current.reset(saved.elapsedMs || 0)
+      // Start building the next one now, while there is a game to play.
+      generator.prefetch(tier)
     } else {
-      startNew(saved?.requested || 'Medium')
+      startNew(tier)
     }
-  }, [startNew])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ---- honest timing ----
   // Leaving the app pauses the game. Anything else would count time you were
@@ -177,9 +199,10 @@ export default function App() {
       </header>
 
       <StatusBar
-        label={label}
+        graded={label}
         tech={tech}
         requested={state.requested}
+        hardest={state.hardest}
         ms={timer.ms}
         paused={paused}
         canPause={Boolean(state.board) && !won && !generating}
@@ -204,7 +227,16 @@ export default function App() {
 
         {generating && (
           <div className="veil">
-            <div className="gen"><div className="spinner" />Crafting puzzle…</div>
+            <div className="gen">
+              <div className="spinner" />
+              {genError ? genError : `Crafting a ${state.requested} puzzle…`}
+              {/* Diabolical genuinely takes a while: most grids cannot be dug
+                  that hard while staying solvable by logic, so it keeps trying
+                  until one is. Say so rather than looking hung. */}
+              {state.requested === 'Diabolical' && !genError && (
+                <span className="genSub">these are rare, it may take a moment</span>
+              )}
+            </div>
           </div>
         )}
 

@@ -4,14 +4,17 @@ Personal offline sudoku PWA for Zsomb. One player, no backend, no accounts, no a
 
 **Live: https://zsombp.github.io/zsudoku/** — repo `zsombp/zsudoku`, public, deploys from `main` on push. Install on iPhone via Safari, Share, Add to Home Screen.
 
-Read `docs/PLAN.md` for the phased build and `docs/DECISIONS.md` for what was decided and why. `CHANGELOG.md` is newest first. Current phase: 2, the honest difficulty engine.
+Read `docs/PLAN.md` for the phased build and `docs/DECISIONS.md` for what was decided and why. `CHANGELOG.md` is newest first. Current phase: 3, hints and assists.
 
 It costs nothing and must keep costing nothing. Seven dependencies; adding an eighth needs a real reason.
 
 ## Non-negotiables
 
 1. **Zero third-party requests.** No CDN, no Google Fonts, no analytics endpoint, no error reporting. Font self-hosted, icons inlined. It has to work in airplane mode.
-2. **Honest difficulty.** The difficulty shown is always the grader's verdict on the puzzle in front of you, never the difficulty that was requested. No puzzle ships that the technique ladder cannot finish by pure logic.
+2. **Honest difficulty.** The difficulty shown is always the grader's verdict on the puzzle in front of you, never the difficulty that was requested. No puzzle ships that the technique ladder cannot finish by pure logic. `requested` and `graded` stay separate fields everywhere; when they disagree the interface says so.
+   - Score measures deduction, never board size. Naked singles cost zero on purpose: see `docs/DECISIONS.md`. A regression test asserts naked-singles-only puzzles score exactly 0 at any clue count.
+   - Techniques return structured steps, so the grader and the hint engine are the same code and cannot disagree.
+   - Change a technique, a cost or a band and you must bump `GRADER_VERSION` and re-run `npm run calibrate -- explore`. Both move the whole scale.
 3. **Honest timing.** Timestamp-based, not interval ticks, auto-paused on `visibilitychange`. Every statistic depends on this.
 4. **Nothing leaves the device.** Analytics are local. Export is a file the user saves themselves.
 5. **Never delete without an explicit yes.** Tag before anything destructive.

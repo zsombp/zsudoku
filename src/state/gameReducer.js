@@ -7,7 +7,7 @@
 
 import { PEERS, candMaskAt, colOf, range } from '../logic/topology.js'
 import { hasMark, toggleMark, removeMark, emptyMarks } from '../logic/marks.js'
-import { labelFor } from '../logic/difficulty.js'
+import { LEGACY_LEVEL_NAME } from '../logic/difficulty.js'
 
 export const initialState = {
   status: 'generating', // generating | playing | paused | won
@@ -18,8 +18,13 @@ export const initialState = {
   selected: -1,
   notes: false,
   history: [],
+  // What was asked for, and what the grader actually measured. Kept apart
+  // everywhere, because only `graded` is ever shown to the player.
   requested: 'Medium',
-  level: 2,
+  graded: 'Medium',
+  score: 0,
+  hardest: null,
+  counts: {},
   clues: 0,
   seed: null,
   mistakes: 0,
@@ -51,7 +56,10 @@ export function gameReducer(state, action) {
         board: made.puzzle.slice(),
         marks: emptyMarks(),
         requested: made.requested,
-        level: made.level,
+        graded: made.graded,
+        score: made.score,
+        hardest: made.hardest,
+        counts: made.counts,
         clues: made.clues,
         seed: made.seed,
         startedAt: action.now,
@@ -68,7 +76,13 @@ export function gameReducer(state, action) {
         board: s.board,
         marks: Int16Array.from(s.marks),
         requested: s.requested,
-        level: s.level,
+        // Saves written before the six-tier rebuild carry a numeric level
+        // instead of a tier name. Map them rather than dropping a game in
+        // progress on the floor.
+        graded: s.graded || LEGACY_LEVEL_NAME[s.level] || 'Medium',
+        score: s.score ?? 0,
+        hardest: s.hardest ?? null,
+        counts: s.counts || {},
         clues: s.clues,
         seed: s.seed,
         mistakes: s.mistakes || 0,
@@ -214,4 +228,5 @@ export function remainingCounts(board) {
 export const isWrong = (state, i) =>
   state.board[i] !== 0 && state.puzzle[i] === 0 && state.board[i] !== state.solution[i]
 
-export const currentLabel = state => labelFor(state.level)
+/** The grader's verdict. Never the requested tier. */
+export const currentLabel = state => state.graded

@@ -4,6 +4,70 @@ Newest first. Every entry records what was decided, why, and what it rules out. 
 
 ---
 
+## 2026-07-30: Phase 2, the scoring model
+
+### Naked singles cost nothing, and that is the whole fix
+
+The first attempt at weighted scoring priced every technique by difficulty,
+naked singles included at 10 apiece. Calibration killed it immediately. Sampling
+520 grids, the median score climbed smoothly from 360 at 46 clues to 611 at 22
+clues, in lockstep with the clue count and almost independently of which
+techniques the puzzle needed.
+
+The reason is arithmetic: a puzzle contains 81 minus clues placements, and if
+each one carries a cost then the score mostly counts blank cells. A trivial
+22-clue puzzle outscored a genuinely hard 34-clue one. That is the same
+dishonesty the Phase 2 rebuild exists to remove, wearing a different hat.
+
+Writing a digit that has only one possible value is bookkeeping, not deduction.
+It is not what makes a sudoku hard. So naked singles now cost zero and hidden
+singles cost very little, because scanning is the basic motion of the game
+rather than a skill that separates tiers. First-use costs are far larger than
+repeat costs, so the hardest thing you have to *spot* sets the tier and repeats
+refine within it.
+
+The regression test that guards this asserts naked-singles-only puzzles score
+exactly 0 regardless of clue count. If that ever fails, the scale is measuring
+board size again.
+
+Rules out: any future cost table where routine placements carry weight.
+
+### Nothing that needs a guess ever ships
+
+Every tier rejects puzzles the ladder cannot finish, and the generator puts a
+clue back rather than shipping one. Measured across the calibration run, zero
+unfair puzzles reach the caller.
+
+This is the concrete meaning of "honest difficulty". The old grader labelled
+guess-only puzzles "Expert", which made Expert a bucket for broken puzzles as
+much as hard ones.
+
+### One function grades puzzles and explains moves
+
+Each technique returns a structured step: which technique, which cells, which
+unit, what it eliminates, and a sentence describing it. The grader and the
+Phase 3 hint button call the same function, so a hint can never contradict the
+difficulty rating. The soundness test asserts no technique ever eliminates a
+candidate that belongs to the solution, which guards the rating and the hint
+text together.
+
+### Generation moved to a Web Worker
+
+The full ladder digs and re-grades repeatedly, and Diabolical can take nine
+seconds. Verified in the browser by comparing timer jitter at idle against
+jitter during generation: identical, so the main thread is untouched.
+
+One ready puzzle per tier is generated ahead in localStorage, so New Game is
+usually instant even at the top tier.
+
+### The grader carries a version number
+
+Scores are only comparable within one version of the ladder, and puzzles are
+cached with their tier baked in. `GRADER_VERSION` is part of the cache key and
+is stamped into saves; a saved game from an older grader is regraded on load.
+Without it, a cached puzzle would keep showing a label from a scoring system
+that no longer exists.
+
 ## 2026-07-30: what this project is for
 
 Zsomb's own words: he loves sudoku and is tired of ads and paywalled features,

@@ -205,7 +205,10 @@ body {
   gap: 12px;
   color: var(--sub);
   font-size: 13px;
+  text-align: center;
+  padding: 0 20px;
 }
+.genSub { font-size: 11px; opacity: 0.7; margin-top: -6px; }
 .spinner {
   width: 26px;
   height: 26px;
@@ -395,6 +398,21 @@ body {
 }
 .sheetBtn b { font-size: 14.5px; }
 .sheetBtn span { font-family: var(--mono); font-size: 10.5px; color: var(--sub); }
+
+/* Six tiers need more than a name and a technique, so the row grows a
+ * one-line description of what the tier actually asks of you. */
+.sheetBtn.tier { align-items: center; gap: 10px; text-align: left; }
+.tierMain { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.tierBlurb { font-family: var(--ui); font-size: 11px; color: var(--sub); }
+.tierMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.tierMeta em { font-style: normal; color: var(--accent); opacity: 0.85; }
 .sheetBtn:active { transform: scale(0.98); }
 .sheetBtn:disabled { opacity: 0.4; cursor: default; }
 .sheetBtn.cancel {

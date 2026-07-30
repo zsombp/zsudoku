@@ -124,10 +124,34 @@ Tag `v0.3.0`.
 
 All of this rides on Phase 2's ladder returning structured results.
 
+### Quick input (digit-first mode)
+
+Requested 2026-07-30. Today the game is cell-first: select a cell, then choose a digit. Quick input inverts it. Pick a digit once, then every cell you tap gets that digit. Far fewer taps on a phone, and it matches how people actually fill a grid, in runs of the same number.
+
+- A toggle in the toolbar. The active digit stays lit on the number pad.
+- While a digit is active, **every cell already holding it is highlighted**, which as Zsomb noted makes number highlighting fall out of the mode for free instead of needing its own control.
+- Works in notes mode too: tap cells to toggle that pencil mark.
+- Tapping a cell that already holds the active digit clears it, matching the current same-digit-clears behaviour.
+- Cell-first stays available. This is a mode, not a replacement, and the setting persists.
+
+### Auto-complete
+
+Requested 2026-07-30, for the point where "there is literally no thinking left to do, it is just filling in the cells". A button that appears only when that is true, and fills everything in one tap.
+
+**Open decision, to settle when this gets built.** Two readings of the trigger, and they feel very different:
+
+1. **Strict.** Every empty cell has exactly one candidate right now. Appears very late, usually the last handful of cells. Pure mop-up, cannot possibly rob you of a puzzle.
+2. **Cascade.** The rest of the board is solvable by naked singles alone, each one revealing the next. This is closer to the intent, because "no thinking left" is exactly what a naked-singles-only tail means. But on an Easy puzzle it can light up with thirty cells still empty, which is a big chunk of the game to hand away.
+
+Leaning cascade, because it matches what was asked for, but gated so it never appears before the board is meaningfully filled. Needs to be felt rather than argued about, so build it behind a setting and try both.
+
+Either way the check is nearly free: it reuses the Phase 2 ladder restricted to its first rung. Using it is recorded in stats, since a game finished with auto-complete is not the same as one finished by hand.
+
+### The rest
+
 - **Hints, three escalating levels.** First: name the technique and the unit ("there is a hidden single in the middle-left box"). Second: point at the cell. Third: fill it. This teaches rather than solves, and it is counted in stats.
 - **Auto-maintain pencil marks** as a proper mode. Auto-pencil already fills them; the missing half is keeping them correct continuously as you place, erase, and undo. That is the "auto remove pencil marks" ask done fully rather than the one-directional version in the prototype.
 - **Check board** with two modes, chosen in settings: against the solution (tells you a digit is wrong), or against the rules (tells you two of the same digit share a unit, which is a lighter form of help).
-- **Candidate highlight**: tap a pad digit to light up every cell where it can legally go.
 - Undo history persisted with the save so resuming a game keeps its undo stack.
 
 Tag `v0.4.0`.
@@ -144,6 +168,8 @@ Themes:
 - Nord
 - Newsprint, warm sepia
 - High Contrast, aiming at WCAG AAA on text and controls
+
+Zsomb's verdict after playing v0.2.0 on the phone: the game feels good, the UI needs a lot of work, and the animations should be more expressive. His call, and the right one, is that all of it is final polish rather than something to chase now. So Phase 4 is where the interface gets taken seriously, not just recoloured, and it happens once the mechanics underneath have stopped moving.
 
 Animations, all gated behind `prefers-reduced-motion`:
 
