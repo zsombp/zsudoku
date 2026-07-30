@@ -1,0 +1,51 @@
+/* Every colour in the app lives here and nowhere else.
+ *
+ * A hardcoded colour anywhere outside this file is a bug: Phase 4 adds four
+ * more themes, and it can only stay cheap if the rest of the CSS never names a
+ * colour directly. Themes are selected by data-theme on the root element, set
+ * from settings. */
+
+:root {
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --ui: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+
+  --board-radius: 12px;
+  --ctl-radius: 10px;
+}
+
+:root,
+:root[data-theme="dark"] {
+  --bg: #14161d;
+  --panel: #1b1e27;
+  --panel2: #232734;
+  --ink: #e9eaee;
+  --sub: #8b90a0;
+  --line: #2a2e3a;
+  --line-strong: #4a5062;
+  --accent: #e2a63d;
+  --accent-ink: #14161d;
+  --sel: rgba(226, 166, 61, 0.30);
+  --same: rgba(226, 166, 61, 0.16);
+  --peer: rgba(255, 255, 255, 0.05);
+  --error: #e2564a;
+  --veil: rgba(20, 22, 29, 0.82);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f3f4f6;
+  --panel: #ffffff;
+  --panel2: #eaecf0;
+  --ink: #22252d;
+  --sub: #787d8a;
+  --line: #dcdfe5;
+  --line-strong: #3a3f4d;
+  --accent: #9a6c12;
+  --accent-ink: #ffffff;
+  --sel: rgba(154, 108, 18, 0.28);
+  --same: rgba(154, 108, 18, 0.14);
+  --peer: rgba(20, 24, 40, 0.055);
+  --error: #c0392f;
+  --veil: rgba(243, 244, 246, 0.86);
+  color-scheme: light;
+}
