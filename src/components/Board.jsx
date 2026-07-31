@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { rowOf, colOf, boxOf, range } from '../logic/topology.js'
 import { hasMark } from '../logic/marks.js'
 import { isWrong, highlightDigit } from '../state/gameReducer.js'
@@ -6,7 +7,24 @@ export default function Board({ state, checkErrors, onCellTap, blurred }) {
   const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status } = state
   const flashSet = flash?.length ? new Set(flash) : null
   const ready = Boolean(board)
-  const lit = ready ? highlightDigit(state) : 0
+  const litDigit = ready ? highlightDigit(state) : 0
+  const gridRef = useRef(null)
+
+  // Roving tabindex: exactly one cell is in the tab order, so Tab moves from
+  // the board to the toolbar in one press instead of eighty-one. Arrow keys
+  // move the selection, and the effect below carries DOM focus along with it so
+  // the two never drift apart.
+  const tabCell = selected >= 0 ? selected : 40
+
+  useEffect(() => {
+    if (selected < 0 || !gridRef.current) return
+    // Only follow the selection when focus is already inside the board,
+    // otherwise clicking a cell would yank focus away from wherever the player
+    // actually was.
+    if (!gridRef.current.contains(document.activeElement)) return
+    const target = gridRef.current.children[selected]
+    if (target && target !== document.activeElement) target.focus()
+  }, [selected])
 
   function cellClass(i) {
     const cls = ['cell']
@@ -23,7 +41,7 @@ export default function Board({ state, checkErrors, onCellTap, blurred }) {
     // With a digit armed, every cell holding it lights up, including the
     // selected one. Without one, keep the old rule of not double-marking the
     // cell you are already sitting on.
-    if (lit && board[i] === lit && (activeDigit || i !== selected)) cls.push('same')
+    if (litDigit && board[i] === litDigit && (activeDigit || i !== selected)) cls.push('same')
 
     if (puzzle[i] !== 0) cls.push('given')
     else if (board[i] !== 0) cls.push('user')
@@ -39,18 +57,27 @@ export default function Board({ state, checkErrors, onCellTap, blurred }) {
     // and the animation only ever runs once, on first load.
     <div
       key={state.seed ?? 'empty'}
+      ref={gridRef}
       className={'board' + (blurred ? ' blurred' : '') + (status === 'won' ? ' isWon' : '')}
     >
       {range(81).map(i => {
         const v = ready ? board[i] : 0
-        const lit = flashSet?.has(i)
+        const isFlashing = flashSet?.has(i)
         return (
           <button
-            // The flash sequence is part of the key for flashing cells only, so
-            // completing two units in a row still animates the second time.
-            key={lit ? `${i}-${flashSeq}` : i}
-            className={cellClass(i) + (lit ? ' flash' : '')}
-            style={{ '--i': i, '--d': rowOf(i) + colOf(i) }}
+            key={i}
+            className={cellClass(i) + (isFlashing ? ' flash' : '')}
+            tabIndex={i === tabCell ? 0 : -1}
+            style={{
+              '--d': rowOf(i) + colOf(i),
+              // Two identical keyframes alternating by sequence number. This is
+              // what retriggers the flash when the same cells complete twice in
+              // a row. The obvious approach, changing the element's key, forces
+              // a remount, and a fresh node restarts the board's entrance
+              // animation: the completed cells blinked out and re-dealt at the
+              // exact moment they were meant to be celebrated.
+              '--flash-anim': flashSeq % 2 ? 'unitFlashA' : 'unitFlashB',
+            }}
             onClick={() => onCellTap(i)}
             aria-label={`row ${rowOf(i) + 1} column ${colOf(i) + 1}${v ? `, ${v}` : ', empty'}`}
           >
@@ -63,7 +90,7 @@ export default function Board({ state, checkErrors, onCellTap, blurred }) {
                     const d = k + 1
                     const on = hasMark(marks[i], d)
                     return (
-                      <span key={k} className={'m' + (on && lit === d ? ' mHi' : '')}>
+                      <span key={k} className={'m' + (on && litDigit === d ? ' mHi' : '')}>
                         {on ? d : ''}
                       </span>
                     )

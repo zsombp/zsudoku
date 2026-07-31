@@ -41,22 +41,22 @@ export default function Dashboard({ inProgress, daily, records, onResume, onPick
         <div className="dashCol">
           {inProgress ? (
             <button className="card cardPrimary" onClick={onResume}>
-              <div className="cardKicker">Continue</div>
-              <div className="cardTitle">
+              <span className="cardKicker">Continue</span>
+              <span className="cardTitle">
                 {inProgress.mode === 'daily' ? `${daily.weekday} puzzle` : inProgress.graded}
-              </div>
-              <div className="cardMeta">
+              </span>
+              <span className="cardMeta">
                 {fmtMs(inProgress.elapsedMs)} · {pctDone}% filled
                 {inProgress.mode !== 'daily' && ` · ${inProgress.tech}`}
-              </div>
-              <div className="cardTrack"><div className="cardFill" style={{ width: `${pctDone}%` }} /></div>
+              </span>
+              <span className="cardTrack"><span className="cardFill" style={{ width: `${pctDone}%` }} /></span>
               <span className="cardGo"><Play size={16} /></span>
             </button>
           ) : (
             <button className="card cardPrimary" onClick={() => onPick('Medium')}>
-              <div className="cardKicker">Start</div>
-              <div className="cardTitle">New puzzle</div>
-              <div className="cardMeta">Medium · pointing, box-line</div>
+              <span className="cardKicker">Start</span>
+              <span className="cardTitle">New puzzle</span>
+              <span className="cardMeta">Medium · pointing, box-line</span>
               <span className="cardGo"><Play size={16} /></span>
             </button>
           )}
@@ -65,18 +65,18 @@ export default function Dashboard({ inProgress, daily, records, onResume, onPick
             className={'card cardDaily' + (daily.done ? ' isDone' : '')}
             onClick={onDaily}
           >
-            <div className="cardKicker">
+            <span className="cardKicker">
               <Calendar size={13} /> Daily
               {daily.streak > 0 && <span className="streakPip">{daily.streak}</span>}
-            </div>
-            <div className="cardTitle">{daily.weekday}</div>
-            <div className="cardMeta">
+            </span>
+            <span className="cardTitle">{daily.weekday}</span>
+            <span className="cardMeta">
               {daily.done
                 ? `Done in ${fmtMs(daily.durationMs)}`
                 : daily.inProgress
                   ? `${daily.tier} · in progress`
                   : `${daily.tier} · same for everyone`}
-            </div>
+            </span>
             {daily.done && <span className="cardGo done"><Trophy size={16} /></span>}
           </button>
         </div>

@@ -180,6 +180,7 @@ export default function StatsView({ onClose }) {
         </label>
 
         {showNumbers && (
+          <div className="tableWrap">
           <table className="statTable">
             <thead>
               <tr>
@@ -204,6 +205,7 @@ export default function StatsView({ onClose }) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
 
         <div className="dataRow">

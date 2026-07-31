@@ -90,7 +90,7 @@ export function Histogram({ bins }) {
   const barW = Math.min(24, slot - GAP)
 
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img"
+    <svg className="chart flexChart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
       aria-label="Distribution of solve times">
       <line x1="0" y1={PLOT} x2={W} y2={PLOT} className="axis" />
       {bins.map((b, i) => {
@@ -120,11 +120,12 @@ export function HourBars({ hours }) {
   const barW = Math.min(24, slot - GAP)
 
   return (
-    <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img"
+    <svg className="chart flexChart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
       aria-label="Games played by hour of day">
       <line x1="0" y1={PLOT} x2={W} y2={PLOT} className="axis" />
       {hours.map((h, i) => {
-        const bh = (h.count / max) * (PLOT - 6)
+        // Minimum 2px so an empty hour reads as a zero, not as the chart ending.
+        const bh = h.count ? (h.count / max) * (PLOT - 6) : 2
         const x = i * slot + (slot - barW) / 2
         return (
           <path key={i} d={columnPath(x, PLOT - bh, barW, bh)} className={h.count ? 'mark' : 'markEmpty'}>
@@ -179,7 +180,7 @@ export function TierTrend({ label, values, best }) {
         <span>{label}</span>
         <span className="trendMeta">best {fmtMs(best)}</span>
       </div>
-      <svg className="chart" viewBox={`0 0 ${W} ${H}`} width="100%" height={H} role="img"
+      <svg className="chart flexChart" viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
         aria-label={`${label} solve times, last ${values.length} games, most recent ${fmtMs(values[values.length - 1])}`}>
         <path d={areaFill} className="area" />
         <path d={line} className="line" />

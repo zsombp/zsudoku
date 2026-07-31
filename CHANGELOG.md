@@ -2,6 +2,88 @@
 
 Newest first.
 
+## v1.0.1 - 2026-07-31 - fixes from an adversarial UI review
+
+An independent review pass over the UI layer, verified in the running app rather
+than read off the source. It found six real defects, two of them introduced by
+v1.0.0 itself.
+
+### Serious
+
+- **Game keys stayed live behind the Stats and Settings screens.** The keyboard
+  handler was mounted unconditionally, so pressing `H` on Settings spent hints
+  and `A` overwrote pencil marks on a board you could not see. Measured: 25 to
+  27 cells filled and two hints consumed from the Settings screen. Because
+  hints feed the "clean solve" count, a stray keystroke on the wrong screen was
+  quietly disqualifying games from the honest-stats figure. Keys now only reach
+  the reducer on the game screen.
+- **The pencil-mark highlight never rendered.** A local `lit` inside the cell
+  loop shadowed the outer `lit` holding the highlighted digit, so the comparison
+  was boolean-against-number and always false. `.m.mHi` was dead code. Verified:
+  0 highlighted marks before, 31 after.
+- **Completing a unit made those cells blink out and re-deal.** v1.0.0 changed
+  the React `key` of flashing cells to retrigger the animation, which remounts
+  them, and a fresh node restarts the board's entrance animation. The reward
+  moment read as a rendering glitch. Retriggering now alternates between two
+  identical keyframes instead, so the nodes survive; verified 9/9 preserved.
+
+### Layout
+
+- **The per-tier table scrolled the whole page sideways on a 320px phone.** Its
+  six columns exceed the viewport and `.app` is a non-growing flex item, so it
+  spilled out. Now wrapped in its own scroll container: document width 320 = 320,
+  was 337 vs 320.
+- **Three of the four charts kept the letterbox bug the calendar had fixed.**
+  Histogram, hour bars and tier trends still carried a fixed pixel height beside
+  `width: 100%`, so they drew 320px of content in an 872px element. All four now
+  measure 100% fill; two were at 37% and 53%.
+- **The header theme button destroyed any non-default theme.** It flipped
+  between ink and paper only, so picking Midnight and tapping it gave you paper
+  with no way back except reopening Settings. It now cycles all six and names
+  the current one in its label.
+- **Number pad targets.** v1.0.0 justified the nine-across pad above 380px by
+  saying it lined up under the board's columns. Measured, it does not: 39.8px
+  cells against 35.8px keys, ~4px out at both ends. With the stated reason gone
+  the decision rests on target size, so the five-column rewrap now covers every
+  phone: keys went from 36x46 to 68x52 at 390px. The six tools stay in one row
+  above 380px, which was costing 58px of height and pushing the game below the
+  fold.
+- Icon buttons 32x32 to 40x40 on phones, and the settings switches grew with
+  them.
+
+### Accessibility
+
+- **81 tab stops between the board and the toolbar.** Every cell was in the tab
+  order. Roving tabindex now keeps exactly one cell focusable and carries DOM
+  focus along with the arrow-key selection. Focusable elements in the game view:
+  103 down to 23.
+- **Small text failed 4.5:1 in every theme**, including the honest-difficulty
+  disclosure and the delete-history confirm button. The cause was decorative
+  opacity on already-muted text. Removed from seven rules, and paper's `--sub`
+  lifted from 4.12:1 to 4.67:1.
+- Unearned achievements were distinguished only by opacity; they now carry a
+  dashed border, so the state is not opacity-and-colour alone.
+- An active tool was signalled by colour alone; it now also fills.
+- `<div>` children inside `<button>` on the dashboard cards, which is invalid
+  phrasing content, replaced with `<span>`.
+
+### Also
+
+- An empty hour in the play-by-hour chart drew nothing at all, because the
+  column path returns empty at zero height. It now draws a 2px stub, so "no
+  games at 4am" reads as a zero rather than as the chart ending.
+- Removed 13 lines of dead `.segmented` CSS left over from the old theme toggle.
+- Removed an unused `--i` custom property set on all 81 cells.
+
+### Came back clean
+
+All six themes define the complete 19-token set with none missing, which matters
+here because `data-theme` sits on the picker cards and a missing token would
+inherit from the active theme rather than from ink. The reduced-motion block
+covers every animation including those declared after it, confirmed empirically.
+No other specificity or source-order bugs. The board never overflows at any
+width.
+
 ## v1.0.0 - 2026-07-31 - Phase 4, the interface
 
 The last phase, and the only one facing the UI. Everything else had stopped

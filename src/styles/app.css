@@ -263,7 +263,6 @@ body {
   font-family: var(--mono);
   font-size: 9px;
   color: var(--sub);
-  opacity: 0.7;
   border-left: 1px solid var(--line);
   padding-left: 7px;
   white-space: nowrap;
@@ -603,7 +602,6 @@ body {
   text-align: center;
   font-size: 11px;
   color: var(--sub);
-  opacity: 0.85;
 }
 .hint {
   margin-top: 14px;
@@ -611,7 +609,6 @@ body {
   font-family: var(--mono);
   font-size: 9.5px;
   color: var(--sub);
-  opacity: 0.75;
 }
 
 /* ---- statistics ---- */
@@ -654,7 +651,7 @@ body {
   color: var(--ink);
   line-height: 1.25;
 }
-.tileSub { font-family: var(--mono); font-size: 9.5px; color: var(--sub); opacity: 0.85; }
+.tileSub { font-family: var(--mono); font-size: 9.5px; color: var(--sub); }
 
 .statSection { margin-top: 22px; }
 .statHeading {
@@ -680,7 +677,6 @@ body {
   font-family: var(--mono);
   font-size: 9.5px;
   color: var(--sub);
-  opacity: 0.7;
   margin-top: 6px;
 }
 
@@ -729,7 +725,6 @@ body {
   font-family: var(--mono);
   font-size: 9.5px;
   color: var(--sub);
-  opacity: 0.6;
   padding: 12px 0;
   text-align: center;
 }
@@ -772,7 +767,6 @@ body {
   border: 1px solid var(--line);
   border-radius: var(--ctl-radius);
   padding: 8px 10px;
-  opacity: 0.55;
   min-width: 0;
 }
 .badge.earned { opacity: 1; border-color: var(--accent); }
@@ -805,19 +799,6 @@ body {
 .setHint { font-size: 11px; color: var(--sub); margin-top: 2px; line-height: 1.4; }
 .setControl { flex-shrink: 0; }
 
-.segmented { display: flex; gap: 4px; background: var(--panel2); padding: 3px; border-radius: 9px; }
-.seg {
-  border: 0;
-  background: transparent;
-  color: var(--sub);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 7px;
-  cursor: pointer;
-}
-.seg.on { background: var(--accent); color: var(--accent-ink); }
 
 .switch { display: inline-flex; cursor: pointer; }
 .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -934,7 +915,6 @@ body {
   font-family: var(--mono);
   font-size: 9.5px;
   color: var(--sub);
-  opacity: 0.7;
   text-align: center;
   padding: 4px 0 2px;
 }
@@ -1012,9 +992,17 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   background: var(--accent);
   opacity: 0;
   pointer-events: none;
-  animation: unitFlash 0.6s ease;
+  animation: var(--flash-anim, unitFlashA) 0.6s ease;
 }
-@keyframes unitFlash {
+/* Two identical keyframes. Alternating between them by sequence number is what
+ * retriggers the flash when the same cells complete twice running, without
+ * remounting the cell. See the note in Board.jsx. */
+@keyframes unitFlashA {
+  0% { opacity: 0; }
+  22% { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+@keyframes unitFlashB {
   0% { opacity: 0; }
   22% { opacity: 0.4; }
   100% { opacity: 0; }
@@ -1124,20 +1112,27 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .themeName { font-size: 12.5px; font-weight: 600; }
 .themeDesc { font-size: 10.5px; color: var(--sub); line-height: 1.35; }
 
-/* ---- narrow phones ----
+/* ---- phones ----
  *
- * Nine keys across a 320px screen gives 28px targets, which is well under the
- * 44px guideline and genuinely hard to hit. Below 380px the pad wraps to five
- * columns instead, roughly doubling the width of each key.
+ * Nine keys across gives 28px targets at 320px and 36px at 390px, both under
+ * the 44px guideline for the control used more than any other.
  *
- * Kept as a narrow band rather than applied everywhere because on a 390px-plus
- * phone the nine-across pad lines up under the board's own columns, which is a
- * real affordance worth keeping. */
+ * This was originally a narrow 379px band, justified by the nine-across pad
+ * lining up under the board's own columns. Measured, it does not: board cells
+ * are 39.8px against 35.8px keys, so the columns are ~4px out of register at
+ * both ends and never line up. With the stated reason gone, the decision rests
+ * on target size alone, so the rewrap now covers every phone. */
 
-@media (max-width: 379px) {
+@media (max-width: 479px) {
   .pad { grid-template-columns: repeat(5, 1fr); gap: 6px; }
-  .key { padding: 10px 0 7px; }
+  .key { padding: 9px 0 6px; }
   .key .kv { font-size: 21px; }
+}
+
+/* The six tools only need to wrap on a genuinely narrow screen. At 390px they
+ * fit across in one row at ~60px each, and wrapping them to two rows cost 58px
+ * of height and pushed the game below the fold. */
+@media (max-width: 379px) {
   .tools { grid-template-columns: repeat(3, 1fr); }
   .themeGrid { grid-template-columns: 1fr; }
 }
@@ -1157,3 +1152,48 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* The calendar scales with its column but stops before the cells get silly. */
 .calChart { height: auto; max-width: 520px; }
+
+/* ---- review fixes ----
+ * From an adversarial pass over the UI layer. Each of these was measured in the
+ * running app, not inferred. */
+
+/* The per-tier table's six columns have a content minimum wider than a 320px
+ * phone, so it spilled out of .app (a non-growing flex item) and scrolled the
+ * whole page sideways. Scroll the table, never the page. */
+.tableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tableWrap .statTable { min-width: 340px; }
+
+/* Icon buttons were 32x32 on a phone, under the 44px guideline, and there are
+ * five of them in the header alone. */
+@media (max-width: 767px) {
+  .iconBtn { width: 40px; height: 40px; }
+  .newBtn { padding: 10px 14px; }
+  .toggle { padding: 6px 0; }
+  .switchTrack { width: 48px; height: 29px; }
+  .switch input:checked + .switchTrack .switchThumb { transform: translateX(19px); }
+  .switchThumb { width: 23px; height: 23px; }
+}
+
+/* Charts other than the calendar kept a fixed pixel height beside width:100%,
+ * so preserveAspectRatio capped them at their viewBox size and centred them:
+ * 872px elements drawing 320px of content, 37% fill. */
+.flexChart { height: auto; }
+
+/* An active tool was signalled by colour alone. It now also fills. */
+.tool.on {
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  border-color: var(--accent);
+}
+
+/* Unearned achievements were distinguished only by opacity, which put their
+ * text under 4.5:1 in every theme. A dashed border carries the state instead,
+ * and earned ones keep the solid accent border. */
+.badge { border-style: dashed; }
+.badge.earned { border-style: solid; }
+.badge:not(.earned) .badgeName,
+.badge:not(.earned) .badgeDesc { color: var(--sub); }
+
+/* Card internals became spans (button takes phrasing content only), so they
+ * need explicit block display to keep the original layout. */
+.cardKicker, .cardTitle, .cardMeta, .cardTrack { display: block; }
+.cardKicker { display: flex; }
