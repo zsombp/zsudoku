@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { dayKey, dailyTier, dailySeed, dailyPlan, weekdayName, dailyStreak } from './daily.js'
-import { seedFromDate } from '../lib/prng.js'
+import { seedFromDate, mulberry32 } from '../lib/prng.js'
 import { makePuzzle } from './generator.js'
 import { achievements, earnedCount } from '../stats/achievements.js'
+import { gameReducer, initialState } from '../state/gameReducer.js'
+import { generateFull, dig } from './generator.js'
+import { PEERS } from './topology.js'
+import { hasMark } from './marks.js'
 
 describe('daily plan', () => {
   it('keys by local date', () => {
@@ -138,5 +142,113 @@ describe('achievements', () => {
 
   it('never throws on malformed records', () => {
     expect(() => achievements([{}, { completed: true }, game()])).not.toThrow()
+  })
+})
+
+describe('pencil marks stay true', () => {
+  const setup = () => {
+    const rng = mulberry32(4321)
+    const solution = generateFull(rng)
+    const puzzle = dig(solution, 30, rng)
+    let s = gameReducer(initialState, {
+      type: 'ready',
+      made: { puzzle, solution, requested: 'Medium', graded: 'Medium', score: 200, hardest: 'pointing', counts: {}, clues: 30, seed: 1 },
+      now: 0,
+    })
+    return gameReducer(s, { type: 'autoPencil' })
+  }
+
+  const peersHolding = (s, cell, digit) => {
+    let n = 0
+    for (const p of PEERS[cell]) if (hasMark(s.marks[p], digit)) n++
+    return n
+  }
+
+  it('erasing a digit puts back the marks it stripped', () => {
+    let s = setup()
+    const cell = s.board.findIndex((v, i) => v === 0 && s.puzzle[i] === 0)
+    const digit = s.solution[cell]
+    const before = peersHolding(s, cell, digit)
+    expect(before).toBeGreaterThan(0)
+
+    s = gameReducer(s, { type: 'select', index: cell })
+    s = gameReducer(s, { type: 'digit', value: digit })
+    expect(peersHolding(s, cell, digit)).toBe(0)
+
+    s = gameReducer(s, { type: 'erase' })
+    expect(peersHolding(s, cell, digit)).toBe(before)
+  })
+
+  it('overwriting a digit puts back the first one it stripped', () => {
+    let s = setup()
+    const cell = s.board.findIndex((v, i) => v === 0 && s.puzzle[i] === 0)
+    const first = s.solution[cell]
+    const second = (first % 9) + 1
+    const before = peersHolding(s, cell, first)
+
+    s = gameReducer(s, { type: 'select', index: cell })
+    s = gameReducer(s, { type: 'digit', value: first })
+    s = gameReducer(s, { type: 'digit', value: second })
+    expect(peersHolding(s, cell, first)).toBe(before)
+  })
+
+  it('undo restores marks and the ledger together', () => {
+    let s = setup()
+    const cell = s.board.findIndex((v, i) => v === 0 && s.puzzle[i] === 0)
+    const digit = s.solution[cell]
+    const before = JSON.stringify(Array.from(s.marks))
+
+    s = gameReducer(s, { type: 'select', index: cell })
+    s = gameReducer(s, { type: 'digit', value: digit })
+    s = gameReducer(s, { type: 'undo' })
+    expect(JSON.stringify(Array.from(s.marks))).toBe(before)
+    // And erasing afterwards must not double-restore.
+    s = gameReducer(s, { type: 'digit', value: digit })
+    s = gameReducer(s, { type: 'erase' })
+    expect(JSON.stringify(Array.from(s.marks))).toBe(before)
+  })
+})
+
+describe('redo', () => {
+  const setup = () => {
+    const rng = mulberry32(5555)
+    const solution = generateFull(rng)
+    const puzzle = dig(solution, 30, rng)
+    return gameReducer(initialState, {
+      type: 'ready',
+      made: { puzzle, solution, requested: 'Medium', graded: 'Medium', score: 200, hardest: 'pointing', counts: {}, clues: 30, seed: 1 },
+      now: 0,
+    })
+  }
+
+  it('goes back forward again', () => {
+    let s = setup()
+    const cell = s.board.findIndex((v, i) => v === 0 && s.puzzle[i] === 0)
+    const digit = s.solution[cell]
+    s = gameReducer(s, { type: 'select', index: cell })
+    s = gameReducer(s, { type: 'digit', value: digit })
+    s = gameReducer(s, { type: 'undo' })
+    expect(s.board[cell]).toBe(0)
+    expect(s.future).toHaveLength(1)
+    s = gameReducer(s, { type: 'redo' })
+    expect(s.board[cell]).toBe(digit)
+    expect(s.future).toHaveLength(0)
+  })
+
+  it('a new move drops the redo branch', () => {
+    let s = setup()
+    const cells = s.board.map((v, i) => (v === 0 && s.puzzle[i] === 0 ? i : -1)).filter(i => i >= 0)
+    s = gameReducer(s, { type: 'select', index: cells[0] })
+    s = gameReducer(s, { type: 'digit', value: s.solution[cells[0]] })
+    s = gameReducer(s, { type: 'undo' })
+    expect(s.future).toHaveLength(1)
+    s = gameReducer(s, { type: 'select', index: cells[1] })
+    s = gameReducer(s, { type: 'digit', value: s.solution[cells[1]] })
+    expect(s.future).toHaveLength(0)
+  })
+
+  it('does nothing with an empty redo stack', () => {
+    const s = setup()
+    expect(gameReducer(s, { type: 'redo' })).toBe(s)
   })
 })

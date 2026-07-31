@@ -3,7 +3,7 @@ import { rowOf, colOf, boxOf, range } from '../logic/topology.js'
 import { hasMark } from '../logic/marks.js'
 import { isWrong, highlightDigit } from '../state/gameReducer.js'
 
-export default function Board({ state, checkErrors, onCellTap, blurred }) {
+export default function Board({ state, checkErrors, canGo, revealWrong, onCellTap, blurred }) {
   const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status } = state
   const flashSet = flash?.length ? new Set(flash) : null
   const ready = Boolean(board)
@@ -47,7 +47,10 @@ export default function Board({ state, checkErrors, onCellTap, blurred }) {
     else if (board[i] !== 0) cls.push('user')
     // Otherwise a hint looks like nothing happened. Cleared by the next move.
     if (i === hintCell) cls.push('hinted')
-    if (checkErrors && isWrong(state, i)) cls.push('wrong')
+    // Always-on mistake marking, or the brief reveal from the Check button.
+    if ((checkErrors || revealWrong) && isWrong(state, i)) cls.push('wrong')
+    // Empty cells the highlighted digit could still legally occupy.
+    if (canGo?.has(i)) cls.push('canGo')
     return cls.join(' ')
   }
 

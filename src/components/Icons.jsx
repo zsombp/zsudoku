@@ -28,6 +28,19 @@ export const Undo = props => (
   </Svg>
 )
 
+export const Redo = props => (
+  <Svg {...props}>
+    <path d="m15 14 5-5-5-5" />
+    <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
+  </Svg>
+)
+
+export const Check = props => (
+  <Svg {...props}>
+    <path d="M20 6 9 17l-5-5" />
+  </Svg>
+)
+
 export const Eraser = props => (
   <Svg {...props}>
     <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />

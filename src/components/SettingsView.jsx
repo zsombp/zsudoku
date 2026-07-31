@@ -118,6 +118,16 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
             onChange={v => updateSettings({ quickInput: v })}
           />
         </Row>
+        <Row
+          label="Candidate hints"
+          hint="Outlines every empty cell the highlighted number could still go in."
+        >
+          <Switch
+            label="Candidate hints"
+            checked={settings.candidateHints}
+            onChange={v => updateSettings({ candidateHints: v })}
+          />
+        </Row>
         <Row label="Show mistakes" hint="Marks a digit red as soon as it disagrees with the solution.">
           <Switch
             label="Show mistakes"

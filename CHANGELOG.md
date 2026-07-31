@@ -2,6 +2,60 @@
 
 Newest first.
 
+## v1.1.0 - 2026-07-31 - four defects, and notes you can trust
+
+Found by going hunting rather than by reading the code: every item below was
+reproduced in the running app first.
+
+### The four defects
+
+**Erasing a digit did not put back the pencil marks it displaced.** Placing a 5
+strips it from every peer's marks, which is right. Erasing the 5 left them
+stripped, so the marks were permanently missing a candidate that had become
+valid again. Measured: nine peers held the digit, zero after placing, still zero
+after erasing. Your notes quietly stopped being true, which is the worst kind of
+bug in a game where the notes are what you reason from.
+
+Fixed with a ledger: every strip records exactly which peers lost which digit,
+so the removal is reversed precisely when the digit leaves. Recorded rather than
+recomputed, because recomputing cannot tell a mark you never wrote from one the
+app removed, and would invent marks you had deliberately cleared.
+
+The ledger also carries the cell's **own** marks, found by a test: placing a
+digit clears the notes in that cell too, and erasing has to bring those back. If
+you pencil 1/4/6/9, type a 4 and erase it, you want your four candidates back.
+
+**Undo history died on reload.** Close the app mid-game and the stack was empty.
+Now persisted, capped at the last 50 states: a full stack of board and mark
+snapshots runs to a few hundred KB, which is not worth writing every ten seconds
+for undos nobody reaches.
+
+**Pause did not survive a reload** — it came back running, with the clock going.
+Now persisted, and verified: blurred board, resume button, clock stopped.
+
+**No redo.** Unlimited undo and no way forward, so over-undoing cost you
+retyping. `R`, or shift-cmd-Z. A new move drops the redo branch.
+
+### Notes that stay correct
+
+- **Candidate hints.** With a digit highlighted, empty cells it could still
+  legally occupy get a ring.
+
+  It rings only cells that **do not already carry that pencil mark**. The first
+  version ringed every legal cell, which on an auto-pencilled board meant 33
+  rings almost all sitting on cells whose highlighted chip already said the same
+  thing. The ring now means "this fits here and you have not noted it", so the
+  two signals never overlap: 33 rings and no chips with marks cleared, 33 chips
+  and no rings after auto-pencil.
+
+- **Check.** Briefly flashes any wrong digits rather than marking them
+  permanently, so it stays a deliberate act. Counted as an assist, like hints.
+
+The toolbar is now eight controls in two rows of four, which also gives bigger
+targets on a phone than six across ever did.
+
+108 tests pass, 9 new over mark restoration and redo.
+
 ## v1.0.2 - 2026-07-31 - pencil marks, highlight contrast, theme menu
 
 All three from Zsomb's report after playing v1.0.1.

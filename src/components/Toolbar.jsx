@@ -1,14 +1,18 @@
-import { Undo, Eraser, Pencil, Sparkles, Zap, Bulb } from './Icons.jsx'
+import { Undo, Redo, Eraser, Pencil, Sparkles, Zap, Bulb, Check } from './Icons.jsx'
 
 export default function Toolbar({
-  canUndo, notes, quick, disabled,
-  onUndo, onErase, onToggleNotes, onAutoPencil, onToggleQuick, onHint,
+  canUndo, canRedo, notes, quick, disabled,
+  onUndo, onRedo, onErase, onToggleNotes, onAutoPencil, onToggleQuick, onHint, onCheck,
 }) {
   return (
     <div className="tools">
       <button className="tool" disabled={disabled || !canUndo} onClick={onUndo}>
         <Undo size={19} />
         <span>Undo</span>
+      </button>
+      <button className="tool" disabled={disabled || !canRedo} onClick={onRedo}>
+        <Redo size={19} />
+        <span>Redo</span>
       </button>
       <button className="tool" disabled={disabled} onClick={onErase}>
         <Eraser size={19} />
@@ -45,6 +49,15 @@ export default function Toolbar({
       >
         <Bulb size={19} />
         <span>Hint</span>
+      </button>
+      <button
+        className="tool"
+        disabled={disabled}
+        onClick={onCheck}
+        title="Briefly show any wrong digits"
+      >
+        <Check size={19} />
+        <span>Check</span>
       </button>
     </div>
   )

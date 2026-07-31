@@ -16,6 +16,8 @@ const DEFAULTS = {
   autoPencilOnStart: false,
   // Quick input: arm a digit on the pad, then tap cells to fill them.
   quickInput: false,
+  // Outline the empty cells the highlighted digit could legally occupy.
+  candidateHints: true,
   // Synthesised, and off by default: a sudoku that makes noise you did not ask
   // for is worse than a silent one.
   sound: false,

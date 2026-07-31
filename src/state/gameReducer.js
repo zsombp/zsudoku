@@ -6,7 +6,7 @@
 // dozen handlers.
 
 import { PEERS, UNITS, candMaskAt, colOf, range } from '../logic/topology.js'
-import { hasMark, toggleMark, removeMark, emptyMarks } from '../logic/marks.js'
+import { hasMark, toggleMark, removeMark, addMark, emptyMarks } from '../logic/marks.js'
 import { LEGACY_LEVEL_NAME } from '../logic/difficulty.js'
 
 export const initialState = {
@@ -20,6 +20,13 @@ export const initialState = {
   // Quick input: the digit currently armed on the number pad, 0 for none.
   activeDigit: 0,
   history: [],
+  // Redo. Undo alone means over-undoing costs you retyping by hand.
+  future: [],
+  // Which peers each placed digit took a pencil mark from, so erasing it can
+  // put them back exactly. Keyed by the cell holding the digit.
+  stripped: {},
+  // How many times the board was checked. An assist, so it is counted.
+  checks: 0,
   // What was asked for, and what the grader actually measured. Kept apart
   // everywhere, because only `graded` is ever shown to the player.
   requested: 'Medium',
@@ -54,7 +61,14 @@ export const initialState = {
   elapsedMs: 0,
 }
 
-const snapshot = s => ({ board: s.board.slice(), marks: s.marks.slice(), mistakes: s.mistakes })
+const snapshot = s => ({
+  board: s.board.slice(),
+  marks: s.marks.slice(),
+  mistakes: s.mistakes,
+  // Carried too: restoring marks without restoring the record of what stripped
+  // them would leave the ledger describing a board that no longer exists.
+  stripped: s.stripped,
+})
 
 const canEdit = s =>
   s.board && s.status === 'playing' && s.selected >= 0 && s.puzzle[s.selected] === 0
@@ -88,6 +102,31 @@ function completedUnitCells(board, i) {
 /** Appends one entry to the move log. `t` is elapsed game time in ms. */
 const logMove = (state, entry, t) => [...state.moveLog, { t: Math.round(t ?? 0), ...entry }]
 
+/**
+ * Puts `v` back into the pencil marks of the peers it was taken from.
+ *
+ * Placing a digit strips it from every peer's marks, which is right. Erasing it
+ * has to put them back, which the app did not do: place a 5, strip it from nine
+ * peers, erase the 5, and those nine cells were left permanently missing a
+ * candidate that had become valid again. Your notes quietly stopped being true.
+ *
+ * The peers are recorded at strip time rather than recomputed, because
+ * recomputing cannot tell a mark you never wrote from one the app removed, and
+ * would invent marks you had deliberately cleared.
+ */
+function restoreStripped(marks, stripped, i) {
+  const rec = stripped[i]
+  if (!rec) return stripped
+  for (const [p, digit] of rec.peers) marks[p] = addMark(marks[p], digit)
+  // The cell's own marks are cleared when a digit lands on it. Those come back
+  // too: having pencilled 1/4/6/9, typed a 4 and then erased it, you want your
+  // four candidates back, not an empty cell.
+  if (rec.own) marks[i] = rec.own
+  const next = { ...stripped }
+  delete next[i]
+  return next
+}
+
 function placeDigit(state, i, v, t) {
   // Notes mode: toggle a pencil mark, but only in an empty cell.
   if (state.notes) {
@@ -108,14 +147,27 @@ function placeDigit(state, i, v, t) {
   let entry
   let flash = []
 
+  // Whatever the previous occupant of this cell took out of its peers' marks
+  // goes back first, whether we are clearing the cell or overwriting it.
+  let stripped = restoreStripped(marks, state.stripped, i)
+
   if (board[i] === v) {
     board[i] = 0
     entry = { kind: 'clear', cell: i, value: v }
   } else {
     board[i] = v
+    const own = marks[i]
     marks[i] = 0
-    // Auto-erase this digit from every peer's pencil marks.
-    for (const p of PEERS[i]) if (hasMark(marks[p], v)) marks[p] = removeMark(marks[p], v)
+    // Strip this digit from every peer's marks, remembering exactly which peers
+    // so the removal can be undone precisely when the digit leaves.
+    const taken = []
+    for (const p of PEERS[i]) {
+      if (hasMark(marks[p], v)) {
+        marks[p] = removeMark(marks[p], v)
+        taken.push([p, v])
+      }
+    }
+    stripped = taken.length || own ? { ...stripped, [i]: { own, peers: taken } } : stripped
     const correct = v === state.solution[i]
     if (!correct) mistakes++
     else flash = completedUnitCells(board, i)
@@ -126,11 +178,15 @@ function placeDigit(state, i, v, t) {
     ...state,
     board,
     marks,
+    stripped,
     mistakes,
     flash,
     // Bumped so an identical flash set still retriggers the animation.
     flashSeq: state.flashSeq + 1,
     history: [...state.history, snapshot(state)],
+    // Any new move invalidates whatever was undone. Standard, and it stops redo
+    // replaying a branch that no longer exists.
+    future: [],
     moveLog: logMove(state, entry, t),
   }
   if (isSolved(board, state.solution)) next.status = 'won'
@@ -198,6 +254,17 @@ function reduce(state, action) {
         hints: s.hints || 0,
         hintLog: s.hintLog || [],
         moveLog: s.moveLog || [],
+        history: (s.history || []).map(h => ({
+          board: h.board,
+          marks: Int16Array.from(h.marks),
+          mistakes: h.mistakes,
+          stripped: h.stripped || {},
+        })),
+        stripped: s.stripped || {},
+        checks: s.checks || 0,
+        // Reopening paused is the honest resume: the clock stopped when you
+        // paused and must not start again just because the app restarted.
+        status: s.status === 'paused' ? 'paused' : 'playing',
         autoCompleted: s.autoCompleted || false,
         startedAt: s.startedAt,
         elapsedMs: s.elapsedMs || 0,
@@ -288,13 +355,21 @@ function reduce(state, action) {
       if (state.board[i] === 0 && state.marks[i] === 0) return state
       const board = state.board.slice()
       const marks = state.marks.slice()
+      // Erase does two different jobs. On a cell holding a digit it removes the
+      // digit and restores the marks that digit displaced, including the cell's
+      // own. On an empty cell it clears the pencil marks, which is the only
+      // thing there is to clear.
+      const hadDigit = board[i] !== 0
+      const stripped = hadDigit ? restoreStripped(marks, state.stripped, i) : state.stripped
       board[i] = 0
-      marks[i] = 0
+      if (!hadDigit) marks[i] = 0
       return {
         ...state,
         board,
         marks,
+        stripped,
         history: [...state.history, snapshot(state)],
+        future: [],
         moveLog: logMove(state, { kind: 'erase', cell: i }, action.t),
       }
     }
@@ -307,10 +382,37 @@ function reduce(state, action) {
         board: prev.board.slice(),
         marks: prev.marks.slice(),
         mistakes: prev.mistakes,
+        stripped: prev.stripped || {},
         history: state.history.slice(0, -1),
+        future: [...state.future, snapshot(state)],
         moveLog: logMove(state, { kind: 'undo' }, action.t),
       }
     }
+
+    case 'redo': {
+      if (!state.board || state.status !== 'playing' || state.future.length === 0) return state
+      const next = state.future[state.future.length - 1]
+      return {
+        ...state,
+        board: next.board.slice(),
+        marks: next.marks.slice(),
+        mistakes: next.mistakes,
+        stripped: next.stripped || {},
+        history: [...state.history, snapshot(state)],
+        future: state.future.slice(0, -1),
+        moveLog: logMove(state, { kind: 'redo' }, action.t),
+      }
+    }
+
+    // Counts an explicit board check. The wrong cells are already derivable, so
+    // this only records that help was taken.
+    case 'check':
+      if (!state.board || state.status !== 'playing') return state
+      return {
+        ...state,
+        checks: state.checks + 1,
+        moveLog: logMove(state, { kind: 'check' }, action.t),
+      }
 
     case 'autoComplete': {
       // The button is only offered when every remaining cell is forced, so this
@@ -345,7 +447,11 @@ function reduce(state, action) {
       return {
         ...state,
         marks,
+        // Auto-pencil rewrites every mark from the board, so nothing the old
+        // ledger describes still applies.
+        stripped: {},
         history: [...state.history, snapshot(state)],
+        future: [],
         moveLog: logMove(state, { kind: 'autoPencil' }, action.t),
       }
     }

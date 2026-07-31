@@ -8,7 +8,9 @@ import HintSummary from './components/HintSummary.jsx'
 import { Moon, Sun, Play, Plus, Trophy, Sparkles, Chart } from './components/Icons.jsx'
 import StatsView from './components/StatsView.jsx'
 import * as gameLog from './lib/gameLog.js'
-import { gameReducer, initialState, remainingCounts, currentLabel } from './state/gameReducer.js'
+import { gameReducer, initialState, remainingCounts, currentLabel, highlightDigit } from './state/gameReducer.js'
+import { candMaskAt } from './logic/topology.js'
+import { hasMark } from './logic/marks.js'
 import { techFor, tierForScore } from './logic/difficulty.js'
 import { gradePuzzle, autoCompleteFills, hintPlacement } from './logic/grader.js'
 import { GRADER_VERSION } from './logic/techniques.js'
@@ -63,6 +65,27 @@ export default function App() {
   // candidates and few enough cells remain that it is mop-up. Recomputed on
   // each board change, which is cheap: it bails on the cell count before doing
   // any solving work.
+  // Where the highlighted digit could legally still go. Answers the question
+  // you actually ask when you pick up a digit, and it reads the board rather
+  // than the pencil marks so it is right even if you have not pencilled.
+  const canGo = useMemo(() => {
+    if (!settings.candidateHints || !state.board || state.status !== 'playing') return null
+    const d = highlightDigit(state)
+    if (!d) return null
+    const out = new Set()
+    for (let i = 0; i < 81; i++) {
+      if (state.board[i] !== 0) continue
+      // A cell already showing this digit as a pencil mark is telling you the
+      // same thing, and the mark is highlighted anyway. Ringing it too was
+      // stating the fact twice and turned an auto-pencilled board into noise:
+      // 33 rings, nearly all of them redundant. The ring now means "this digit
+      // fits here and you have not noted it", which is the part worth seeing.
+      if (hasMark(state.marks[i], d)) continue
+      if (hasMark(candMaskAt(state.board, i), d)) out.add(i)
+    }
+    return out
+  }, [state.board, state.marks, state.status, state.activeDigit, state.selected, settings.candidateHints])
+
   const autoFills = useMemo(
     () => (state.status === 'playing' && state.board ? autoCompleteFills(state.board) : null),
     [state.board, state.status]
@@ -94,6 +117,19 @@ export default function App() {
       // and the analytics for that game would be silently wrong rather than
       // missing, which is worse.
       moveLog: s.moveLog,
+      // Undo used to die on reload. Capped at the last 50 states: a full stack
+      // of board+marks snapshots runs to a few hundred KB over a long game,
+      // which is not worth writing every ten seconds for undos nobody reaches.
+      history: s.history.slice(-50).map(h => ({
+        board: h.board,
+        marks: Array.from(h.marks),
+        mistakes: h.mistakes,
+        stripped: h.stripped,
+      })),
+      stripped: s.stripped,
+      checks: s.checks,
+      // Paused used to resume running on reload, with the clock going.
+      status: s.status,
       mistakes: s.mistakes,
       hints: s.hints,
       startedAt: s.startedAt,
@@ -218,6 +254,20 @@ export default function App() {
     const hint = hintPlacement(s.board, s.solution)
     if (hint) dispatch({ type: 'hint', hint })
   }, [])
+
+  // "Check" flashes the wrong digits for a moment rather than marking them
+  // permanently, so it stays a deliberate act you can count instead of an
+  // always-on safety net. Recorded, because it is help.
+  const [revealWrong, setRevealWrong] = useState(false)
+  const revealTimer = useRef(null)
+  const onCheck = useCallback(() => {
+    if (stateRef.current.status !== 'playing') return
+    dispatch({ type: 'check' })
+    setRevealWrong(true)
+    clearTimeout(revealTimer.current)
+    revealTimer.current = setTimeout(() => setRevealWrong(false), 1600)
+  }, [])
+  useEffect(() => () => clearTimeout(revealTimer.current), [])
 
   const toggleQuick = useCallback(() => {
     updateSettings({ quickInput: !settings.quickInput })
@@ -362,7 +412,11 @@ export default function App() {
       return
     }
     if (e.metaKey || e.ctrlKey) {
-      if (e.key.toLowerCase() === 'z') { e.preventDefault(); dispatch({ type: 'undo' }) }
+      if (e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        // Shift-Cmd-Z is redo everywhere else, so it is redo here.
+        dispatch({ type: e.shiftKey ? 'redo' : 'undo' })
+      }
       return
     }
     const k = e.key
@@ -375,6 +429,7 @@ export default function App() {
     else if (k.toLowerCase() === 'n') dispatch({ type: 'toggleNotes' })
     else if (k.toLowerCase() === 'a') dispatch({ type: 'autoPencil' })
     else if (k.toLowerCase() === 'u') dispatch({ type: 'undo' })
+    else if (k.toLowerCase() === 'r') dispatch({ type: 'redo' })
     else if (k.toLowerCase() === 'p') dispatch({ type: 'togglePause' })
     else if (k.toLowerCase() === 'c' && autoFills) dispatch({ type: 'autoComplete', fills: autoFills })
     else if (k.toLowerCase() === 'q') toggleQuick()
@@ -474,6 +529,8 @@ export default function App() {
         <Board
           state={state}
           checkErrors={settings.checkErrors}
+          canGo={canGo}
+          revealWrong={revealWrong}
           blurred={paused}
           onCellTap={onCellTap}
         />
@@ -536,10 +593,13 @@ export default function App() {
       <div className="playSide">
       <Toolbar
         canUndo={state.history.length > 0}
+        canRedo={state.future.length > 0}
         notes={state.notes}
         quick={settings.quickInput}
         disabled={busy}
         onUndo={() => dispatch({ type: 'undo' })}
+        onRedo={() => dispatch({ type: 'redo' })}
+        onCheck={onCheck}
         onErase={() => dispatch({ type: 'erase' })}
         onToggleNotes={() => dispatch({ type: 'toggleNotes' })}
         onAutoPencil={() => dispatch({ type: 'autoPencil' })}
@@ -575,7 +635,7 @@ export default function App() {
       )}
 
       <div className="hint">
-        keys: 1–9 place · N notes · A auto · U/⌘Z undo · P pause · Q quick · H hint · arrows move
+        keys: 1–9 place · N notes · A auto · U undo · R redo · P pause · Q quick · H hint · arrows move
         {autoFills && ' · C complete'}
       </div>
       {settings.quickInput && (
