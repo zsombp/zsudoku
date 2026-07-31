@@ -156,3 +156,32 @@ export function forcedFills(board) {
 }
 
 export const allCellsForced = board => forcedFills(board) !== null
+
+/**
+ * How many cells may remain for auto-complete to offer itself.
+ *
+ * Arbitrary, and openly so. Strict alone fired with a median of 5 cells left,
+ * which Zsomb found later than he was used to. The looser cascade rule fires at
+ * a median of 29, which on a Gentle puzzle means handing over 36 of 45 blanks.
+ * There is no principled trigger between those two, so this is a dial rather
+ * than a discovery. Tune it by feel.
+ */
+export const AUTO_COMPLETE_MAX = 12
+
+/**
+ * The shipped auto-complete trigger: the rest of the board falls to lone
+ * candidates, and few enough cells remain that finishing is mop-up rather than
+ * a large chunk of the puzzle.
+ *
+ * Note the cascade condition, once true, stays true as long as you fill
+ * correctly. So in practice this fires the moment the board drops to the cap,
+ * and the cascade check is what stops it offering on a board that still needs
+ * real work. Strict is a strict subset: if every cell is forced at once, the
+ * tail is trivially all lone candidates.
+ */
+export function autoCompleteFills(board, { maxCells = AUTO_COMPLETE_MAX } = {}) {
+  let empty = 0
+  for (let i = 0; i < 81; i++) if (board[i] === 0) empty++
+  if (empty === 0 || empty > maxCells) return null
+  return trivialTail(board)
+}

@@ -11,7 +11,10 @@
 //       technique mix and timing per tier.
 
 import { generateFull, dig, makePuzzle } from '../src/logic/generator.js'
-import { gradePuzzle, createState, nextStep, applyStep, forcedFills, trivialTail } from '../src/logic/grader.js'
+import {
+  gradePuzzle, createState, nextStep, applyStep,
+  forcedFills, trivialTail, autoCompleteFills, AUTO_COMPLETE_MAX,
+} from '../src/logic/grader.js'
 import { hasUniqueSolution } from '../src/logic/solver.js'
 import { TIERS, tierForScore } from '../src/logic/difficulty.js'
 import { TECHNIQUES } from '../src/logic/techniques.js'
@@ -144,17 +147,19 @@ function verify(n) {
 function autocomplete(n) {
   console.log(`\nAuto-complete trigger points, ${n} puzzles per tier.`)
   console.log('"cells left" is how many were still empty when the button would appear.\n')
-  console.log('STRICT   every empty cell has exactly one candidate at once. What ships.')
+  console.log('STRICT   every empty cell has exactly one candidate at once.')
   console.log('CASCADE  the rest falls to naked singles, each revealing the next.')
-  console.log('         Looser, fires earlier, and still asks you to spot each forced cell.\n')
-  console.log('tier          strict p50   strict max   cascade p50   cascade max   gap (p50)')
-  console.log('-'.repeat(84))
+  console.log(`SHIPPED  cascade, capped at ${AUTO_COMPLETE_MAX} remaining cells.\n`)
+  console.log('tier          strict p50   cascade p50   shipped p50   shipped max   never')
+  console.log('-'.repeat(80))
 
-  const totals = { strict: [], cascade: [] }
+  const totals = { strict: [], cascade: [], shipped: [] }
 
   for (const tier of TIERS) {
     const strict = []
     const cascade = []
+    const shipped = []
+    let never = 0
 
     for (let i = 0; i < n; i++) {
       const made = makePuzzle(tier.name, { seed: 70000 + i })
@@ -163,38 +168,40 @@ function autocomplete(n) {
       const state = createState(made.puzzle)
       let hitStrict = null
       let hitCascade = null
+      let hitShipped = null
 
       for (let s = 0; s < 400; s++) {
         const empties = state.board.reduce((a, v) => a + (v ? 0 : 1), 0)
         if (hitCascade === null && trivialTail(state.board)) hitCascade = empties
-        if (hitStrict === null && forcedFills(state.board)) { hitStrict = empties; break }
+        if (hitShipped === null && autoCompleteFills(state.board)) hitShipped = empties
+        if (hitStrict === null && forcedFills(state.board)) hitStrict = empties
+        if (hitStrict !== null && hitShipped !== null) break
         const step = nextStep(state)
         if (!step) break
         applyStep(state, step)
       }
       if (hitStrict !== null) strict.push(hitStrict)
       if (hitCascade !== null) cascade.push(hitCascade)
+      if (hitShipped !== null) shipped.push(hitShipped)
+      else never++
     }
 
-    strict.sort((a, b) => a - b)
-    cascade.sort((a, b) => a - b)
+    for (const a of [strict, cascade, shipped]) a.sort((x, y) => x - y)
     totals.strict.push(...strict)
     totals.cascade.push(...cascade)
+    totals.shipped.push(...shipped)
 
-    const sp50 = pctl(strict, 0.5)
-    const cp50 = pctl(cascade, 0.5)
     console.log(
-      `${tier.name.padEnd(12)} ${String(sp50).padStart(10)}   ${String(strict[strict.length - 1] ?? 0).padStart(10)}   ` +
-      `${String(cp50).padStart(11)}   ${String(cascade[cascade.length - 1] ?? 0).padStart(11)}   ` +
-      `${String(cp50 - sp50).padStart(9)}`
+      `${tier.name.padEnd(12)} ${String(pctl(strict, 0.5)).padStart(10)}   ` +
+      `${String(pctl(cascade, 0.5)).padStart(11)}   ${String(pctl(shipped, 0.5)).padStart(11)}   ` +
+      `${String(shipped[shipped.length - 1] ?? 0).padStart(11)}   ${String(never).padStart(5)}`
     )
   }
 
-  totals.strict.sort((a, b) => a - b)
-  totals.cascade.sort((a, b) => a - b)
+  for (const k of Object.keys(totals)) totals[k].sort((a, b) => a - b)
   console.log(
-    `\nOverall median: strict ${pctl(totals.strict, 0.5)} cells left, ` +
-    `cascade ${pctl(totals.cascade, 0.5)} cells left.\n`
+    `\nOverall median cells left: strict ${pctl(totals.strict, 0.5)}, ` +
+    `cascade ${pctl(totals.cascade, 0.5)}, shipped ${pctl(totals.shipped, 0.5)}.\n`
   )
 }
 

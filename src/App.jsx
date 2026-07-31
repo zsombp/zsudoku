@@ -7,7 +7,7 @@ import NewGameSheet from './components/NewGameSheet.jsx'
 import { Moon, Sun, Play, Plus, Trophy, Sparkles } from './components/Icons.jsx'
 import { gameReducer, initialState, remainingCounts, currentLabel } from './state/gameReducer.js'
 import { techFor, tierForScore } from './logic/difficulty.js'
-import { gradePuzzle, forcedFills } from './logic/grader.js'
+import { gradePuzzle, autoCompleteFills } from './logic/grader.js'
 import { GRADER_VERSION } from './logic/techniques.js'
 import { useTimer } from './hooks/useTimer.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
@@ -37,11 +37,12 @@ export default function App() {
   const counts = remainingCounts(state.board)
   const busy = state.status !== 'playing'
 
-  // Auto-complete offers itself only when every remaining cell is forced, so
-  // there is genuinely nothing left to work out. Recomputed on each board
-  // change, which is cheap: one pass building candidate masks.
+  // Auto-complete offers itself when the rest of the board falls to lone
+  // candidates and few enough cells remain that it is mop-up. Recomputed on
+  // each board change, which is cheap: it bails on the cell count before doing
+  // any solving work.
   const autoFills = useMemo(
-    () => (state.status === 'playing' && state.board ? forcedFills(state.board) : null),
+    () => (state.status === 'playing' && state.board ? autoCompleteFills(state.board) : null),
     [state.board, state.status]
   )
 
@@ -274,7 +275,9 @@ export default function App() {
         <button className="autoDone" onClick={() => dispatch({ type: 'autoComplete', fills: autoFills })}>
           <Sparkles size={16} />
           Fill the last {autoFills.length}
-          <span className="autoDoneSub">every cell is forced</span>
+          {/* Not "every cell is forced" any more: under the capped cascade rule
+              the cells become forced in turn rather than all at once. */}
+          <span className="autoDoneSub">only lone candidates left</span>
         </button>
       )}
 

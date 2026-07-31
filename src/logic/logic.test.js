@@ -6,7 +6,10 @@ import { describe, it, expect } from 'vitest'
 import { UNITS, PEERS, candsAt, candMaskAt, range, unitName, UNIT_META } from './topology.js'
 import { countSolutions, solve, hasUniqueSolution } from './solver.js'
 import { generateFull, dig, makePuzzle } from './generator.js'
-import { gradePuzzle, createState, nextStep, applyStep, trivialTail, allCellsForced, forcedFills } from './grader.js'
+import {
+  gradePuzzle, createState, nextStep, applyStep,
+  trivialTail, allCellsForced, forcedFills, autoCompleteFills, AUTO_COMPLETE_MAX,
+} from './grader.js'
 import { gameReducer, initialState } from '../state/gameReducer.js'
 import { TIERS, tierForScore } from './difficulty.js'
 import { TECHNIQUES, LADDER } from './techniques.js'
@@ -258,6 +261,34 @@ describe('auto-complete triggers', () => {
         applyStep(state, step)
       }
     }
+  })
+
+  it('autoCompleteFills respects the cap even when the tail is trivial', () => {
+    const rng = mulberry32(707)
+    const solution = generateFull(rng)
+    const board = solution.slice()
+    // Blank 20 scattered cells: the tail is trivially fillable, but 20 is over
+    // the cap, so the button must stay hidden.
+    for (let i = 0; i < 80 && i / 4 < 20; i += 4) board[i] = 0
+    expect(board.filter(v => v === 0).length).toBe(20)
+    expect(trivialTail(board)).toBeTruthy()
+    expect(autoCompleteFills(board)).toBeNull()
+    expect(autoCompleteFills(board, { maxCells: 20 })).toHaveLength(20)
+  })
+
+  it('autoCompleteFills offers the solution digits under the cap', () => {
+    const rng = mulberry32(708)
+    const solution = generateFull(rng)
+    const board = solution.slice()
+    const holes = [1, 9, 20, 34, 48, 55, 63, 77]
+    for (const i of holes) board[i] = 0
+    const fills = autoCompleteFills(board)
+    expect(fills).toHaveLength(holes.length)
+    for (const { cell, digit } of fills) expect(solution[cell]).toBe(digit)
+  })
+
+  it('autoCompleteFills declines a finished board', () => {
+    expect(autoCompleteFills(generateFull(mulberry32(709)))).toBeNull()
   })
 
   it('forcedFills refuses a board with a contradiction', () => {

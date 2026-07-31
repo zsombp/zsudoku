@@ -52,11 +52,33 @@ right in direction, and the gap is large.
 Cascade is very generous: on Gentle it would appear with 36 of 45 blanks left,
 which is most of the puzzle. There is no principled trigger in between the two,
 since "forced now" and "forced eventually by lone candidates" are the only two
-natural definitions. A cap (cascade, but only under N remaining) would give a
-dial at the cost of N being arbitrary. Not built; strict stands unless Zsomb
-asks otherwise.
+natural definitions.
 
 No claim is made here about what sudoku.com actually implements.
+
+### Resolved: capped cascade at 12
+
+Zsomb chose the cap. `AUTO_COMPLETE_MAX = 12`: the rest of the board must fall
+to lone candidates **and** at most 12 cells may remain.
+
+The number is arbitrary and the code says so. It is a dial, not a discovery.
+
+Worth understanding what it actually produces: the cascade condition, once true,
+stays true as long as you keep filling correctly. Since cascade becomes true
+around 29 cells, capping at 12 means the button appears the moment the board
+drops to 12. Measured across all six tiers, shipped p50 and max are both exactly
+12, and it never fails to appear. So in practice this is "the last 12 cells",
+with the cascade check acting as the guard that stops it offering on a board
+that still needs real work.
+
+That supersedes the strict trigger in the section above. The reasoning about
+hidden singles still stands and is why the cap exists at all rather than plain
+cascade: without it, the button would appear while a third of the puzzle is
+still open.
+
+Button copy changed from "every cell is forced" to "only lone candidates left",
+because under the capped rule the cells become forced in turn rather than all at
+once, and the old wording would have been false.
 
 ## 2026-07-30: Phase 2, the scoring model
 

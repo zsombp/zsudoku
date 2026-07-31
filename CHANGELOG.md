@@ -2,6 +2,45 @@
 
 Newest first.
 
+## v0.3.2 - 2026-07-31 - auto-complete fires earlier
+
+Zsomb reported the button arriving later than the equivalent in his iPad app and
+guessed our stricter rule was the cause. Measured rather than assumed, walking
+each solve in the grader's order:
+
+| tier | strict | cascade | shipped (capped) |
+|---|---|---|---|
+| Gentle | 6 | 36 | 12 |
+| Easy | 7 | 29 | 12 |
+| Medium | 6 | 29 | 12 |
+| Hard | 5 | 26 | 12 |
+| Expert | 5 | 31 | 12 |
+| Diabolical | 6 | 27 | 12 |
+
+Overall median cells remaining: strict 5, cascade 29, shipped 12. The guess was
+right in direction and the gap was large.
+
+Plain cascade was too generous to ship: on Gentle it appears with 36 of 45
+blanks left, which is most of the puzzle. So the trigger is now **cascade capped
+at 12 remaining cells** (`AUTO_COMPLETE_MAX`), which more than doubles the
+window versus strict without handing over a third of the board.
+
+The cap is arbitrary and the code says so. It is a dial, not a discovery.
+
+What it actually produces is worth knowing: the cascade condition, once true,
+stays true while you fill correctly, so the button appears the moment the board
+drops to 12. Shipped p50 and max are both exactly 12 across every tier, and it
+never fails to appear. In practice this is "the last 12 cells", with the cascade
+check as the guard against offering on a board that still needs real work.
+
+Button copy changed from "every cell is forced" to "only lone candidates left":
+under the capped rule the cells become forced in turn rather than all at once,
+so the old wording would have been false.
+
+**Verified at the boundary**: hidden at 13 blanks, appears at 12 reading "Fill
+the last 12", one click filled all 81, matched the solution, won. 39 tests pass,
+including one asserting the cap holds even when the tail is trivially fillable.
+
 ## v0.3.1 - 2026-07-31 - auto-complete, strict
 
 The first slice of Phase 3. It was specced in v0.3.0 but not built, which Zsomb
