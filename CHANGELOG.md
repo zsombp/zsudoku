@@ -2,6 +2,54 @@
 
 Newest first.
 
+## v1.3.0 - 2026-07-31 - practice mode
+
+The coach has been able to name the pattern you keep needing hints on since
+Phase 5, and could do nothing about it. This is the other half.
+
+### Feasibility was measured before any of it was designed
+
+`scripts/practice.mjs` asks whether each rung can actually be generated on
+demand. Every technique is reachable; the cost varies a lot:
+
+| technique | hit rate | median |
+|---|---|---|
+| naked / hidden single | 100% | ~1ms |
+| pointing, claiming, pairs, XY-Wing | 100% | 0.1-0.6s |
+| naked / hidden triple, X-Wing | 100% | 3-5s |
+| Swordfish | 100% | 9.2s |
+| **naked quad** | **67%** | 10.7s |
+
+Every generated puzzle is checked against the same contracts as a normal one:
+unique solution, finishable by pure logic, and it genuinely contains the
+technique asked for.
+
+That measurement shaped the interface. The slow rungs carry a warning, the
+button says what it is doing, and naked quad can honestly fail.
+
+### The screen
+
+A list of all twelve techniques, each with a one-line label, an explanation of
+what it is, and how many hints you have needed on it. It doubles as the
+technique reference the app never had.
+
+The dashboard card names your weakest pattern once there is enough evidence
+("You have needed 7 hints on pointing pair") rather than advertising a feature.
+
+Generation runs in the worker with a 30 second budget, and is never cached: a
+practice request asks for one specific property, not for "a Hard puzzle".
+
+### Found while testing the slow path
+
+A failed search said **nothing at all**: the button reset, no board appeared, no
+message. The error was only rendered inside the game screen's generating veil,
+which a failed practice search never reaches. It now reports on the practice
+screen, where the attempt was made, and invites a retry.
+
+128 tests pass, 7 new. The unit tests cover only the fast rungs on purpose; the
+rare ones are measured by the script, because a Swordfish search in the unit
+suite would add ten seconds to every run.
+
 ## v1.2.0 - 2026-07-31 - game review, replay and heatmap
 
 Zsomb went looking for these after a Diabolical game and could not find them,

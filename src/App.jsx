@@ -25,6 +25,7 @@ import SettingsView from './components/SettingsView.jsx'
 import { Gear, Home } from './components/Icons.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import ThemeMenu from './components/ThemeMenu.jsx'
+import PracticeView from './components/PracticeView.jsx'
 import * as sound from './lib/sound.js'
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
   // drop you straight onto a board, which left the daily, the streaks and the
   // history as things you had to go looking for.
   const [view, setView] = useState('home')
+  const [practicing, setPracticing] = useState(null)
 
   const timer = useTimer(state.status === 'playing', 0)
   const generator = useGenerator()
@@ -181,6 +183,34 @@ export default function App() {
         dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual' })
       } catch (err) {
         setGenError(String(err.message || err))
+      }
+    },
+    [generator, recordAbandon, updateSettings]
+  )
+
+  /**
+   * A puzzle that requires a given technique.
+   *
+   * Not cached and not seeded: this is a request for one specific property, and
+   * the rare rungs can take seconds, so the button says what it is doing rather
+   * than pretending to be instant.
+   */
+  const startPractice = useCallback(
+    async technique => {
+      setPracticing(technique)
+      setGenError(null)
+      setNewRecord(false)
+      recordAbandon()
+      updateSettings({ lastMode: 'casual' })
+      try {
+        const made = await generator.practice(technique)
+        timerRef.current.reset(0)
+        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual' })
+        setView('game')
+      } catch (err) {
+        setGenError(String(err.message || err))
+      } finally {
+        setPracticing(null)
       }
     },
     [generator, recordAbandon, updateSettings]
@@ -467,6 +497,19 @@ export default function App() {
     )
   }
 
+  if (view === 'practice') {
+    return (
+      <div className="app wide">
+        <PracticeView
+          busyWith={practicing}
+          error={genError}
+          onPractice={startPractice}
+          onClose={() => setView('home')}
+        />
+      </div>
+    )
+  }
+
   if (view === 'settings') {
     return (
       <div className="app wide">
@@ -502,6 +545,7 @@ export default function App() {
           onPick={t => { startNew(t); setView('game') }}
           onDaily={() => { startDaily(); setView('game') }}
           onStats={() => setView('stats')}
+          onPractice={() => setView('practice')}
           onSettings={() => setView('settings')}
         />
       </div>

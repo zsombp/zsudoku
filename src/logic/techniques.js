@@ -382,18 +382,18 @@ function xyWing({ board, cands }) {
 // anything here and they have to be re-measured, because it moves the scale.
 
 export const TECHNIQUES = {
-  nakedSingle: { label: 'naked single', first: 0, repeat: 0, fn: nakedSingle },
-  hiddenSingle: { label: 'hidden single', first: 12, repeat: 4, fn: hiddenSingle },
-  pointing: { label: 'pointing pair', first: 120, repeat: 40, fn: pointing },
-  claiming: { label: 'box-line reduction', first: 130, repeat: 45, fn: claiming },
-  nakedPair: { label: 'naked pair', first: 150, repeat: 50, fn: nakedSubset(2) },
-  hiddenPair: { label: 'hidden pair', first: 200, repeat: 60, fn: hiddenSubset(2) },
-  nakedTriple: { label: 'naked triple', first: 260, repeat: 70, fn: nakedSubset(3) },
-  hiddenTriple: { label: 'hidden triple', first: 320, repeat: 90, fn: hiddenSubset(3) },
-  nakedQuad: { label: 'naked quad', first: 380, repeat: 110, fn: nakedSubset(4) },
-  xWing: { label: 'X-Wing', first: 500, repeat: 120, fn: fish(2, 'xWing') },
-  xyWing: { label: 'XY-Wing', first: 620, repeat: 140, fn: xyWing },
-  swordfish: { label: 'Swordfish', first: 800, repeat: 180, fn: fish(3, 'swordfish') },
+  nakedSingle: { label: 'naked single', first: 0, repeat: 0, short: 'only one digit fits', about: 'A cell with one candidate left. Nothing else can go there, so it goes there.', fn: nakedSingle },
+  hiddenSingle: { label: 'hidden single', first: 12, repeat: 4, short: 'one home left in a unit', about: 'A digit that can only fit in one cell of a row, column or box, even if that cell has other candidates.', fn: hiddenSingle },
+  pointing: { label: 'pointing pair', first: 120, repeat: 40, short: 'a box points along a line', about: 'Inside a box, a digit sits only in one row or column, so it can be struck from the rest of that line.', fn: pointing },
+  claiming: { label: 'box-line reduction', first: 130, repeat: 45, short: 'a line claims a box', about: 'The mirror of pointing. Inside a line, a digit sits only in one box, so it leaves the rest of that box.', fn: claiming },
+  nakedPair: { label: 'naked pair', first: 150, repeat: 50, short: 'two cells, two digits', about: 'Two cells in a unit share the same two candidates. Those digits are spoken for and leave every other cell in it.', fn: nakedSubset(2) },
+  hiddenPair: { label: 'hidden pair', first: 200, repeat: 60, short: 'two digits, two homes', about: 'Two digits fit in only two cells of a unit. Those cells belong to them, so their other candidates go.', fn: hiddenSubset(2) },
+  nakedTriple: { label: 'naked triple', first: 260, repeat: 70, short: 'three cells, three digits', about: 'Three cells whose candidates between them are exactly three digits. Not every cell needs all three.', fn: nakedSubset(3) },
+  hiddenTriple: { label: 'hidden triple', first: 320, repeat: 90, short: 'three digits, three homes', about: 'Three digits confined to three cells. Everything else in those cells can be removed.', fn: hiddenSubset(3) },
+  nakedQuad: { label: 'naked quad', first: 380, repeat: 110, short: 'four cells, four digits', about: 'The same idea one size up, and rare enough that spotting it is mostly knowing it exists.', fn: nakedSubset(4) },
+  xWing: { label: 'X-Wing', first: 500, repeat: 120, short: 'a rectangle of two', about: 'A digit confined to the same two columns across two rows. Those columns are then accounted for and it leaves them elsewhere.', fn: fish(2, 'xWing') },
+  xyWing: { label: 'XY-Wing', first: 620, repeat: 140, short: 'a pivot and two wings', about: 'A cell holding x/y sees one cell holding x/z and another holding y/z. Either way, one wing becomes z, so z leaves anything seeing both.', fn: xyWing },
+  swordfish: { label: 'Swordfish', first: 800, repeat: 180, short: 'a rectangle of three', about: 'An X-Wing one size up: a digit confined to the same three columns across three rows.', fn: fish(3, 'swordfish') },
 }
 
 export const LADDER = Object.keys(TECHNIQUES)

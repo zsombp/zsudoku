@@ -1,12 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { dayKey, dailyTier, dailySeed, dailyPlan, weekdayName, dailyStreak } from './daily.js'
 import { seedFromDate, mulberry32 } from '../lib/prng.js'
-import { makePuzzle } from './generator.js'
+import { makePuzzle, makePracticePuzzle } from './generator.js'
 import { achievements, earnedCount } from '../stats/achievements.js'
 import { gameReducer, initialState } from '../state/gameReducer.js'
 import { generateFull, dig } from './generator.js'
 import { PEERS } from './topology.js'
 import { hasMark } from './marks.js'
+import { hasUniqueSolution } from './solver.js'
+import { gradePuzzle } from './grader.js'
+import { tierForScore } from './difficulty.js'
+import { TECHNIQUES, LADDER } from './techniques.js'
 
 describe('daily plan', () => {
   it('keys by local date', () => {
@@ -250,5 +254,46 @@ describe('redo', () => {
   it('does nothing with an empty redo stack', () => {
     const s = setup()
     expect(gameReducer(s, { type: 'redo' })).toBe(s)
+  })
+})
+
+describe('practice puzzles', () => {
+  // Only the fast rungs are exercised here. The rare ones are measured by
+  // scripts/practice.mjs, which has a real time budget; putting a Swordfish
+  // search in the unit suite would make it take ten seconds.
+  for (const key of ['hiddenSingle', 'pointing', 'nakedPair', 'xyWing']) {
+    it(`${key}: the puzzle actually requires it`, () => {
+      const made = makePracticePuzzle(key, { seed: 777, budgetMs: 15000 })
+      expect(made, `no ${key} puzzle found`).toBeTruthy()
+      expect(made.practice).toBe(key)
+
+      // The contract: unique, solvable by logic, and genuinely needs the thing.
+      expect(hasUniqueSolution(made.puzzle)).toBe(true)
+      const re = gradePuzzle(made.puzzle)
+      expect(re.solved).toBe(true)
+      expect(re.counts[key]).toBeGreaterThan(0)
+
+      // And it is still labelled by the grader, not by what was asked for.
+      expect(made.graded).toBe(tierForScore(re.score).name)
+    })
+  }
+
+  it('is reproducible from a seed', () => {
+    const a = makePracticePuzzle('pointing', { seed: 31337, budgetMs: 15000 })
+    const b = makePracticePuzzle('pointing', { seed: 31337, budgetMs: 15000 })
+    expect(a.puzzle).toEqual(b.puzzle)
+  })
+
+  it('gives up rather than spinning when the budget runs out', () => {
+    // A budget too small to find anything must return null, not hang.
+    const made = makePracticePuzzle('swordfish', { seed: 1, budgetMs: 1 })
+    expect(made).toBeNull()
+  })
+
+  it('every technique has something to show in the practice list', () => {
+    for (const key of LADDER) {
+      expect(TECHNIQUES[key].short, `${key} has no short label`).toBeTruthy()
+      expect(TECHNIQUES[key].about.length, `${key} has no explanation`).toBeGreaterThan(20)
+    }
   })
 })

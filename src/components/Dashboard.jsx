@@ -4,6 +4,8 @@ import { fmtMs } from '../lib/format.js'
 import * as gameLog from '../lib/gameLog.js'
 import * as compute from '../stats/compute.js'
 import { dailyStreak } from '../logic/daily.js'
+import { hintsByTechnique } from '../stats/compute.js'
+import { TECHNIQUES } from '../logic/techniques.js'
 import { Calendar, Chart, Gear, Play, Trophy } from './Icons.jsx'
 import ThemeMenu from './ThemeMenu.jsx'
 
@@ -15,12 +17,21 @@ import ThemeMenu from './ThemeMenu.jsx'
  * the front door: what is in progress, what today's puzzle is, how you are
  * doing, and every way in.
  */
-export default function Dashboard({ inProgress, daily, records, theme, onTheme, onResume, onPick, onDaily, onStats, onSettings }) {
+export default function Dashboard({ inProgress, daily, records, theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice }) {
   const [summary, setSummary] = useState(null)
 
   useEffect(() => {
     gameLog.all().then(games => {
-      setSummary({ ...compute.overview(games), daily: dailyStreak(games) })
+      // Surface the pattern that has cost the most hints, so the practice card
+      // says something specific rather than advertising a feature.
+      const { counts } = hintsByTechnique(games)
+      const ranked = Object.entries(counts)
+        .filter(([k]) => TECHNIQUES[k])
+        .sort((a, b) => b[1] - a[1])
+      const weak = ranked.length >= 1 && ranked[0][1] >= 3
+        ? { key: ranked[0][0], count: ranked[0][1], label: TECHNIQUES[ranked[0][0]].label }
+        : null
+      setSummary({ ...compute.overview(games), daily: dailyStreak(games), weak })
     })
   }, [])
 
@@ -93,6 +104,16 @@ export default function Dashboard({ inProgress, daily, records, theme, onTheme, 
               sub="no help"
             />
           </div>
+
+          <button className="card cardPractice" onClick={onPractice}>
+            <span className="cardKicker">Practice</span>
+            <span className="cardTitle">Drill a pattern</span>
+            <span className="cardMeta">
+              {summary?.weak
+                ? `You have needed ${summary.weak.count} hints on ${summary.weak.label}`
+                : 'Pick a technique and get a puzzle that needs it'}
+            </span>
+          </button>
 
           <div className="dashPick">
             <div className="dashPickHead">New game</div>

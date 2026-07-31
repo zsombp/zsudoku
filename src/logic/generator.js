@@ -162,6 +162,75 @@ function shapeToBand(solution, tier, rng, { maxAdjust = 30 } = {}) {
  * so out loud. The alternative is lying about difficulty, which is the thing
  * this whole engine exists to avoid.
  */
+/**
+ * Which tiers are worth searching for each technique.
+ *
+ * Taken from the calibration run rather than guessed: pointing and claiming
+ * show up around Medium, pairs around Hard, fish and wings at the top. Trying
+ * Gentle for an X-Wing would burn the whole budget on grids that cannot contain
+ * one.
+ */
+const TIERS_FOR = {
+  nakedSingle: ['Gentle', 'Easy'],
+  hiddenSingle: ['Easy', 'Medium'],
+  pointing: ['Medium', 'Hard'],
+  claiming: ['Medium', 'Hard'],
+  nakedPair: ['Hard', 'Expert'],
+  hiddenPair: ['Hard', 'Expert'],
+  nakedTriple: ['Expert', 'Diabolical'],
+  hiddenTriple: ['Expert', 'Diabolical'],
+  nakedQuad: ['Expert', 'Diabolical'],
+  xWing: ['Expert', 'Diabolical'],
+  xyWing: ['Diabolical', 'Expert'],
+  swordfish: ['Diabolical'],
+}
+
+/**
+ * A puzzle that actually requires `technique` somewhere in its solution.
+ *
+ * This is what makes the coach actionable: it can already tell you which
+ * pattern you keep needing hints on, and until now could do nothing about it.
+ * The engine already records which techniques each puzzle needed, so this is a
+ * filter over generation rather than new machinery.
+ *
+ * Returns null if the budget runs out. Some techniques are genuinely rare and
+ * saying so is better than spinning.
+ */
+export function makePracticePuzzle(technique, { seed = randomSeed(), budgetMs = 20000 } = {}) {
+  const search = TIERS_FOR[technique] || TIERS.map(t => t.name)
+  const rng = mulberry32(seed)
+  const t0 = Date.now()
+  let attempts = 0
+
+  while (Date.now() - t0 < budgetMs) {
+    for (const tierName of search) {
+      if (Date.now() - t0 > budgetMs) break
+      attempts++
+      const tier = tierByName(tierName)
+      const solution = generateFull(rng)
+      const { puzzle, grade } = shapeToBand(solution, tier, rng)
+      if (!grade.solved) continue
+      if (!grade.counts[technique]) continue
+
+      const graded = tierForScore(grade.score)
+      return {
+        puzzle,
+        solution,
+        seed,
+        requested: graded.name,
+        graded: graded.name,
+        score: grade.score,
+        hardest: grade.hardest,
+        counts: grade.counts,
+        clues: clueCount(puzzle),
+        practice: technique,
+        attempts,
+      }
+    }
+  }
+  return null
+}
+
 export function makePuzzle(wanted, opts = {}) {
   const tier = tierByName(wanted)
   const seed = opts.seed ?? randomSeed()

@@ -36,14 +36,18 @@ export function useGenerator() {
   }, [])
 
   const generate = useCallback(
-    (tier, seed) =>
+    (tier, seed, practice) =>
       new Promise((resolve, reject) => {
         const id = nextIdRef.current++
         pendingRef.current.set(id, { resolve, reject })
-        ensureWorker().postMessage({ id, tier, seed })
+        ensureWorker().postMessage({ id, tier, seed, practice })
       }),
     [ensureWorker]
   )
+
+  /** A puzzle that requires a given technique. Never cached: it is a request
+   *  for one specific property, not for "a Hard puzzle". */
+  const practice = useCallback(technique => generate(null, undefined, technique), [generate])
 
   /** Fills the cache for a tier if it is empty. Fire and forget. */
   const prefetch = useCallback(
@@ -78,5 +82,5 @@ export function useGenerator() {
   // Stable identity. Returning a fresh object literal here makes every consumer
   // that lists the generator as a dependency re-run on every render, which in
   // App means startNew is rebuilt constantly and effects keyed on it loop.
-  return useMemo(() => ({ request, prefetch }), [request, prefetch])
+  return useMemo(() => ({ request, prefetch, practice }), [request, prefetch, practice])
 }
