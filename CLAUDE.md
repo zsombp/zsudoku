@@ -4,7 +4,7 @@ Personal offline sudoku PWA for Zsomb. One player, no backend, no accounts, no a
 
 **Live: https://zsombp.github.io/zsudoku/** — repo `zsombp/zsudoku`, public, deploys from `main` on push. Install on iPhone via Safari, Share, Add to Home Screen.
 
-Read `docs/PLAN.md` for the phased build and `docs/DECISIONS.md` for what was decided and why. `CHANGELOG.md` is newest first. Current phase: 4, themes and the animation layer (the last one, and the only UI-facing one).
+Read `docs/PLAN.md` for the phased build and `docs/DECISIONS.md` for what was decided and why. `CHANGELOG.md` is newest first. All six phases shipped (v1.0.0). Phases were built 0,1,2,3,5,6,4.
 
 It costs nothing and must keep costing nothing. Seven dependencies; adding an eighth needs a real reason.
 
@@ -41,7 +41,9 @@ Logic is pure and framework-free so it stays testable. React never reaches into 
 
 Dark by default: ink-blue `#14161d`, brass `#e2a63d`. IBM Plex Mono for every digit and the timer, system sans for UI chrome. Restrained. The win screen is a sweep and a trophy, not confetti.
 
-Themes are CSS custom properties driven by `data-theme` on the root. Anything that hardcodes a colour outside `tokens.css` is a bug.
+Six themes as CSS custom properties driven by `data-theme` on ANY element (not just the root, so the theme picker can render real previews). Anything that hardcodes a colour outside `tokens.css` is a bug. Every sequential ramp is validated with the dataviz validator; re-run it if a ramp changes.
+
+The board scales by container query: everything inside `.boardWrap` sizes in `cqw` against the board, never in `vw`. That is what makes one layout work on a 350px phone board and a 642px desktop one.
 
 Every animation sits behind `prefers-reduced-motion`.
 

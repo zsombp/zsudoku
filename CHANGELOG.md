@@ -2,6 +2,92 @@
 
 Newest first.
 
+## v1.0.0 - 2026-07-31 - Phase 4, the interface
+
+The last phase, and the only one facing the UI. Everything else had stopped
+moving, which is why this waited.
+
+### It fits the Mac now
+
+The app was a fixed 430px column, so a 27-inch display got a phone-sized game.
+It now grows in three steps and the board grows with it: **642px on a desktop
+against 402px before**, with 40px digits, and the whole game fits without
+scrolling.
+
+The mechanism is container queries. Everything inside the board sizes in `cqw`
+against **the board**, not in `vw` against the viewport, so digits and pencil
+marks hold their proportion to the grid at any size. One set of rules serves a
+350px phone board and a 642px desktop one.
+
+Above 1080px the controls move beside the board rather than below it, and the
+number pad becomes a 3x3 keypad with 108px targets, because nine across in a
+340px column would have been 35px.
+
+### A dashboard
+
+The app used to open straight onto a board, which left the daily, the streaks,
+the achievements and the history as things you had to go looking for. Home is
+now a dashboard: the game in progress with its progress bar, today's puzzle with
+its streak, three headline numbers, and every difficulty one tap away.
+
+### Six themes
+
+ink, paper, midnight, nord, newsprint, contrast. Each has the full token set and
+its own sequential ramp, and **every ramp was validated, not eyeballed**:
+monotone lightness, adjacent gaps >= 0.06, light end clearing 2:1 against its own
+panel, single hue. Accent hues sit at least 41.5 degrees apart in OKLab.
+
+`contrast` is light rather than dark on purpose. Ink reaches 21:1 either way, so
+the tiebreak is functional: a user-entered digit has to be tellable from a given
+one. Light gives accent-vs-ink 2.62:1, dark only 1.98:1.
+
+The picker renders a real miniature of the board inside each card using that
+theme's own tokens, so a swatch cannot drift from the theme it claims to show.
+
+### Motion
+
+Board entrance as a diagonal deal, a flash when a row, column or box completes,
+digits fading back on the pad as they run out, a diagonal sweep across the
+finished grid into the win card, and cards rising in on the dashboard and stats.
+
+Nothing blocks input, nothing runs past 600ms, and the whole layer is switched
+off by `prefers-reduced-motion`. Hover lifts are gated behind
+`(hover: hover) and (pointer: fine)`, since on a touchscreen a hover style fires
+on tap and reads as a bug.
+
+### A wrong digit is no longer signalled by colour alone
+
+It carries an error wash and an underline too. This surfaced from newsprint,
+where the accent is brick red and the error crimson, but colour-only encoding
+was wrong in every theme, so the second channel is global.
+
+### Two bugs found while verifying
+
+- **Every theme preview rendered identically.** The token blocks were scoped to
+  `:root[data-theme="x"]`, so a `data-theme` on a card matched nothing and all
+  six swatches drew in whatever theme was already active. Themes are now scoped
+  to `[data-theme="x"]` on any element.
+- **The desktop number pad stayed nine across.** Its media-query rule sat near
+  the top of the stylesheet and was silently overridden by the base `.pad` rule
+  further down at equal specificity. Moved to the end of the file, with a note
+  saying why it lives there.
+
+### Verified
+
+102 tests pass. Measured rather than assumed, at 1440x900 and 390x844:
+
+| | desktop | phone |
+|---|---|---|
+| board | 642px, 40px digits | 362px, 22px digits |
+| number pad | 3x3, 108px keys | 9 across, 46px keys |
+| fits without scrolling | yes | yes |
+| horizontal overflow | none | none |
+
+All six themes confirmed applying distinct backgrounds and accents, and all four
+new ramps re-validated independently rather than trusted. The unit flash was
+verified firing on exactly the right 21 cells (row, column and box union) both
+mid-game and on the winning move, where the win sweep correctly takes over.
+
 ## v0.6.0 - 2026-07-31 - Phase 6, the daily puzzle and settings
 
 ### Daily puzzle

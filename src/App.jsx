@@ -20,7 +20,8 @@ import { KEYS, slotFor, getSync, set, requestPersistence } from './lib/storage.j
 import { fmtMs } from './lib/format.js'
 import { dailyPlan, weekdayName, dailyStreak } from './logic/daily.js'
 import SettingsView from './components/SettingsView.jsx'
-import { Gear } from './components/Icons.jsx'
+import { Gear, Home } from './components/Icons.jsx'
+import Dashboard from './components/Dashboard.jsx'
 import * as sound from './lib/sound.js'
 
 export default function App() {
@@ -30,8 +31,10 @@ export default function App() {
   const [showPicker, setShowPicker] = useState(false)
   const [newRecord, setNewRecord] = useState(false)
   const [genError, setGenError] = useState(null)
-  const [showStats, setShowStats] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
+  // home | game | stats | settings. Home is the front door: the app used to
+  // drop you straight onto a board, which left the daily, the streaks and the
+  // history as things you had to go looking for.
+  const [view, setView] = useState('home')
 
   const timer = useTimer(state.status === 'playing', 0)
   const generator = useGenerator()
@@ -280,7 +283,7 @@ export default function App() {
   })
 
   useEffect(() => {
-    if (!showPicker) return
+    if (!showPicker && view !== 'home') return
     let alive = true
     const p = dailyPlan()
     gameLog.all().then(games => {
@@ -298,7 +301,7 @@ export default function App() {
       })
     })
     return () => { alive = false }
-  }, [showPicker])
+  }, [showPicker, view])
 
   // ---- sound ----
 
@@ -379,21 +382,48 @@ export default function App() {
   const allFilledButWrong =
     state.board && !won && !state.board.includes(0)
 
-  if (showStats) {
+  if (view === 'stats') {
     return (
-      <div className="app">
-        <StatsView onClose={() => setShowStats(false)} />
+      <div className="app wide">
+        <StatsView onClose={() => setView('home')} />
       </div>
     )
   }
 
-  if (showSettings) {
+  if (view === 'settings') {
     return (
-      <div className="app">
+      <div className="app wide">
         <SettingsView
           settings={settings}
           updateSettings={updateSettings}
-          onClose={() => setShowSettings(false)}
+          onClose={() => setView('home')}
+        />
+      </div>
+    )
+  }
+
+  if (view === 'home') {
+    return (
+      <div className="app wide">
+        <Dashboard
+          inProgress={
+            state.board && (state.status === 'playing' || state.status === 'paused')
+              ? {
+                  mode: state.mode,
+                  graded: label,
+                  tech,
+                  elapsedMs: timer.ms,
+                  empty: state.board.reduce((a, v) => a + (v ? 0 : 1), 0),
+                }
+              : null
+          }
+          daily={dailyInfo}
+          records={records}
+          onResume={() => setView('game')}
+          onPick={t => { startNew(t); setView('game') }}
+          onDaily={() => { startDaily(); setView('game') }}
+          onStats={() => setView('stats')}
+          onSettings={() => setView('settings')}
         />
       </div>
     )
@@ -402,24 +432,29 @@ export default function App() {
   return (
     <div className="app">
       <header className="top">
+        <button className="iconBtn" aria-label="Home" onClick={() => setView('home')}>
+          <Home size={17} />
+        </button>
         <div className="brand">{state.mode === 'daily' ? 'DAILY' : 'ZSUDOKU'}</div>
         <div className="topBtns">
-          <button className="iconBtn" aria-label="Statistics" onClick={() => setShowStats(true)}>
+          <button className="iconBtn" aria-label="Statistics" onClick={() => setView('stats')}>
             <Chart size={17} />
           </button>
           <button
             className="iconBtn"
             aria-label="Toggle theme"
-            onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
+            onClick={() => updateSettings({ theme: settings.theme === 'paper' ? 'ink' : 'paper' })}
           >
-            {settings.theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            {settings.theme === 'paper' ? <Moon size={17} /> : <Sun size={17} />}
           </button>
-          <button className="iconBtn" aria-label="Settings" onClick={() => setShowSettings(true)}>
+          <button className="iconBtn" aria-label="Settings" onClick={() => setView('settings')}>
             <Gear size={17} />
           </button>
         </div>
       </header>
 
+      <div className="play">
+      <div className="playMain">
       <StatusBar
         graded={label}
         tech={tech}
@@ -492,7 +527,9 @@ export default function App() {
           <span className="autoDoneSub">only lone candidates left</span>
         </button>
       )}
+      </div>
 
+      <div className="playSide">
       <Toolbar
         canUndo={state.history.length > 0}
         notes={state.notes}
@@ -542,6 +579,8 @@ export default function App() {
           Quick input: pick a number, then tap cells to fill them. Tap it again to put it down.
         </div>
       )}
+      </div>
+      </div>
 
       {showPicker && (
         <NewGameSheet

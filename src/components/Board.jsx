@@ -3,7 +3,8 @@ import { hasMark } from '../logic/marks.js'
 import { isWrong, highlightDigit } from '../state/gameReducer.js'
 
 export default function Board({ state, checkErrors, onCellTap, blurred }) {
-  const { board, puzzle, marks, selected, activeDigit, hintCell } = state
+  const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status } = state
+  const flashSet = flash?.length ? new Set(flash) : null
   const ready = Boolean(board)
   const lit = ready ? highlightDigit(state) : 0
 
@@ -33,13 +34,23 @@ export default function Board({ state, checkErrors, onCellTap, blurred }) {
   }
 
   return (
-    <div className={'board' + (blurred ? ' blurred' : '')}>
+    // Keyed on the puzzle so a new board remounts its cells and the entrance
+    // stagger actually replays. Without the key React reuses the same elements
+    // and the animation only ever runs once, on first load.
+    <div
+      key={state.seed ?? 'empty'}
+      className={'board' + (blurred ? ' blurred' : '') + (status === 'won' ? ' isWon' : '')}
+    >
       {range(81).map(i => {
         const v = ready ? board[i] : 0
+        const lit = flashSet?.has(i)
         return (
           <button
-            key={i}
-            className={cellClass(i)}
+            // The flash sequence is part of the key for flashing cells only, so
+            // completing two units in a row still animates the second time.
+            key={lit ? `${i}-${flashSeq}` : i}
+            className={cellClass(i) + (lit ? ' flash' : '')}
+            style={{ '--i': i, '--d': rowOf(i) + colOf(i) }}
             onClick={() => onCellTap(i)}
             aria-label={`row ${rowOf(i) + 1} column ${colOf(i) + 1}${v ? `, ${v}` : ', empty'}`}
           >

@@ -93,6 +93,13 @@ export const Plus = props => (
   </Svg>
 )
 
+export const Home = props => (
+  <Svg {...props}>
+    <path d="M3 10.5 12 3l9 7.5" />
+    <path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
+  </Svg>
+)
+
 export const Gear = props => (
   <Svg {...props}>
     <circle cx="12" cy="12" r="3" />

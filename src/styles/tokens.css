@@ -1,5 +1,11 @@
 /* Every colour in the app lives here and nowhere else.
  *
+ * Themes are selected by a `data-theme` attribute on ANY element, not just the
+ * root. That is deliberate: it lets the theme picker render a real miniature of
+ * the board in each theme by putting `data-theme` on the card, so a swatch can
+ * never drift from the theme it claims to show. Scoping these to `:root` made
+ * every preview render in whatever theme was already active.
+ *
  * A hardcoded colour anywhere outside this file is a bug: Phase 4 adds four
  * more themes, and it can only stay cheap if the rest of the CSS never names a
  * colour directly. Themes are selected by data-theme on the root element, set
@@ -14,7 +20,7 @@
 }
 
 :root,
-:root[data-theme="dark"] {
+[data-theme="ink"] {
   --bg: #14161d;
   --panel: #1b1e27;
   --panel2: #232734;
@@ -41,7 +47,7 @@
   color-scheme: dark;
 }
 
-:root[data-theme="light"] {
+[data-theme="paper"] {
   --bg: #f3f4f6;
   --panel: #ffffff;
   --panel2: #eaecf0;
@@ -64,5 +70,103 @@
   --ramp-2: #a57c2c;
   --ramp-3: #7a550e;
   --ramp-4: #4f3708;
+  color-scheme: light;
+}
+
+/* Every ramp below was validated with the dataviz validator against its own
+ * panel colour: monotone lightness, adjacent gaps >= 0.06, light end clearing
+ * 2:1 against the surface, single hue. Re-run it if any value changes.
+ *
+ * Accent hues are deliberately far apart (OKLab): newsprint 36deg, brass 78deg,
+ * midnight 202deg, nord 249deg, contrast 296deg. Minimum gap 41.5deg. */
+
+[data-theme="midnight"] {
+  --bg: #000000;
+  --panel: #080a0e;
+  --panel2: #12171f;
+  --ink: #dfe8ee;
+  --sub: #7d8b98;
+  --line: #1b222b;
+  --line-strong: #3d4b58;
+  --accent: #5dd2db;
+  --accent-ink: #00171a;
+  --sel: rgba(93, 210, 219, 0.28);
+  --same: rgba(93, 210, 219, 0.15);
+  --peer: rgba(255, 255, 255, 0.05);
+  --error: #ff6a5c;
+  --veil: rgba(0, 0, 0, 0.86);
+  --ramp-1: #244f53;
+  --ramp-2: #35787d;
+  --ramp-3: #47a4ab;
+  --ramp-4: #5dd2db;
+  color-scheme: dark;
+}
+
+[data-theme="nord"] {
+  --bg: #2e3440;
+  --panel: #3b4252;
+  --panel2: #434c5e;
+  --ink: #e5e9f0;
+  --sub: #a3b0c5;
+  --line: #4a5468;
+  --line-strong: #717f96;
+  --accent: #95b9dd;
+  --accent-ink: #202632;
+  --sel: rgba(149, 185, 221, 0.30);
+  --same: rgba(149, 185, 221, 0.16);
+  --peer: rgba(229, 233, 240, 0.055);
+  --error: #f48288;
+  --veil: rgba(46, 52, 64, 0.86);
+  --ramp-1: #64788d;
+  --ramp-2: #748da7;
+  --ramp-3: #85a3c1;
+  --ramp-4: #95b9dd;
+  color-scheme: dark;
+}
+
+[data-theme="newsprint"] {
+  --bg: #ece3d2;
+  --panel: #fbf7ee;
+  --panel2: #e6dcc8;
+  --ink: #2a241d;
+  --sub: #7a6b57;
+  --line: #ded3bf;
+  --line-strong: #4b4034;
+  --accent: #924834;
+  --accent-ink: #fbf7ee;
+  --sel: rgba(146, 72, 52, 0.26);
+  --same: rgba(146, 72, 52, 0.13);
+  --peer: rgba(74, 56, 32, 0.06);
+  --error: #c30a3e;
+  --veil: rgba(236, 227, 210, 0.88);
+  --ramp-1: #c68f80;
+  --ramp-2: #ac6957;
+  --ramp-3: #8d4430;
+  --ramp-4: #60291a;
+  color-scheme: light;
+}
+
+/* Light rather than dark on purpose. Ink hits 21:1 either way, so the tiebreak
+ * is functional: a user-entered digit has to be tellable from a given one.
+ * Light gives accent-vs-ink 2.62:1, the dark equivalent only 1.98:1. */
+[data-theme="contrast"] {
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel2: #e4e4e4;
+  --ink: #000000;
+  --sub: #454545;
+  --line: #5c5c5c;
+  --line-strong: #000000;
+  --accent: #6a1ec7;
+  --accent-ink: #ffffff;
+  --sel: rgba(106, 30, 199, 0.22);
+  --same: rgba(106, 30, 199, 0.12);
+  --peer: rgba(0, 0, 0, 0.07);
+  --error: #b3000f;
+  --veil: rgba(0, 0, 0, 0.72);
+  --ramp-1: #ac93ec;
+  --ramp-2: #8c63dd;
+  --ramp-3: #6c23c8;
+  --ramp-4: #421b7a;
   color-scheme: light;
 }

@@ -5,7 +5,7 @@
 // move log is a single hook rather than instrumentation sprinkled across a
 // dozen handlers.
 
-import { PEERS, candMaskAt, colOf, range } from '../logic/topology.js'
+import { PEERS, UNITS, candMaskAt, colOf, range } from '../logic/topology.js'
 import { hasMark, toggleMark, removeMark, emptyMarks } from '../logic/marks.js'
 import { LEGACY_LEVEL_NAME } from '../logic/difficulty.js'
 
@@ -40,6 +40,9 @@ export const initialState = {
   hintLog: [],
   // The cell the last hint filled, so it can be marked. Cleared by the next move.
   hintCell: -1,
+  // Cells of a row, column or box just completed, for the flash.
+  flash: [],
+  flashSeq: 0,
   // Every action, timestamped against elapsed game time. This is what turns
   // statistics into analytics: stalls, pace, and where on the grid time goes.
   // `t` comes in on the action because the reducer stays pure.
@@ -67,6 +70,21 @@ const isSolved = (board, solution) =>
  * they handle pencil erasure, mistake counting or the win check. Callers are
  * responsible for checking the cell is editable.
  */
+/**
+ * Cells of any row, column or box that this placement just completed.
+ *
+ * Purely for the flash: finishing a unit is the small satisfaction the game
+ * runs on, and until now nothing acknowledged it.
+ */
+function completedUnitCells(board, i) {
+  const out = new Set()
+  for (const u of UNITS) {
+    if (!u.includes(i)) continue
+    if (u.every(c => board[c] !== 0)) for (const c of u) out.add(c)
+  }
+  return out.size ? [...out] : []
+}
+
 /** Appends one entry to the move log. `t` is elapsed game time in ms. */
 const logMove = (state, entry, t) => [...state.moveLog, { t: Math.round(t ?? 0), ...entry }]
 
@@ -88,6 +106,7 @@ function placeDigit(state, i, v, t) {
   const marks = state.marks.slice()
   let mistakes = state.mistakes
   let entry
+  let flash = []
 
   if (board[i] === v) {
     board[i] = 0
@@ -99,6 +118,7 @@ function placeDigit(state, i, v, t) {
     for (const p of PEERS[i]) if (hasMark(marks[p], v)) marks[p] = removeMark(marks[p], v)
     const correct = v === state.solution[i]
     if (!correct) mistakes++
+    else flash = completedUnitCells(board, i)
     entry = { kind: 'place', cell: i, value: v, correct }
   }
 
@@ -107,6 +127,9 @@ function placeDigit(state, i, v, t) {
     board,
     marks,
     mistakes,
+    flash,
+    // Bumped so an identical flash set still retriggers the animation.
+    flashSeq: state.flashSeq + 1,
     history: [...state.history, snapshot(state)],
     moveLog: logMove(state, entry, t),
   }

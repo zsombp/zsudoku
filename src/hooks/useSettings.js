@@ -7,8 +7,11 @@ import { KEYS, getSync, set } from '../lib/storage.js'
 // `theme` is a string rather than a boolean so Phase 4 can add themes without
 // touching the persisted shape. 'dark' and 'light' are the two that exist now.
 
+// Themes were called dark/light before Phase 4 gave them names.
+const LEGACY_THEME = { dark: 'ink', light: 'paper' }
+
 const DEFAULTS = {
-  theme: 'dark',
+  theme: 'ink',
   checkErrors: true,
   autoPencilOnStart: false,
   // Quick input: arm a digit on the pad, then tap cells to fill them.
@@ -21,7 +24,11 @@ const DEFAULTS = {
 }
 
 export function useSettings() {
-  const [settings, setSettings] = useState(() => ({ ...DEFAULTS, ...(getSync(KEYS.settings) || {}) }))
+  const [settings, setSettings] = useState(() => {
+    const saved = getSync(KEYS.settings) || {}
+    if (LEGACY_THEME[saved.theme]) saved.theme = LEGACY_THEME[saved.theme]
+    return { ...DEFAULTS, ...saved }
+  })
 
   useEffect(() => {
     set(KEYS.settings, settings)

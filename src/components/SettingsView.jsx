@@ -2,6 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import * as gameLog from '../lib/gameLog.js'
 import { dayKey } from '../logic/daily.js'
 
+export const THEMES = [
+  { id: 'ink', name: 'Ink & Brass', desc: 'The original. Deep blue, warm brass.' },
+  { id: 'paper', name: 'Paper', desc: 'Clean and bright for daylight.' },
+  { id: 'midnight', name: 'Midnight', desc: 'True black and ice, gentle on OLED.' },
+  { id: 'nord', name: 'Nord', desc: 'Muted arctic blue-greys, soft frost.' },
+  { id: 'newsprint', name: 'Newsprint', desc: 'Warm cream and red ink.' },
+  { id: 'contrast', name: 'High Contrast', desc: 'Maximum legibility, black on white.' },
+]
+
 function Row({ label, hint, children }) {
   return (
     <div className="setRow">
@@ -74,20 +83,30 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
       </header>
 
       <section className="statSection">
-        <h2 className="statHeading">Appearance</h2>
-        <Row label="Theme" hint="Follows nothing but this switch, on purpose.">
-          <div className="segmented">
-            {['dark', 'light'].map(t => (
-              <button
-                key={t}
-                className={'seg' + (settings.theme === t ? ' on' : '')}
-                onClick={() => updateSettings({ theme: t })}
-              >
-                {t === 'dark' ? 'Dark' : 'Light'}
-              </button>
-            ))}
-          </div>
-        </Row>
+        <h2 className="statHeading">Theme</h2>
+        <div className="themeGrid">
+          {THEMES.map(t => (
+            <button
+              key={t.id}
+              className={'themeCard' + (settings.theme === t.id ? ' on' : '')}
+              data-theme={t.id}
+              onClick={() => updateSettings({ theme: t.id })}
+              aria-pressed={settings.theme === t.id}
+            >
+              {/* A real miniature of the board, drawn in that theme's own
+                  tokens, so the swatch cannot drift from the theme. */}
+              <span className="themePreview">
+                <span className="tpGrid">
+                  {Array.from({ length: 9 }, (_, i) => (
+                    <span key={i} className={'tpCell' + (i === 4 ? ' sel' : i === 2 || i === 6 ? ' given' : '')} />
+                  ))}
+                </span>
+              </span>
+              <span className="themeName">{t.name}</span>
+              <span className="themeDesc">{t.desc}</span>
+            </button>
+          ))}
+        </div>
       </section>
 
       <section className="statSection">

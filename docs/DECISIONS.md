@@ -4,6 +4,81 @@ Newest first. Every entry records what was decided, why, and what it rules out. 
 
 ---
 
+## 2026-07-31: Phase 4, the interface
+
+### The board scales by container query, not viewport
+
+Zsomb's report: too small on the Mac, needing zoom; fine on the phone but at
+risk of clutter as features landed. The old layout was a fixed 430px column, so
+a 27-inch display got a phone-sized game.
+
+The app now grows in three steps (480 / 600 / 1040) and the board grows with it,
+up to 642px on a desktop against 402px before. The important part is that
+everything inside the board sizes in **`cqw` against the board itself**, not in
+`vw` against the viewport. Digit and pencil-mark sizes then hold their
+proportion to the grid at any board size, which is what makes one set of rules
+serve a 350px phone board and a 642px desktop one.
+
+Rules out: separate mobile and desktop type scales, and any `vw`-based sizing
+inside the board.
+
+### Two columns on desktop, and a 3x3 keypad
+
+Above 1080px the controls move beside the board instead of below it, so the
+whole game fits without scrolling. The number pad becomes a 3x3 keypad there:
+nine across in a 340px column would be 35px targets, and 3x3 is both the
+familiar shape and 108px targets.
+
+### A dashboard, because the app was hiding its own features
+
+It used to open straight onto a board, which left the daily, the streaks, the
+achievements and the history as things you had to go looking for. Home is now a
+dashboard: what is in progress with its progress bar, today's puzzle with its
+streak, three headline numbers, and every difficulty one tap away.
+
+Cost: one extra tap to resume. Worth it, and the Continue card is the first and
+largest thing on the screen.
+
+### Six themes, every ramp validated
+
+ink, paper, midnight, nord, newsprint, contrast. Each defines the full token set
+and its own sequential ramp, and every ramp passed the validator on its own
+panel colour: monotone lightness, adjacent gaps >= 0.06, light end clearing 2:1,
+single hue. Accent hues sit at least 41.5 degrees apart in OKLab.
+
+`contrast` is light rather than dark deliberately. Ink reaches 21:1 either way,
+so the tiebreak is functional: a user-entered digit must be tellable from a
+given one. Light gives accent-vs-ink 2.62:1; the dark equivalent only 1.98:1.
+
+### Themes are scoped to `[data-theme]`, not `:root[data-theme]`
+
+So that the theme picker can render a real miniature of the board inside each
+card using that theme's own tokens. The swatch cannot drift from the theme
+because it **is** the theme.
+
+This was originally written as `:root[data-theme="x"]`, which meant every
+preview silently rendered in whichever theme was already active: six identical
+swatches.
+
+### A wrong digit is never signalled by colour alone
+
+It carries an error wash and an underline as well as the error colour.
+
+This surfaced from the newsprint theme, where the accent is a brick red and the
+error a crimson, so a wrong digit differed from a correct one mostly by chroma.
+But colour-only encoding was the wrong answer in every theme, not just that one,
+so the second channel is global rather than a patch.
+
+### Motion acknowledges, never delays
+
+Nothing blocks input, everything is under 600ms, and the whole layer is switched
+off by `prefers-reduced-motion`. The one genuinely new piece is the flash when a
+row, column or box completes: that is the small satisfaction the game runs on,
+and nothing had ever acknowledged it.
+
+Hover lifts are gated behind `(hover: hover) and (pointer: fine)`, because on a
+touchscreen a hover style fires on tap and reads as a bug.
+
 ## 2026-07-31: Phase 6
 
 ### Two save slots, not general multi-save

@@ -53,7 +53,11 @@ export function Calendar({ days }) {
   const h = 7 * (CELL + GAP)
 
   return (
-    <svg className="chart" viewBox={`0 0 ${w} ${h}`} width="100%" height={h} role="img"
+    // height auto rather than a fixed pixel height: with a fixed height the
+    // default preserveAspectRatio letterboxes the grid at its natural 238px and
+    // floats it in the middle of a wide column. Letting the height follow the
+    // width lets it scale, and the max-width in CSS stops it getting silly.
+    <svg className="chart calChart" viewBox={`0 0 ${w} ${h}`} width="100%" role="img"
       aria-label={`Games played per day over the last ${days.length} days`}>
       {weeks.map((week, wi) =>
         week.map((d, di) => (

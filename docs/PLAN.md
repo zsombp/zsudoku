@@ -178,7 +178,14 @@ Themes:
 - Newsprint, warm sepia
 - High Contrast, aiming at WCAG AAA on text and controls
 
-Zsomb's verdict after playing v0.2.0 on the phone: the game feels good, the UI needs a lot of work, and the animations should be more expressive. His call, and the right one, is that all of it is final polish rather than something to chase now. So Phase 4 is where the interface gets taken seriously, not just recoloured, and it happens once the mechanics underneath have stopped moving.
+**DONE in v1.0.0.** Zsomb's verdict after playing v0.2.0 on the phone: the game feels good, the UI needs a lot of work, and the animations should be more expressive. His call, and the right one, was that all of it is final polish rather than something to chase then. So Phase 4 ran last, once the mechanics underneath had stopped moving.
+
+Delivered beyond the original scope, on his brief of 2026-07-31 ("scales well to both my mac and phone", "a dashboard, not just the game itself"):
+
+- **Responsive layout.** Three width steps, board 642px on desktop against 402px before, two columns above 1080px with a 3x3 keypad. Everything inside the board sizes in `cqw` against the board rather than `vw` against the viewport, which is what makes one layout serve both devices.
+- **A dashboard** as the home screen, so the daily, streaks, achievements and history stop being things you have to go looking for.
+- **Six themes**, every ramp validated.
+- **The motion layer** below, including the unit-completion flash.
 
 Animations, all gated behind `prefers-reduced-motion`:
 

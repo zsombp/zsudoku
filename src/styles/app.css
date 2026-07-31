@@ -25,16 +25,180 @@ body {
   justify-content: center;
 }
 
+/* The app used to be a fixed 430px column, which is right on a phone and far
+ * too small on a Mac. Now it grows in three steps, and the board grows with it.
+ * The digits scale off the BOARD via container queries rather than off the
+ * viewport, so one set of rules covers both devices without the type ever
+ * drifting out of proportion with the grid. */
 .app {
-  width: min(430px, 100%);
+  width: min(var(--app-w, 480px), 100%);
   padding: calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right))
            calc(22px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left));
   animation: fadeIn 0.3s ease;
+}
+.app.wide { --app-w: 560px; }
+
+@media (min-width: 760px) {
+  .app { --app-w: 600px; padding-top: calc(24px + env(safe-area-inset-top)); }
+  .app.wide { --app-w: 720px; }
+}
+
+/* Two columns: board on the left at whatever size fits, controls parked on the
+ * right instead of pushed below the fold. */
+@media (min-width: 1080px) {
+  .app { --app-w: 1040px; }
+  .app.wide { --app-w: 900px; }
+  .play {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 30px;
+    align-items: start;
+  }
+  .playMain { min-width: 0; }
+  /* Keep the board square and inside the window without scrolling. */
+  .playMain .boardWrap { max-width: min(100%, 74vh); }
+  .playSide { position: sticky; top: 24px; }
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
+}
+
+/* ---- dashboard ---- */
+
+.dash { animation: fadeIn 0.3s ease; }
+.dashTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 16px;
+}
+.dashGrid { display: flex; flex-direction: column; gap: 10px; }
+.dashCol { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+@media (min-width: 760px) {
+  .dashGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+}
+
+.card {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+.card:hover { border-color: var(--line-strong); }
+.card:active { transform: scale(0.985); }
+
+.cardPrimary { border-color: var(--accent); }
+.cardKicker {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.cardTitle { font-size: 24px; font-weight: 600; line-height: 1.15; margin-top: 4px; }
+.cardMeta { font-size: 12px; color: var(--sub); margin-top: 3px; }
+.cardTrack {
+  height: 3px;
+  background: var(--panel2);
+  border-radius: 2px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+.cardFill { height: 100%; background: var(--accent); transition: width 0.4s ease; }
+.cardGo {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cardGo.done { background: transparent; color: var(--accent); }
+
+.cardDaily .cardKicker { color: var(--sub); }
+.cardDaily.isDone { opacity: 0.8; }
+.streakPip {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 8px;
+  padding: 1px 6px;
+  font-size: 9px;
+  letter-spacing: 0;
+  margin-left: 2px;
+}
+
+.dashStats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.dashStat {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: center;
+}
+.dashStatValue { font-size: 26px; font-weight: 600; line-height: 1; color: var(--ink); }
+.dashStatLabel { font-size: 11px; color: var(--ink); margin-top: 5px; }
+.dashStatSub { font-family: var(--mono); font-size: 9px; color: var(--sub); }
+
+.dashPick {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+}
+.dashPickHead {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sub);
+  margin-bottom: 9px;
+}
+.tierGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.tierChip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: var(--panel2);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 9px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+  min-width: 0;
+  transition: border-color 0.14s ease, transform 0.14s ease;
+}
+.tierChip:hover { border-color: var(--accent); }
+.tierChip:active { transform: scale(0.97); }
+.tierChipName { font-size: 13px; font-weight: 600; }
+.tierChipMeta {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* ---- header ---- */
@@ -43,8 +207,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 2px 2px 10px;
 }
+.top .brand { flex: 1; }
 
 .brand {
   font-family: var(--mono);
@@ -113,7 +279,10 @@ body {
 
 /* ---- board ---- */
 
-.boardWrap { position: relative; }
+/* Everything inside the board sizes off the board's own width in cqw, not off
+ * the viewport. A 620px board on a Mac and a 350px one on a phone then get
+ * type in the same proportion, which is the whole trick to this scaling. */
+.boardWrap { position: relative; container-type: inline-size; }
 
 .board {
   display: grid;
@@ -152,14 +321,28 @@ body {
 
 .val {
   font-family: var(--mono);
-  font-size: clamp(17px, 5vw, 25px);
+  /* 6.2cqw is about 56% of a cell, which holds at every board size. */
+  font-size: clamp(16px, 6.2cqw, 42px);
   font-weight: 500;
   line-height: 1;
   color: var(--ink);
 }
 .cell.given .val { font-weight: 600; }
 .cell.user .val { color: var(--accent); animation: pop 0.13s ease; }
-.cell.wrong .val { color: var(--error); }
+/* A wrong digit is never signalled by colour alone.
+ *
+ * It carries an error wash and an underline as well as the error colour. This
+ * started as a fix for the newsprint theme, where the accent is a brick red and
+ * the error a crimson, so a wrong digit differed from a correct one only by
+ * chroma. But colour-only encoding was the wrong answer in every theme, not
+ * just that one, so the second channel is global. */
+.cell.wrong .val {
+  color: var(--error);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+.cell.wrong { background: color-mix(in srgb, var(--error) 14%, transparent); }
 
 /* A hint puts one digit on the board. Without a marker it reads as nothing
  * having happened, especially if you were not looking at that corner. */
@@ -184,7 +367,7 @@ body {
 }
 .m {
   font-family: var(--mono);
-  font-size: clamp(7px, 2vw, 9.5px);
+  font-size: clamp(6.5px, 2.2cqw, 15px);
   color: var(--sub);
   display: flex;
   align-items: center;
@@ -773,3 +956,204 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     transition: none !important;
   }
 }
+
+/* ---- desktop control sizing ----
+ *
+ * Kept at the end of the file on purpose: these override base rules of equal
+ * specificity, so source order is what makes them win. An earlier version of
+ * this block sat near the top and was silently overridden by the base .pad
+ * rule further down, which left a 9-across pad squeezed into a 340px column.
+ *
+ * On a wide screen the controls sit beside the board, so they get room to
+ * breathe instead of staying phone-sized on a 27-inch display. The pad becomes
+ * a 3x3 keypad, which is both the familiar shape and far bigger targets. */
+
+@media (min-width: 1080px) {
+  .tools { gap: 7px; }
+  .tool { padding: 13px 0 11px; }
+  .tool span { font-size: 11.5px; }
+
+  .pad { gap: 8px; grid-template-columns: repeat(3, 1fr); margin-top: 12px; }
+  .key { padding: 16px 0 12px; border-radius: 12px; }
+  .key .kv { font-size: 28px; }
+  .key .kc { font-size: 11px; min-height: 14px; }
+  .pad.noteMode .key .kv { font-size: 24px; }
+
+  .footRow, .hint, .modeHint { margin-top: 16px; }
+  .hint { font-size: 10.5px; line-height: 1.7; }
+  .autoDone { margin-top: 16px; padding: 13px 16px; }
+}
+
+/* ---- motion ----
+ *
+ * The rule for all of it: motion acknowledges something the player did, and
+ * never delays them. Nothing here blocks input, everything is under 600ms, and
+ * the whole file is switched off by the reduced-motion query at the end.
+ */
+
+/* Board entrance. A diagonal wipe rather than a fade, so a new puzzle feels
+ * dealt rather than swapped. Capped delay so the last cell is not left waiting. */
+.board .cell {
+  animation: cellIn 0.34s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+  animation-delay: calc(min(var(--d, 0) * 18ms, 300ms));
+}
+@keyframes cellIn {
+  from { opacity: 0; transform: scale(0.86); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Completing a row, column or box. The small satisfaction the game runs on,
+ * and until now nothing acknowledged it. Drawn on a pseudo-element so it does
+ * not fight the selection and peer backgrounds. */
+.cell.flash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  animation: unitFlash 0.6s ease;
+}
+@keyframes unitFlash {
+  0% { opacity: 0; }
+  22% { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+
+/* A digit that has run out. Fades back rather than vanishing. */
+.key { transition: opacity 0.3s ease, transform 0.1s ease, background 0.15s ease; }
+.key.done .kv { transform: scale(0.9); transition: transform 0.3s ease; }
+
+/* The win. A diagonal sweep across the finished grid, then the card. */
+.board.isWon .cell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  animation: winSweep 1.1s ease backwards;
+  animation-delay: calc(var(--d, 0) * 45ms);
+}
+@keyframes winSweep {
+  0% { opacity: 0; }
+  30% { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+.veil.win { animation: winCard 0.5s 0.35s ease backwards; }
+@keyframes winCard {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.win .trophy { animation: trophyIn 0.6s 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) backwards; }
+@keyframes trophyIn {
+  from { opacity: 0; transform: scale(0.3) rotate(-18deg); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Screens arrive rather than appear. */
+.dash .card, .dash .dashStat, .dash .dashPick {
+  animation: riseIn 0.4s ease backwards;
+}
+.dashCol > *:nth-child(2) { animation-delay: 0.06s; }
+.dashCol:nth-child(2) > *:nth-child(1) { animation-delay: 0.04s; }
+.dashCol:nth-child(2) > *:nth-child(2) { animation-delay: 0.1s; }
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.statSection { animation: riseIn 0.4s ease backwards; }
+.statSection:nth-of-type(2) { animation-delay: 0.05s; }
+.statSection:nth-of-type(3) { animation-delay: 0.1s; }
+.statSection:nth-of-type(4) { animation-delay: 0.15s; }
+
+/* Hover lift, pointer devices only: on touch this fires on tap and looks like
+ * a bug. */
+@media (hover: hover) and (pointer: fine) {
+  .card:hover { transform: translateY(-2px); }
+  .tierChip:hover { transform: translateY(-1px); }
+  .tool:not(:disabled):hover, .key:not(:disabled):hover { background: var(--panel2); }
+  .iconBtn:hover { border-color: var(--line-strong); }
+}
+
+/* ---- theme picker ----
+ *
+ * Each card carries its own data-theme, so the miniature board inside it is
+ * drawn with that theme's real tokens. The swatch cannot drift from the theme
+ * because it IS the theme. */
+
+.themeGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 760px) { .themeGrid { grid-template-columns: repeat(3, 1fr); } }
+
+.themeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--ink);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+.themeCard.on { box-shadow: inset 0 0 0 2px var(--accent); }
+.themeCard:active { transform: scale(0.98); }
+
+.themePreview {
+  display: block;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  padding: 7px;
+}
+.tpGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  aspect-ratio: 1;
+}
+.tpCell { background: var(--panel); border-radius: 2px; }
+.tpCell.given { background: var(--panel2); }
+.tpCell.sel { background: var(--sel); box-shadow: inset 0 0 0 1.5px var(--accent); }
+
+.themeName { font-size: 12.5px; font-weight: 600; }
+.themeDesc { font-size: 10.5px; color: var(--sub); line-height: 1.35; }
+
+/* ---- narrow phones ----
+ *
+ * Nine keys across a 320px screen gives 28px targets, which is well under the
+ * 44px guideline and genuinely hard to hit. Below 380px the pad wraps to five
+ * columns instead, roughly doubling the width of each key.
+ *
+ * Kept as a narrow band rather than applied everywhere because on a 390px-plus
+ * phone the nine-across pad lines up under the board's own columns, which is a
+ * real affordance worth keeping. */
+
+@media (max-width: 379px) {
+  .pad { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .key { padding: 10px 0 7px; }
+  .key .kv { font-size: 21px; }
+  .tools { grid-template-columns: repeat(3, 1fr); }
+  .themeGrid { grid-template-columns: 1fr; }
+}
+
+/* ---- stats on a wide screen ----
+ *
+ * At 900px a two-column badge grid gives 436px cards for a two-line label,
+ * which reads as padding rather than design. More columns, not bigger cards. */
+
+@media (min-width: 760px) {
+  .tiles { grid-template-columns: repeat(6, 1fr); }
+  .badges { grid-template-columns: repeat(3, 1fr); }
+  .trends { grid-template-columns: repeat(3, 1fr); }
+  .hero { padding: 26px 0 20px; }
+  .heroValue { font-size: 64px; }
+}
+
+/* The calendar scales with its column but stops before the cells get silly. */
+.calChart { height: auto; max-width: 520px; }
