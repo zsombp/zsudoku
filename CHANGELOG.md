@@ -2,6 +2,83 @@
 
 Newest first.
 
+## v0.5.0 - 2026-07-31 - Phase 5, statistics and the coach
+
+Every game is now recorded, and the stats screen is where the move log finally
+pays for itself. Chart icon in the header.
+
+### Data
+
+IndexedDB, one record per game, completed **or abandoned**: a win rate computed
+only from wins is not a win rate. A record carries the graded tier, score,
+duration, mistakes, hints with their techniques, and the full move log, plus the
+puzzle and solution. Those last two are regenerable from the seed but stored
+anyway, because regenerating a Diabolical puzzle costs seconds and the pair is
+350 bytes.
+
+The move log records every action against **elapsed** game time, not wall clock,
+so it survives pauses and describes the solve rather than the calendar. It is
+written in the reducer, which is why the game was built as a single funnel back
+in Phase 0: one hook, not instrumentation scattered across a dozen handlers.
+
+Games with no moves are not recorded. Switching difficulty is not a loss.
+
+### The screen
+
+One hero figure, six stat tiles, a calendar heatmap, small multiples of solve
+time per tier, a solve-time histogram, and play-by-hour.
+
+Charts are hand-rolled SVG, no library. Every series is single, so none carries
+a legend, and there is no categorical palette anywhere: **small multiples per
+tier instead of six competing colours**, which would have fought the app's
+two-colour design and buried the only question the chart answers, which is
+whether the line goes down.
+
+The calendar's sequential ramp was **validated, not eyeballed**. The first
+attempt failed the light-end contrast check at 1.55:1 against the panel, and the
+first light-theme attempt failed too; both were re-stepped until monotone
+lightness, adjacent gaps and contrast all passed. Values and the constraint are
+recorded in `tokens.css`.
+
+"Show numbers" renders the per-tier table, so no value is reachable only by
+hovering.
+
+### The coach
+
+Seven insights: hint reliance by technique, mistake timing, pace across the
+solve, pencil discipline, tier readiness, time of day, and mistake clustering by
+box.
+
+Two rules govern all of them. Nothing appears without enough data behind it, and
+every insight reports the sample it used, so a claim can be checked rather than
+taken on faith. And every insight says what to do about it. With too little
+data the screen says what is still missing instead of looking broken.
+
+### Backup
+
+Export writes a JSON file you keep. Import merges rather than overwrites, skips
+records already present, and rejects a file that is not a Zsudoku export.
+
+### Found while verifying
+
+`moveLog` was missing from the persisted save, so a game resumed after a reload
+would have been recorded with an empty move log: analytics silently wrong rather
+than absent, which is worse. Fixed.
+
+### Verified
+
+84 tests pass, 26 of them new over the stats and coach layer, including that the
+coach refuses to draw a conclusion from two games and that every insight it does
+emit carries a sample size.
+
+In the browser: empty state, then 46 synthetic games to exercise every chart
+(the mistake-timing insight correctly identified the endgame clustering that had
+been seeded into the data), then the synthetic games were deleted and a real
+game played through — hand placement, deliberate mistake, correction, hint,
+finish — and checked end to end. Export/import round-tripped: clear to 0, import
+46, import again added 0 and skipped 46, foreign file rejected. Zero console
+errors.
+
 ## v0.4.1 - 2026-07-31 - hints
 
 One tap, one number. Sixth toolbar button, `H` on the keyboard.

@@ -4,6 +4,66 @@ Newest first. Every entry records what was decided, why, and what it rules out. 
 
 ---
 
+## 2026-07-31: Phase 5, statistics
+
+### Abandoned games are recorded too
+
+A record is written when a game is won and when one in progress is walked away
+from. A win rate computed only from wins is not a win rate, and "how often do I
+actually finish a Diabolical" is one of the more interesting questions the
+history can answer.
+
+Games with zero moves are not recorded: opening the difficulty sheet and
+changing your mind is not a loss.
+
+### The move log uses elapsed time, not wall clock
+
+Timestamps are milliseconds since the game started, taken from the same
+pause-aware timer the display uses. Wall clock would make every stall look
+enormous whenever the phone locked mid-game, which is the same class of lie the
+Phase 0 timer rewrite existed to remove.
+
+It is written in the reducer, which is what the single-funnel design from Phase 0
+bought: one hook rather than instrumentation in a dozen handlers.
+
+### Puzzle and solution are stored despite being regenerable
+
+Every record is reproducible from its seed, so in principle the boards are
+redundant. They are stored anyway: regenerating a Diabolical puzzle costs
+seconds, and the pair is about 350 bytes against a 7.6KB record.
+
+### Small multiples instead of a categorical palette
+
+Six tiers on one plot would need six categorical hues. That would fight an app
+built on one accent colour, and worse, it buries the only question the chart
+answers: is the line going down. One small chart per tier, all in the accent.
+
+The whole stats screen therefore uses a single hue plus a de-emphasis gray. The
+only ramp is the calendar heatmap, and it is sequential single-hue.
+
+### The heatmap ramp was validated, not chosen by eye
+
+The first dark-theme ramp failed light-end contrast at 1.55:1 against the panel;
+the first light-theme ramp failed at 1.58:1 against white, and two further
+attempts failed the adjacent-lightness-gap check. The shipped values pass
+monotone lightness, adjacent gaps and contrast in both themes.
+
+Constraint recorded in `tokens.css`: change a ramp value and re-run the
+validator.
+
+### The coach withholds
+
+Every insight declares a threshold and reports its sample. Telling someone they
+are weak on Swordfish after two games is noise dressed as insight, and once one
+claim is unfounded none of the others can be trusted either. When nothing
+qualifies, the screen says what is still missing rather than showing an empty
+panel.
+
+Every insight also has to say what to do about it. Observations nobody can act
+on are decoration.
+
+Rules out: any insight without a stated sample size.
+
 ## 2026-07-31: hints fill a cell, teaching moves to the post-game screen
 
 Zsomb weighed a simple hint (put a correct number on the board) against an

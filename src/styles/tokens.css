@@ -29,6 +29,15 @@
   --peer: rgba(255, 255, 255, 0.05);
   --error: #e2564a;
   --veil: rgba(20, 22, 29, 0.82);
+
+  /* Sequential ramp for the calendar heatmap. One hue, monotone lightness.
+   * Validated against the #1b1e27 panel with the dataviz validator: monotone,
+   * adjacent step gaps >= 0.06, light end clears 2:1 contrast, hue spread 2deg.
+   * Re-run the validator if any of these change. */
+  --ramp-1: #614e2f;
+  --ramp-2: #886933;
+  --ramp-3: #b08438;
+  --ramp-4: #e2a63d;
   color-scheme: dark;
 }
 
@@ -47,5 +56,13 @@
   --peer: rgba(20, 24, 40, 0.055);
   --error: #c0392f;
   --veil: rgba(243, 244, 246, 0.86);
+
+  /* Same ramp against white. Runs light to dark rather than dark to light,
+   * because on a light surface "more" has to mean darker to gain contrast.
+   * Validated: all gaps >= 0.06, light end 2.53:1, hue spread 6deg. */
+  --ramp-1: #bd9f65;
+  --ramp-2: #a57c2c;
+  --ramp-3: #7a550e;
+  --ramp-4: #4f3708;
   color-scheme: light;
 }

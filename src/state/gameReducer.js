@@ -36,6 +36,10 @@ export const initialState = {
   hintLog: [],
   // The cell the last hint filled, so it can be marked. Cleared by the next move.
   hintCell: -1,
+  // Every action, timestamped against elapsed game time. This is what turns
+  // statistics into analytics: stalls, pace, and where on the grid time goes.
+  // `t` comes in on the action because the reducer stays pure.
+  moveLog: [],
   // A game finished with auto-complete is not the same as one finished by hand.
   // Phase 5 stats read this.
   autoCompleted: false,
@@ -59,30 +63,49 @@ const isSolved = (board, solution) =>
  * they handle pencil erasure, mistake counting or the win check. Callers are
  * responsible for checking the cell is editable.
  */
-function placeDigit(state, i, v) {
+/** Appends one entry to the move log. `t` is elapsed game time in ms. */
+const logMove = (state, entry, t) => [...state.moveLog, { t: Math.round(t ?? 0), ...entry }]
+
+function placeDigit(state, i, v, t) {
   // Notes mode: toggle a pencil mark, but only in an empty cell.
   if (state.notes) {
     if (state.board[i] !== 0) return state
     const marks = state.marks.slice()
     marks[i] = toggleMark(marks[i], v)
-    return { ...state, marks, history: [...state.history, snapshot(state)] }
+    return {
+      ...state,
+      marks,
+      history: [...state.history, snapshot(state)],
+      moveLog: logMove(state, { kind: 'pencil', cell: i, value: v }, t),
+    }
   }
 
   const board = state.board.slice()
   const marks = state.marks.slice()
   let mistakes = state.mistakes
+  let entry
 
   if (board[i] === v) {
     board[i] = 0
+    entry = { kind: 'clear', cell: i, value: v }
   } else {
     board[i] = v
     marks[i] = 0
     // Auto-erase this digit from every peer's pencil marks.
     for (const p of PEERS[i]) if (hasMark(marks[p], v)) marks[p] = removeMark(marks[p], v)
-    if (v !== state.solution[i]) mistakes++
+    const correct = v === state.solution[i]
+    if (!correct) mistakes++
+    entry = { kind: 'place', cell: i, value: v, correct }
   }
 
-  const next = { ...state, board, marks, mistakes, history: [...state.history, snapshot(state)] }
+  const next = {
+    ...state,
+    board,
+    marks,
+    mistakes,
+    history: [...state.history, snapshot(state)],
+    moveLog: logMove(state, entry, t),
+  }
   if (isSolved(board, state.solution)) next.status = 'won'
   return next
 }
@@ -143,6 +166,7 @@ function reduce(state, action) {
         mistakes: s.mistakes || 0,
         hints: s.hints || 0,
         hintLog: s.hintLog || [],
+        moveLog: s.moveLog || [],
         autoCompleted: s.autoCompleted || false,
         startedAt: s.startedAt,
         elapsedMs: s.elapsedMs || 0,
@@ -184,7 +208,7 @@ function reduce(state, action) {
 
     case 'digit': {
       if (!canEdit(state)) return state
-      return placeDigit(state, state.selected, action.value)
+      return placeDigit(state, state.selected, action.value, action.t)
     }
 
     // Quick input: a digit is armed on the pad and tapping a cell drops it in.
@@ -194,7 +218,7 @@ function reduce(state, action) {
       if (!state.board || state.status !== 'playing') return state
       if (!state.activeDigit) return state
       if (state.puzzle[i] !== 0) return { ...state, selected: i }
-      return { ...placeDigit(state, i, state.activeDigit), selected: i }
+      return { ...placeDigit(state, i, state.activeDigit, action.t), selected: i }
     }
 
     case 'hint': {
@@ -203,7 +227,7 @@ function reduce(state, action) {
       if (!h) return state
       // A hint always places the digit, even in notes mode. Pencilling it in
       // would not be a hint.
-      const placed = placeDigit({ ...state, notes: false }, h.cell, h.digit)
+      const placed = placeDigit({ ...state, notes: false }, h.cell, h.digit, action.t)
       return {
         ...placed,
         notes: state.notes,
@@ -211,6 +235,9 @@ function reduce(state, action) {
         hintCell: h.cell,
         hints: state.hints + 1,
         hintLog: [...state.hintLog, { cell: h.cell, technique: h.technique, derived: h.derived }],
+        // Overwrite the 'place' entry placeDigit just wrote: a hinted cell was
+        // not solved by the player and must not count as their placement.
+        moveLog: logMove(state, { kind: 'hint', cell: h.cell, value: h.digit, correct: true, technique: h.technique }, action.t),
       }
     }
 
@@ -232,7 +259,13 @@ function reduce(state, action) {
       const marks = state.marks.slice()
       board[i] = 0
       marks[i] = 0
-      return { ...state, board, marks, history: [...state.history, snapshot(state)] }
+      return {
+        ...state,
+        board,
+        marks,
+        history: [...state.history, snapshot(state)],
+        moveLog: logMove(state, { kind: 'erase', cell: i }, action.t),
+      }
     }
 
     case 'undo': {
@@ -244,6 +277,7 @@ function reduce(state, action) {
         marks: prev.marks.slice(),
         mistakes: prev.mistakes,
         history: state.history.slice(0, -1),
+        moveLog: logMove(state, { kind: 'undo' }, action.t),
       }
     }
 
@@ -267,6 +301,7 @@ function reduce(state, action) {
         marks,
         autoCompleted: true,
         history: [...state.history, snapshot(state)],
+        moveLog: logMove(state, { kind: 'autoComplete', count: fills.length }, action.t),
       }
       if (isSolved(board, state.solution)) next.status = 'won'
       return next
@@ -276,7 +311,12 @@ function reduce(state, action) {
       if (!state.board || state.status !== 'playing') return state
       const marks = emptyMarks()
       for (const i of range(81)) if (state.board[i] === 0) marks[i] = candMaskAt(state.board, i)
-      return { ...state, marks, history: [...state.history, snapshot(state)] }
+      return {
+        ...state,
+        marks,
+        history: [...state.history, snapshot(state)],
+        moveLog: logMove(state, { kind: 'autoPencil' }, action.t),
+      }
     }
 
     case 'pause':

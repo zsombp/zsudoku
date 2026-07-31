@@ -5,7 +5,9 @@ import Toolbar from './components/Toolbar.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import NewGameSheet from './components/NewGameSheet.jsx'
 import HintSummary from './components/HintSummary.jsx'
-import { Moon, Sun, Play, Plus, Trophy, Sparkles } from './components/Icons.jsx'
+import { Moon, Sun, Play, Plus, Trophy, Sparkles, Chart } from './components/Icons.jsx'
+import StatsView from './components/StatsView.jsx'
+import * as gameLog from './lib/gameLog.js'
 import { gameReducer, initialState, remainingCounts, currentLabel } from './state/gameReducer.js'
 import { techFor, tierForScore } from './logic/difficulty.js'
 import { gradePuzzle, autoCompleteFills, hintPlacement } from './logic/grader.js'
@@ -18,12 +20,13 @@ import { KEYS, getSync, set, requestPersistence } from './lib/storage.js'
 import { fmtMs } from './lib/format.js'
 
 export default function App() {
-  const [state, dispatch] = useReducer(gameReducer, initialState)
+  const [state, rawDispatch] = useReducer(gameReducer, initialState)
   const [settings, updateSettings] = useSettings()
   const [records, setRecords] = useState(() => getSync(KEYS.records) || {})
   const [showPicker, setShowPicker] = useState(false)
   const [newRecord, setNewRecord] = useState(false)
   const [genError, setGenError] = useState(null)
+  const [showStats, setShowStats] = useState(false)
 
   const timer = useTimer(state.status === 'playing', 0)
   const generator = useGenerator()
@@ -32,6 +35,15 @@ export default function App() {
   stateRef.current = state
   const timerRef = useRef(timer)
   timerRef.current = timer
+
+  // Every action carries the elapsed game time, which is what the move log
+  // records. It has to come from here rather than from inside the reducer,
+  // because the reducer is pure and pure functions do not read a clock.
+  // Elapsed rather than wall-clock, so it survives pauses and says something
+  // about the solve rather than about the calendar.
+  const dispatch = useCallback(action => {
+    rawDispatch({ ...action, t: timerRef.current?.read?.() ?? 0 })
+  }, [])
 
   const label = currentLabel(state)
   const tech = techFor(label)
@@ -67,6 +79,10 @@ export default function App() {
       graderVersion: GRADER_VERSION,
       autoCompleted: s.autoCompleted,
       hintLog: s.hintLog,
+      // Without this a game resumed after a reload loses its whole move log,
+      // and the analytics for that game would be silently wrong rather than
+      // missing, which is worse.
+      moveLog: s.moveLog,
       mistakes: s.mistakes,
       hints: s.hints,
       startedAt: s.startedAt,
@@ -93,6 +109,16 @@ export default function App() {
     async tier => {
       setShowPicker(false)
       setNewRecord(false)
+      // Walking away from a game in progress is a result too. Recording only
+      // wins would make the win rate meaningless.
+      const prev = stateRef.current
+      if (prev.status === 'playing' && gameLog.worthRecording(prev)) {
+        gameLog.record(prev, {
+          completed: false,
+          durationMs: timerRef.current.read(),
+          endedAt: Date.now(),
+        })
+      }
       dispatch({ type: 'generating', requested: tier })
       try {
         const made = await generator.request(tier)
@@ -196,6 +222,9 @@ export default function App() {
   useEffect(() => {
     if (state.status !== 'won') return
     const ms = timerRef.current.read()
+
+    gameLog.record(stateRef.current, { completed: true, durationMs: ms, endedAt: Date.now() })
+
     const prev = records[label]
     if (prev === undefined || ms < prev) {
       const next = { ...records, [label]: ms }
@@ -242,17 +271,30 @@ export default function App() {
   const allFilledButWrong =
     state.board && !won && !state.board.includes(0)
 
+  if (showStats) {
+    return (
+      <div className="app">
+        <StatsView onClose={() => setShowStats(false)} />
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <header className="top">
         <div className="brand">ZSUDOKU</div>
-        <button
-          className="iconBtn"
-          aria-label="Toggle theme"
-          onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
-        >
-          {settings.theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-        </button>
+        <div className="topBtns">
+          <button className="iconBtn" aria-label="Statistics" onClick={() => setShowStats(true)}>
+            <Chart size={17} />
+          </button>
+          <button
+            className="iconBtn"
+            aria-label="Toggle theme"
+            onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
+          >
+            {settings.theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+        </div>
       </header>
 
       <StatusBar

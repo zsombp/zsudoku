@@ -431,6 +431,156 @@ body {
   opacity: 0.75;
 }
 
+/* ---- statistics ---- */
+
+.topBtns { display: flex; gap: 7px; }
+
+.statsView { animation: fadeIn 0.25s ease; padding-bottom: 20px; }
+.statsEmpty { text-align: center; color: var(--sub); font-size: 13px; padding: 40px 10px; }
+.statsEmptySub { font-size: 11.5px; opacity: 0.8; max-width: 30ch; margin: 8px auto 18px; line-height: 1.5; }
+
+/* Exactly one hero figure per view. Proportional figures, not tabular:
+ * equal-width digits make a large number look loose. */
+.hero { text-align: center; padding: 18px 0 14px; }
+.heroValue {
+  font-family: var(--ui);
+  font-size: 52px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+}
+.heroLabel { font-size: 12px; color: var(--sub); margin-top: 6px; }
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.tile {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--ctl-radius);
+  padding: 9px 10px;
+  min-width: 0;
+}
+.tileLabel { font-size: 10px; color: var(--sub); letter-spacing: 0.02em; }
+.tileValue {
+  font-family: var(--ui);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.25;
+}
+.tileSub { font-family: var(--mono); font-size: 9.5px; color: var(--sub); opacity: 0.85; }
+
+.statSection { margin-top: 22px; }
+.statHeading {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sub);
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
+.insight {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--ctl-radius);
+  padding: 10px 12px;
+  margin-bottom: 7px;
+}
+.insightTitle { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.insightBody { font-size: 12px; color: var(--sub); line-height: 1.5; }
+.insightSample {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--sub);
+  opacity: 0.7;
+  margin-top: 6px;
+}
+
+/* Charts. Marks carry the data colour; every piece of text uses a text token. */
+.chart { display: block; overflow: visible; }
+.chart .mark { fill: var(--accent); }
+.chart .markEmpty { fill: var(--line); }
+.chart .axis { stroke: var(--line); stroke-width: 1; }
+.chart .tick {
+  fill: var(--sub);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-variant-numeric: tabular-nums;
+}
+.chart .line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .area { fill: var(--accent); opacity: 0.1; stroke: none; }
+/* 2px surface ring so the marker stays legible where it crosses the line. */
+.chart .endDot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+
+.chart .cal { fill: var(--panel2); }
+.chart .cal.l1 { fill: var(--ramp-1); }
+.chart .cal.l2 { fill: var(--ramp-2); }
+.chart .cal.l3 { fill: var(--ramp-3); }
+.chart .cal.l4 { fill: var(--ramp-4); }
+
+.trends { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.trend {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--ctl-radius);
+  padding: 8px 9px 6px;
+  min-width: 0;
+}
+.trendHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.trendMeta { font-family: var(--mono); font-size: 9px; font-weight: 400; color: var(--sub); }
+.trendEmpty {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--sub);
+  opacity: 0.6;
+  padding: 12px 0;
+  text-align: center;
+}
+
+.statTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  font-size: 11.5px;
+}
+.statTable th {
+  text-align: right;
+  font-weight: 600;
+  color: var(--sub);
+  font-size: 10px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.statTable th:first-child, .statTable td:first-child { text-align: left; }
+/* tabular-nums belongs here: columns of numbers that must line up. */
+.statTable td {
+  text-align: right;
+  padding: 5px 6px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid var(--line);
+}
+.statTable td:first-child { font-family: var(--ui); }
+
+.dataRow { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-top: 10px; }
+.dataNote { font-size: 11px; color: var(--sub); line-height: 1.5; margin: 10px 0 0; }
+.dataNote.notice { color: var(--accent); }
+
 /* ---- new game sheet ---- */
 
 .modalVeil {
