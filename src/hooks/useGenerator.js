@@ -36,11 +36,11 @@ export function useGenerator() {
   }, [])
 
   const generate = useCallback(
-    tier =>
+    (tier, seed) =>
       new Promise((resolve, reject) => {
         const id = nextIdRef.current++
         pendingRef.current.set(id, { resolve, reject })
-        ensureWorker().postMessage({ id, tier })
+        ensureWorker().postMessage({ id, tier, seed })
       }),
     [ensureWorker]
   )
@@ -57,7 +57,11 @@ export function useGenerator() {
   )
 
   const request = useCallback(
-    async tier => {
+    async (tier, { seed } = {}) => {
+      // A seeded request wants one specific puzzle (the daily), so the cache of
+      // randomly seeded ones is no help and must not be consumed.
+      if (seed !== undefined) return generate(tier, seed)
+
       const ready = cache.take(tier)
       if (ready) {
         // Refill straight away, while the player starts on this one.

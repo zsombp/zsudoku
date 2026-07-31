@@ -12,9 +12,15 @@
 const NS = 'zsudoku'
 export const KEYS = {
   game: `${NS}.game.v1`,
+  // The daily gets its own slot, so opening it never destroys a casual game in
+  // progress. Two slots because there are exactly two things you can be in the
+  // middle of, not because saves needed to be general.
+  daily: `${NS}.daily.v1`,
   settings: `${NS}.settings.v1`,
   records: `${NS}.records.v1`,
 }
+
+export const slotFor = mode => (mode === 'daily' ? KEYS.daily : KEYS.game)
 
 export async function get(key) {
   try {

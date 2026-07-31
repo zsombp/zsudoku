@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { StatTile, Calendar, Histogram, HourBars, TierTrend } from './stats/charts.jsx'
 import * as compute from '../stats/compute.js'
 import { insights, needed } from '../stats/coach.js'
+import { achievements } from '../stats/achievements.js'
+import { dailyStreak } from '../logic/daily.js'
 import * as gameLog from '../lib/gameLog.js'
 import { fmtMs } from '../lib/format.js'
 
@@ -32,6 +34,8 @@ export default function StatsView({ onClose }) {
       histogram: compute.durationHistogram(games),
       hours: compute.byHour(games),
       coach: insights(games),
+      daily: dailyStreak(games),
+      badges: achievements(games),
     }
   }, [games])
 
@@ -107,7 +111,11 @@ export default function StatsView({ onClose }) {
         />
         <StatTile label="Median solve" value={fmtMs(o.medianMs)} sub={`fastest ${fmtMs(o.fastest)}`} />
         <StatTile label="Mistakes" value={o.mistakesPerGame.toFixed(1)} sub="per solve" />
-        <StatTile label="Clean solves" value={o.cleanGames} sub="no hints, no mistakes" />
+        <StatTile
+          label="Daily streak"
+          value={derived.daily.current}
+          sub={derived.daily.total ? `${derived.daily.total} done` : 'none yet'}
+        />
       </div>
 
       <Section title="What the numbers say">
@@ -122,6 +130,25 @@ export default function StatsView({ onClose }) {
         ) : (
           <div className="insightBody">{needed(games)}</div>
         )}
+      </Section>
+
+      <Section title={`Achievements · ${derived.badges.filter(b => b.earned).length}/${derived.badges.length}`}>
+        <div className="badges">
+          {derived.badges.map(b => (
+            <div className={'badge' + (b.earned ? ' earned' : '')} key={b.id}>
+              <div className="badgeTop">
+                <span className="badgeName">{b.name}</span>
+                {b.detail && <span className="badgeDetail">{b.detail}</span>}
+              </div>
+              <div className="badgeDesc">{b.description}</div>
+              {!b.earned && b.progress > 0 && (
+                <div className="badgeTrack">
+                  <div className="badgeFill" style={{ width: `${Math.round(b.progress * 100)}%` }} />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </Section>
 
       <Section title="Last 17 weeks">

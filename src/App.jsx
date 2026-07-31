@@ -16,8 +16,12 @@ import { useTimer } from './hooks/useTimer.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
 import { useSettings } from './hooks/useSettings.js'
 import { useGenerator } from './hooks/useGenerator.js'
-import { KEYS, getSync, set, requestPersistence } from './lib/storage.js'
+import { KEYS, slotFor, getSync, set, requestPersistence } from './lib/storage.js'
 import { fmtMs } from './lib/format.js'
+import { dailyPlan, weekdayName, dailyStreak } from './logic/daily.js'
+import SettingsView from './components/SettingsView.jsx'
+import { Gear } from './components/Icons.jsx'
+import * as sound from './lib/sound.js'
 
 export default function App() {
   const [state, rawDispatch] = useReducer(gameReducer, initialState)
@@ -27,6 +31,7 @@ export default function App() {
   const [newRecord, setNewRecord] = useState(false)
   const [genError, setGenError] = useState(null)
   const [showStats, setShowStats] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   const timer = useTimer(state.status === 'playing', 0)
   const generator = useGenerator()
@@ -64,13 +69,15 @@ export default function App() {
   const persist = useCallback(() => {
     const s = stateRef.current
     if (!s.board || s.status === 'generating') return
-    set(KEYS.game, {
+    set(slotFor(s.mode), {
       puzzle: s.puzzle,
       solution: s.solution,
       board: s.board,
       marks: Array.from(s.marks),
       requested: s.requested,
       graded: s.graded,
+      mode: s.mode,
+      dayKey: s.dayKey,
       score: s.score,
       hardest: s.hardest,
       counts: s.counts,
@@ -105,30 +112,71 @@ export default function App() {
 
   // ---- generation ----
 
+  /**
+   * Abandoning is a result. Recording only wins would make the win rate
+   * meaningless. Switching to the daily does NOT abandon: that game keeps its
+   * own slot and is still there when you come back.
+   */
+  const recordAbandon = useCallback(() => {
+    const prev = stateRef.current
+    if (prev.status === 'playing' && gameLog.worthRecording(prev)) {
+      gameLog.record(prev, {
+        completed: false,
+        durationMs: timerRef.current.read(),
+        endedAt: Date.now(),
+      })
+    }
+  }, [])
+
   const startNew = useCallback(
     async tier => {
       setShowPicker(false)
       setNewRecord(false)
-      // Walking away from a game in progress is a result too. Recording only
-      // wins would make the win rate meaningless.
-      const prev = stateRef.current
-      if (prev.status === 'playing' && gameLog.worthRecording(prev)) {
-        gameLog.record(prev, {
-          completed: false,
-          durationMs: timerRef.current.read(),
-          endedAt: Date.now(),
-        })
-      }
+      recordAbandon()
+      updateSettings({ lastMode: 'casual' })
       dispatch({ type: 'generating', requested: tier })
       try {
         const made = await generator.request(tier)
         timerRef.current.reset(0)
-        dispatch({ type: 'ready', made, now: Date.now() })
+        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual' })
       } catch (err) {
         setGenError(String(err.message || err))
       }
     },
-    [generator]
+    [generator, recordAbandon, updateSettings]
+  )
+
+  /**
+   * Today's puzzle. Seeded from the date, so it is the same on every device
+   * with no server involved, and the same every time you come back to it.
+   *
+   * Its own save slot, so opening it never costs you a casual game in progress.
+   */
+  const startDaily = useCallback(
+    async () => {
+      setShowPicker(false)
+      setNewRecord(false)
+      const plan = dailyPlan()
+      updateSettings({ lastMode: 'daily' })
+
+      // Resume today's daily if it is already underway or finished.
+      const saved = getSync(KEYS.daily)
+      if (saved?.board && saved.dayKey === plan.key) {
+        dispatch({ type: 'hydrate', saved })
+        timerRef.current.reset(saved.elapsedMs || 0)
+        return
+      }
+
+      dispatch({ type: 'generating', requested: plan.tier })
+      try {
+        const made = await generator.request(plan.tier, { seed: plan.seed })
+        timerRef.current.reset(0)
+        dispatch({ type: 'ready', made, now: Date.now(), mode: 'daily', dayKey: plan.key })
+      } catch (err) {
+        setGenError(String(err.message || err))
+      }
+    },
+    [generator, updateSettings]
   )
 
   // ---- input mode ----
@@ -183,7 +231,11 @@ export default function App() {
 
   useEffect(() => {
     requestPersistence()
-    const saved = getSync(KEYS.game)
+    // Come back to whichever slot you left, but never to yesterday's daily.
+    const wantDaily = settings.lastMode === 'daily'
+    const dailySave = getSync(KEYS.daily)
+    const saved =
+      wantDaily && dailySave?.dayKey === dailyPlan().key ? dailySave : getSync(KEYS.game)
     const tier = saved?.requested || 'Medium'
     // A game saved under an older grader carries a score and tier from a
     // scoring system that no longer exists. Regrade it rather than showing a
@@ -217,10 +269,66 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onHide)
   }, [])
 
+  // ---- daily ----
+  //
+  // Loaded when the sheet opens rather than on every render: it reads the
+  // history out of IndexedDB and nothing else needs it.
+
+  const [dailyInfo, setDailyInfo] = useState(() => {
+    const p = dailyPlan()
+    return { weekday: weekdayName(), tier: p.tier, done: false, inProgress: false, streak: 0, durationMs: 0 }
+  })
+
+  useEffect(() => {
+    if (!showPicker) return
+    let alive = true
+    const p = dailyPlan()
+    gameLog.all().then(games => {
+      if (!alive) return
+      const streak = dailyStreak(games, p.key)
+      const todays = games.find(g => g.daily && g.dayKey === p.key && g.completed)
+      const saved = getSync(KEYS.daily)
+      setDailyInfo({
+        weekday: weekdayName(),
+        tier: p.tier,
+        done: Boolean(todays),
+        inProgress: Boolean(saved?.board && saved.dayKey === p.key && !todays),
+        streak: streak.current,
+        durationMs: todays?.durationMs || 0,
+      })
+    })
+    return () => { alive = false }
+  }, [showPicker])
+
+  // ---- sound ----
+
+  useEffect(() => {
+    sound.setEnabled(settings.sound)
+  }, [settings.sound])
+
+  // Driven off the move log rather than sprinkled through the handlers: the
+  // log already knows exactly what just happened, including whether it was
+  // right, so one effect covers every input path there is.
+  const lastMoveRef = useRef(0)
+  useEffect(() => {
+    const log = state.moveLog
+    if (log.length <= lastMoveRef.current) {
+      lastMoveRef.current = log.length
+      return
+    }
+    lastMoveRef.current = log.length
+    const m = log[log.length - 1]
+    if (!m || state.status === 'won') return
+    if (m.kind === 'place') (m.correct === false ? sound.wrong : sound.place)()
+    else if (m.kind === 'erase' || m.kind === 'clear') sound.erase()
+    else if (m.kind === 'hint') sound.hint()
+  }, [state.moveLog, state.status])
+
   // ---- win ----
 
   useEffect(() => {
     if (state.status !== 'won') return
+    sound.win()
     const ms = timerRef.current.read()
 
     gameLog.record(stateRef.current, { completed: true, durationMs: ms, endedAt: Date.now() })
@@ -279,10 +387,22 @@ export default function App() {
     )
   }
 
+  if (showSettings) {
+    return (
+      <div className="app">
+        <SettingsView
+          settings={settings}
+          updateSettings={updateSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <header className="top">
-        <div className="brand">ZSUDOKU</div>
+        <div className="brand">{state.mode === 'daily' ? 'DAILY' : 'ZSUDOKU'}</div>
         <div className="topBtns">
           <button className="iconBtn" aria-label="Statistics" onClick={() => setShowStats(true)}>
             <Chart size={17} />
@@ -293,6 +413,9 @@ export default function App() {
             onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
           >
             {settings.theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+          <button className="iconBtn" aria-label="Settings" onClick={() => setShowSettings(true)}>
+            <Gear size={17} />
           </button>
         </div>
       </header>
@@ -424,7 +547,9 @@ export default function App() {
         <NewGameSheet
           records={records}
           canRestart={Boolean(state.puzzle)}
+          daily={dailyInfo}
           onPick={startNew}
+          onDaily={startDaily}
           onRestart={restart}
           onClose={() => setShowPicker(false)}
         />

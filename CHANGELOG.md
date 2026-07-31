@@ -2,6 +2,73 @@
 
 Newest first.
 
+## v0.6.0 - 2026-07-31 - Phase 6, the daily puzzle and settings
+
+### Daily puzzle
+
+Seeded from the calendar date, so the same day produces the same puzzle on every
+device with no server involved. That is what the seeded PRNG has been sitting
+there for since Phase 0.
+
+Difficulty rises through the week the way a newspaper crossword does: Monday
+Gentle, through to Saturday Expert and Sunday Diabolical.
+
+**Its own save slot.** Opening the daily never costs you a casual game in
+progress, and switching between them is not an abandon. Two slots because there
+are exactly two things you can be in the middle of, not because saves needed to
+be general.
+
+The daily seed is offset from the plain date seed, so the daily and a casual
+game can never come out as the identical puzzle. It has its own streak, with the
+same overnight grace as the play streak.
+
+### Achievements
+
+Fifteen, **derived from the history rather than stored**. Each is a pure
+question asked of the records, so they cannot drift out of sync with reality,
+importing a backup restores them for free, and adding a new one retroactively
+awards it for games already played.
+
+### Sound
+
+Synthesised with WebAudio: no audio files to download, precache or lose offline.
+Place, erase, wrong, hint and a win triad. Off by default, because a sudoku that
+makes noise you did not ask for is worse than a silent one.
+
+Driven off the move log rather than sprinkled through the handlers: the log
+already knows what happened and whether it was right, so one effect covers every
+input path.
+
+### Settings screen
+
+Theme, quick input, show mistakes, sound, and the data tools. Export and import
+moved here from the stats screen, where they never really belonged, and
+**Delete history now takes two taps** with a cancel: it is the only irreversible
+thing in the app.
+
+### Fixed
+
+The New Game sheet grew to nine rows with the daily on it, which on a short
+phone pushed the top row off-screen with no way to reach it. Capped at 88dvh and
+scrollable.
+
+### Verified
+
+102 tests pass, 18 new over the daily and achievements, including that the same
+date really does produce the identical puzzle and that a streak survives
+overnight but not a skipped day.
+
+In the browser: the daily generated as Friday/Hard, was wiped and regenerated
+from scratch to confirm it came back **byte-identical**, and a casual game with
+a move in it survived the round trip untouched. Delete history refused to fire
+on one tap. The sheet was re-checked at 390x667 and stays scrollable with the
+daily row reachable. Finished the daily and confirmed the record is tagged
+`daily` with its day key and the streak moved to 1. Zero console errors.
+
+Note: the layering scare during verification was a screenshot compositor
+artifact in the preview pane, not a bug. Hit-testing showed the sheet correctly
+on top and fully opaque. Same family as this pane suspending rAF.
+
 ## v0.5.0 - 2026-07-31 - Phase 5, statistics and the coach
 
 Every game is now recorded, and the stats screen is where the move log finally

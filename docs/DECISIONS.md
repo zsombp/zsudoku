@@ -4,6 +4,54 @@ Newest first. Every entry records what was decided, why, and what it rules out. 
 
 ---
 
+## 2026-07-31: Phase 6
+
+### Two save slots, not general multi-save
+
+The plan said "multiple saved games". What was actually needed is narrower: the
+daily must not destroy a casual game in progress. So there are exactly two
+slots, `zsudoku.game.v1` and `zsudoku.daily.v1`, and switching between them is
+explicitly not an abandon.
+
+Rules out: a general save-slot system nobody asked for.
+
+### The daily seed is offset from the date seed
+
+`dailySeed` XORs the plain date seed with a constant. Without it, a casual game
+seeded from the same date would be the identical puzzle. Cheap insurance
+against a coincidence that would look like a bug.
+
+### Difficulty rises through the week
+
+Monday Gentle to Sunday Diabolical, like a newspaper crossword. It gives the
+week a shape, and it means the hardest puzzle lands on the day there is time
+for it. Sunday's Diabolical can take seconds to generate, which is fine: it is
+built in the worker.
+
+### Achievements are derived, never stored
+
+Each one is a pure question asked of the game history rather than a flag written
+when it is earned. Nothing can drift out of sync with reality, importing a
+backup restores them for free, and adding a new achievement retroactively awards
+it for games already played. The cost is recomputing them on each stats view,
+which is nothing.
+
+### Sound is synthesised and off by default
+
+WebAudio oscillators, no files: nothing to download, nothing to precache,
+nothing to go missing offline. Off by default because a sudoku that makes noise
+you did not ask for is worse than a silent one.
+
+It is driven off the move log rather than from the input handlers. The log
+already records what happened and whether it was correct, so one effect covers
+cell-first input, quick input, hints and auto-complete without touching any of
+them.
+
+### Delete history takes two taps
+
+The only irreversible action in the app. One tap arms it and changes the label,
+a second confirms, and a cancel appears alongside.
+
 ## 2026-07-31: Phase 5, statistics
 
 ### Abandoned games are recorded too

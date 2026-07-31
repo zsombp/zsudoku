@@ -27,6 +27,8 @@ export function buildRecord(state, { completed, durationMs, endedAt }) {
 
     requested: state.requested,
     graded: state.graded,
+    daily: state.mode === 'daily',
+    dayKey: state.dayKey || null,
     score: state.score,
     hardest: state.hardest,
     techniques: state.counts || {},

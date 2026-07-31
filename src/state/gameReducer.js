@@ -24,6 +24,10 @@ export const initialState = {
   // everywhere, because only `graded` is ever shown to the player.
   requested: 'Medium',
   graded: 'Medium',
+  // Which slot this game belongs to. The daily gets its own save so starting it
+  // never destroys a casual game in progress.
+  mode: 'casual', // casual | daily
+  dayKey: null,
   score: 0,
   hardest: null,
   counts: {},
@@ -135,6 +139,8 @@ function reduce(state, action) {
         marks: emptyMarks(),
         requested: made.requested,
         graded: made.graded,
+        mode: action.mode || 'casual',
+        dayKey: action.dayKey || null,
         score: made.score,
         hardest: made.hardest,
         counts: made.counts,
@@ -158,6 +164,8 @@ function reduce(state, action) {
         // instead of a tier name. Map them rather than dropping a game in
         // progress on the floor.
         graded: s.graded || LEGACY_LEVEL_NAME[s.level] || 'Medium',
+        mode: s.mode || 'casual',
+        dayKey: s.dayKey || null,
         score: s.score ?? 0,
         hardest: s.hardest ?? null,
         counts: s.counts || {},
