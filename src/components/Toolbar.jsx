@@ -1,7 +1,7 @@
-import { Undo, Redo, Eraser, Pencil, Sparkles, Zap, Bulb, Check } from './Icons.jsx'
+import { Undo, Redo, Eraser, Pencil, Sparkles, Zap, Bulb, Check, Flag, FlagBack } from './Icons.jsx'
 
 export default function Toolbar({
-  canUndo, canRedo, notes, quick, disabled, showCheck,
+  canUndo, canRedo, notes, quick, disabled, showCheck, hasBookmark, onBookmark,
   onUndo, onRedo, onErase, onToggleNotes, onAutoPencil, onToggleQuick, onHint, onCheck,
 }) {
   return (
@@ -49,6 +49,17 @@ export default function Toolbar({
       >
         <Bulb size={19} />
         <span>Hint</span>
+      </button>
+      {/* One slot, two states, so the flow reads mark, explore, return. A
+          separate "return" button would sit disabled most of the time. */}
+      <button
+        className={'tool' + (hasBookmark ? ' on' : '')}
+        disabled={disabled}
+        onClick={onBookmark}
+        title={hasBookmark ? 'Go back to your marked position' : 'Save this position before you guess'}
+      >
+        {hasBookmark ? <FlagBack size={19} /> : <Flag size={19} />}
+        <span>{hasBookmark ? 'Return' : 'Mark'}</span>
       </button>
       {/* Redundant when "Show mistakes" is on: a wrong digit is already marked
           the instant it is placed, so asking is asking a question you can

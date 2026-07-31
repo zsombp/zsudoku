@@ -130,6 +130,8 @@ export default function App() {
       })),
       stripped: s.stripped,
       checks: s.checks,
+      bookmark: s.bookmark ? { ...s.bookmark, marks: Array.from(s.bookmark.marks) } : null,
+      tints: s.tints,
       // Paused used to resume running on reload, with the clock going.
       status: s.status,
       mistakes: s.mistakes,
@@ -142,9 +144,13 @@ export default function App() {
 
   // Save whenever the position changes. Deliberately not keyed on the clock:
   // the timer is written by the ten-second interval below instead.
+  //
+  // Tints and the bookmark are in here because they are state the player
+  // created: without them, tinting a run of cells and closing the app lost the
+  // lot, since nothing else had changed to trigger a write.
   useEffect(() => {
     persist()
-  }, [state.board, state.marks, state.status, state.mistakes, persist])
+  }, [state.board, state.marks, state.status, state.mistakes, state.tints, state.bookmark, persist])
 
   useEffect(() => {
     if (state.status !== 'playing') return
@@ -478,6 +484,9 @@ export default function App() {
     else if (k.toLowerCase() === 'c' && autoFills) dispatch({ type: 'autoComplete', fills: autoFills })
     else if (k.toLowerCase() === 'q') toggleQuick()
     else if (k.toLowerCase() === 'h') onHint()
+    else if (k.toLowerCase() === 'b') {
+      dispatch({ type: e.shiftKey ? 'clearBookmark' : state.bookmark ? 'returnToBookmark' : 'bookmark' })
+    }
     else if (k === 'Escape') dispatch({ type: 'clearActiveDigit' })
   })
 
@@ -591,6 +600,7 @@ export default function App() {
           revealWrong={revealWrong}
           blurred={paused}
           onCellTap={onCellTap}
+          onCellTint={i => dispatch({ type: 'cycleTint', index: i })}
         />
 
         {paused && (
@@ -655,6 +665,8 @@ export default function App() {
         notes={state.notes}
         quick={settings.quickInput}
         showCheck={!settings.checkErrors}
+        hasBookmark={Boolean(state.bookmark)}
+        onBookmark={() => dispatch({ type: state.bookmark ? 'returnToBookmark' : 'bookmark' })}
         disabled={busy}
         onUndo={() => dispatch({ type: 'undo' })}
         onRedo={() => dispatch({ type: 'redo' })}
@@ -694,7 +706,7 @@ export default function App() {
       )}
 
       <div className="hint">
-        keys: {settings.quickInput ? '1–9 pick · Enter place' : '1–9 place'} · N notes · A auto · U undo · R redo · P pause · Q quick · H hint · arrows move
+        keys: {settings.quickInput ? '1–9 pick · Enter place' : '1–9 place'} · N notes · A auto · U undo · R redo · P pause · Q quick · H hint · B mark · arrows move
         {autoFills && ' · C complete'}
       </div>
       {settings.quickInput && (

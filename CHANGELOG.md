@@ -2,6 +2,55 @@
 
 Newest first.
 
+## v1.4.0 - 2026-07-31 - hard-puzzle tools
+
+The last of the four. Both are for Diabolical-grade puzzles, where undo alone is
+a clumsy way to explore.
+
+### Bookmark
+
+One toolbar slot, two states. It says **Mark** when nothing is saved and
+**Return** when something is, so the flow reads mark, explore, return. A
+separate "return" button would have sat disabled most of the time. `B` on the
+keyboard, shift-B to drop the mark without using it.
+
+It saves the whole position, not just the board: marks, the stripped-mark
+ledger, and your tints all come back with it. And the return is itself
+undoable, because returning by mistake should not cost you the branch you were
+exploring.
+
+### Cell tints
+
+Long-press on touch, right-click on a pointer device, cycling a cell through
+four colours and back to none. Deliberately not a toolbar button: the toolbar
+was already at eight, and tinting is something you do *to a cell*, so it belongs
+on the cell.
+
+**The first attempt failed validation and was thrown away.** The obvious design
+is a background wash, so I picked four hues and blended them at 40% over the
+panel. The validator was blunt about it: blending collapses the hues toward grey,
+and blue against magenta came out at ΔE 8.8 for **normal** vision, below the 15
+floor, before colour blindness enters into it. Four background washes cannot
+carry four distinguishable colours.
+
+So identity moved to a saturated inset ring, which keeps its chroma, and the
+wash underneath only does the scanning work. The four hues pass as a categorical
+palette: chroma floor, lightness band, CVD separation ΔE 14.4 (protan), and
+normal-vision separation ΔE 24.1.
+
+The tints are fixed rather than theme-derived. They are the player's own
+marking, and a mark that changed meaning with the theme would be worse than one
+that clashes slightly.
+
+### Found while verifying
+
+Tinting a run of cells and closing the app lost the lot. The save effect was
+keyed on the board, marks, status and mistakes, so nothing about a tint or a
+bookmark triggered a write; they only survived if something else happened to
+save within ten seconds. Both are now in the dependency list.
+
+134 tests pass, 6 new.
+
 ## v1.3.0 - 2026-07-31 - practice mode
 
 The coach has been able to name the pattern you keep needing hints on since

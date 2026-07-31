@@ -1539,3 +1539,28 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .techAbout { font-size: 12px; color: var(--sub); line-height: 1.5; margin: 0 0 10px; }
 .techWarn { font-size: 10.5px; color: var(--sub); margin: 8px 0 0; line-height: 1.4; }
 .techError { font-size: 11.5px; color: var(--error); margin: 8px 0 0; line-height: 1.4; }
+
+/* ---- cell tints ----
+ *
+ * Four colours, validated as a categorical palette: chroma floor, lightness
+ * band, CVD separation ΔE 14.4 and normal-vision 24.1, all passing.
+ *
+ * The first attempt was a plain background wash. It failed badly: blending four
+ * hues to 40% over the panel collapses them toward grey, and blue against
+ * magenta came out at ΔE 8.8 for NORMAL vision, below the 15 floor, never mind
+ * colour blindness. So the identity is carried by a saturated inset ring, which
+ * keeps its chroma, and the wash underneath only does the scanning work. */
+
+.cell.tint1, .cell.tint2, .cell.tint3, .cell.tint4 { --tint: var(--t1); }
+.cell.tint2 { --tint: var(--t2); }
+.cell.tint3 { --tint: var(--t3); }
+.cell.tint4 { --tint: var(--t4); }
+
+.cell.tint1, .cell.tint2, .cell.tint3, .cell.tint4 {
+  background: color-mix(in srgb, var(--tint) 26%, transparent);
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+/* The selection still wins: you need to know where you are. */
+.cell.sel.tint1, .cell.sel.tint2, .cell.sel.tint3, .cell.sel.tint4 {
+  box-shadow: inset 0 0 0 2px var(--tint), inset 0 0 0 4px var(--accent);
+}

@@ -3,12 +3,33 @@ import { rowOf, colOf, boxOf, range } from '../logic/topology.js'
 import { hasMark } from '../logic/marks.js'
 import { isWrong, highlightDigit } from '../state/gameReducer.js'
 
-export default function Board({ state, checkErrors, canGo, revealWrong, onCellTap, blurred }) {
-  const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status } = state
+export default function Board({ state, checkErrors, canGo, revealWrong, onCellTap, onCellTint, blurred }) {
+  const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status, tints } = state
   const flashSet = flash?.length ? new Set(flash) : null
   const ready = Boolean(board)
   const litDigit = ready ? highlightDigit(state) : 0
   const gridRef = useRef(null)
+  // Long-press on touch, right-click on a pointer device. Deliberately not a
+  // toolbar button: the toolbar is already at eight, and tinting is a thing you
+  // do to a cell, so it belongs on the cell.
+  const pressRef = useRef({ timer: null, cell: -1, fired: false })
+
+  const startPress = i => {
+    clearTimeout(pressRef.current.timer)
+    pressRef.current = {
+      cell: i,
+      fired: false,
+      timer: setTimeout(() => {
+        pressRef.current.fired = true
+        onCellTint(i)
+      }, 450),
+    }
+  }
+  const endPress = () => {
+    clearTimeout(pressRef.current.timer)
+    pressRef.current.timer = null
+  }
+  useEffect(() => () => clearTimeout(pressRef.current.timer), [])
 
   // Roving tabindex: exactly one cell is in the tab order, so Tab moves from
   // the board to the toolbar in one press instead of eighty-one. Arrow keys
@@ -51,6 +72,7 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
     if ((checkErrors || revealWrong) && isWrong(state, i)) cls.push('wrong')
     // Empty cells the highlighted digit could still legally occupy.
     if (canGo?.has(i)) cls.push('canGo')
+    if (tints?.[i]) cls.push('tint' + tints[i])
     return cls.join(' ')
   }
 
@@ -81,7 +103,17 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
               // exact moment they were meant to be celebrated.
               '--flash-anim': flashSeq % 2 ? 'unitFlashA' : 'unitFlashB',
             }}
-            onClick={() => onCellTap(i)}
+            onClick={() => {
+              // Swallow the click that ends a long press, or tinting a cell
+              // would also select or fill it.
+              if (pressRef.current.fired) { pressRef.current.fired = false; return }
+              onCellTap(i)
+            }}
+            onContextMenu={e => { e.preventDefault(); onCellTint(i) }}
+            onPointerDown={() => startPress(i)}
+            onPointerUp={endPress}
+            onPointerLeave={endPress}
+            onPointerCancel={endPress}
             aria-label={`row ${rowOf(i) + 1} column ${colOf(i) + 1}${v ? `, ${v}` : ', empty'}`}
           >
             {v !== 0 ? (

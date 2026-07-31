@@ -17,6 +17,18 @@
 
   --board-radius: 12px;
   --ctl-radius: 10px;
+
+  /* Cell tints for tracking a chain by hand. Fixed rather than theme-derived:
+   * they are the player's own marking, and a mark that changed meaning with the
+   * theme would be worse than one that clashes slightly.
+   *
+   * Validated as a categorical palette with the dataviz validator against the
+   * ink panel: chroma floor, lightness band, CVD separation ΔE 14.4 (protan),
+   * normal-vision ΔE 24.1. Re-run it if any of these change. */
+  --t1: #22a06b;
+  --t2: #4287f5;
+  --t3: #e0479e;
+  --t4: #c98418;
 }
 
 :root,

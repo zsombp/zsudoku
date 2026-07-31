@@ -297,3 +297,89 @@ describe('practice puzzles', () => {
     }
   })
 })
+
+describe('hard-puzzle tools', () => {
+  const setup = () => {
+    const rng = mulberry32(2468)
+    const solution = generateFull(rng)
+    const puzzle = dig(solution, 30, rng)
+    return gameReducer(initialState, {
+      type: 'ready',
+      made: { puzzle, solution, requested: 'Hard', graded: 'Hard', score: 500, hardest: 'nakedPair', counts: {}, clues: 30, seed: 1 },
+      now: 0,
+    })
+  }
+  const firstEmpty = s => s.board.findIndex((v, i) => v === 0 && s.puzzle[i] === 0)
+
+  it('returns the whole position, not just the board', () => {
+    let s = gameReducer(setup(), { type: 'autoPencil' })
+    const cell = firstEmpty(s)
+    s = gameReducer(s, { type: 'cycleTint', index: cell })
+    s = gameReducer(s, { type: 'bookmark' })
+    const marks = JSON.stringify(Array.from(s.marks))
+
+    // Wander off: place a digit and repaint a cell.
+    s = gameReducer(s, { type: 'select', index: cell })
+    s = gameReducer(s, { type: 'digit', value: s.solution[cell] })
+    s = gameReducer(s, { type: 'cycleTint', index: cell + 1 })
+    expect(s.board[cell]).not.toBe(0)
+
+    s = gameReducer(s, { type: 'returnToBookmark' })
+    expect(s.board[cell]).toBe(0)
+    expect(JSON.stringify(Array.from(s.marks))).toBe(marks)
+    expect(s.tints[cell]).toBe(1)
+    expect(s.tints[cell + 1]).toBeUndefined()
+  })
+
+  it('clears the bookmark once used, so the button flips back', () => {
+    let s = gameReducer(setup(), { type: 'bookmark' })
+    expect(s.bookmark).toBeTruthy()
+    s = gameReducer(s, { type: 'returnToBookmark' })
+    expect(s.bookmark).toBeNull()
+    // And returning again does nothing rather than throwing.
+    expect(gameReducer(s, { type: 'returnToBookmark' })).toBe(s)
+  })
+
+  it('makes the return itself undoable', () => {
+    // Returning by mistake must not cost you the branch you were exploring.
+    let s = setup()
+    const cell = firstEmpty(s)
+    s = gameReducer(s, { type: 'bookmark' })
+    s = gameReducer(s, { type: 'select', index: cell })
+    s = gameReducer(s, { type: 'digit', value: s.solution[cell] })
+    const explored = s.board[cell]
+    s = gameReducer(s, { type: 'returnToBookmark' })
+    expect(s.board[cell]).toBe(0)
+    s = gameReducer(s, { type: 'undo' })
+    expect(s.board[cell]).toBe(explored)
+  })
+
+  it('cycles a tint through four colours and back to none', () => {
+    let s = setup()
+    const seen = []
+    for (let i = 0; i < 5; i++) {
+      s = gameReducer(s, { type: 'cycleTint', index: 3 })
+      seen.push(s.tints[3] ?? 0)
+    }
+    expect(seen).toEqual([1, 2, 3, 4, 0])
+  })
+
+  it('carries tints through undo', () => {
+    let s = setup()
+    s = gameReducer(s, { type: 'cycleTint', index: 7 })
+    const cell = firstEmpty(s)
+    s = gameReducer(s, { type: 'select', index: cell })
+    s = gameReducer(s, { type: 'digit', value: s.solution[cell] })
+    s = gameReducer(s, { type: 'cycleTint', index: 7 })
+    expect(s.tints[7]).toBe(2)
+    s = gameReducer(s, { type: 'undo' })
+    expect(s.tints[7]).toBe(1)
+  })
+
+  it('clears every tint at once', () => {
+    let s = setup()
+    for (const i of [1, 2, 3]) s = gameReducer(s, { type: 'cycleTint', index: i })
+    s = gameReducer(s, { type: 'clearTints' })
+    expect(Object.keys(s.tints)).toHaveLength(0)
+  })
+})

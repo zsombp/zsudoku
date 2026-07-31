@@ -35,6 +35,21 @@ export const Redo = props => (
   </Svg>
 )
 
+export const Flag = props => (
+  <Svg {...props}>
+    <path d="M4 21V4" />
+    <path d="M4 4h13l-2.5 4L17 12H4" />
+  </Svg>
+)
+
+export const FlagBack = props => (
+  <Svg {...props}>
+    <path d="M4 21V4" />
+    <path d="M4 4h13l-2.5 4L17 12H4" />
+    <path d="m11 6-2.5 2L11 10" />
+  </Svg>
+)
+
 export const Check = props => (
   <Svg {...props}>
     <path d="M20 6 9 17l-5-5" />

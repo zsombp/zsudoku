@@ -27,6 +27,11 @@ export const initialState = {
   stripped: {},
   // How many times the board was checked. An assist, so it is counted.
   checks: 0,
+  // A saved position to come back to. On a Diabolical puzzle you sometimes
+  // commit to a branch, and twenty undos is a clumsy way to get back.
+  bookmark: null,
+  // Player-applied cell tints, for tracking a chain by hand. Cell index -> 1..4.
+  tints: {},
   // What was asked for, and what the grader actually measured. Kept apart
   // everywhere, because only `graded` is ever shown to the player.
   requested: 'Medium',
@@ -68,6 +73,7 @@ const snapshot = s => ({
   // Carried too: restoring marks without restoring the record of what stripped
   // them would leave the ledger describing a board that no longer exists.
   stripped: s.stripped,
+  tints: s.tints,
 })
 
 const canEdit = s =>
@@ -277,6 +283,10 @@ function reduce(state, action) {
         })),
         stripped: s.stripped || {},
         checks: s.checks || 0,
+        bookmark: s.bookmark
+          ? { ...s.bookmark, marks: Int16Array.from(s.bookmark.marks) }
+          : null,
+        tints: s.tints || {},
         // Reopening paused is the honest resume: the clock stopped when you
         // paused and must not start again just because the app restarted.
         status: s.status === 'paused' ? 'paused' : 'playing',
@@ -354,6 +364,62 @@ function reduce(state, action) {
       }
     }
 
+    // ---- hard-puzzle tools ----
+
+    case 'bookmark':
+      if (!state.board || state.status !== 'playing') return state
+      return {
+        ...state,
+        bookmark: {
+          board: state.board.slice(),
+          marks: state.marks.slice(),
+          mistakes: state.mistakes,
+          stripped: state.stripped,
+          tints: state.tints,
+          at: Math.round(action.t ?? 0),
+        },
+        moveLog: logMove(state, { kind: 'bookmark' }, action.t),
+      }
+
+    case 'returnToBookmark': {
+      if (!state.board || state.status !== 'playing' || !state.bookmark) return state
+      const b = state.bookmark
+      return {
+        ...state,
+        board: b.board.slice(),
+        marks: b.marks.slice(),
+        mistakes: b.mistakes,
+        stripped: b.stripped,
+        tints: b.tints,
+        // Going back is itself undoable: returning by mistake should not cost
+        // you the branch you were exploring.
+        history: [...state.history, snapshot(state)],
+        future: [],
+        bookmark: null,
+        moveLog: logMove(state, {
+          kind: 'returnToBookmark',
+          changes: boardDiff(state.board, b.board),
+        }, action.t),
+      }
+    }
+
+    case 'clearBookmark':
+      return state.bookmark ? { ...state, bookmark: null } : state
+
+    /** Cycles a cell through the four tints and back to none. */
+    case 'cycleTint': {
+      if (!state.board || state.status !== 'playing') return state
+      const i = action.index
+      const next = ((state.tints[i] || 0) + 1) % 5
+      const tints = { ...state.tints }
+      if (next === 0) delete tints[i]
+      else tints[i] = next
+      return { ...state, tints }
+    }
+
+    case 'clearTints':
+      return Object.keys(state.tints).length ? { ...state, tints: {} } : state
+
     case 'setActiveDigit': {
       // Tapping the armed digit again disarms it, which is how you get back to
       // plain selection without leaving the mode.
@@ -398,6 +464,7 @@ function reduce(state, action) {
         marks: prev.marks.slice(),
         mistakes: prev.mistakes,
         stripped: prev.stripped || {},
+        tints: prev.tints || {},
         history: state.history.slice(0, -1),
         future: [...state.future, snapshot(state)],
         moveLog: logMove(state, { kind: 'undo', changes: boardDiff(state.board, prev.board) }, action.t),
@@ -413,6 +480,7 @@ function reduce(state, action) {
         marks: next.marks.slice(),
         mistakes: next.mistakes,
         stripped: next.stripped || {},
+        tints: next.tints || {},
         history: [...state.history, snapshot(state)],
         future: state.future.slice(0, -1),
         moveLog: logMove(state, { kind: 'redo', changes: boardDiff(state.board, next.board) }, action.t),
