@@ -2,6 +2,45 @@
 
 Newest first.
 
+## v0.4.0 - 2026-07-31 - quick input
+
+Digit-first entry, requested 2026-07-30. Arm a digit on the pad, then every cell
+you tap gets it. Far fewer taps on a phone, because digits get filled in runs.
+
+- Fifth toolbar button, `Q` on the keyboard. The armed digit is filled brass on
+  the pad so there is no doubt what a tap will do.
+- **Number highlighting comes free.** While a digit is armed every cell holding
+  it lights up, which was Zsomb's observation when he asked for the feature:
+  arming a digit to place it and arming it to look for it are the same gesture,
+  so the mode does not need a separate highlight control.
+- Works in notes mode: tapping toggles that pencil mark instead of placing.
+- Tapping a cell that already holds the armed digit clears it, matching the
+  existing same-digit-clears behaviour.
+- Tapping the armed digit on the pad disarms it (`Escape` too), so there is
+  always a way to just select a cell without leaving the mode.
+- Givens are never edited, but tapping one still moves the selection there.
+- Cell-first stays the default and the setting persists.
+
+**The keyboard stays cell-first in both modes.** Digit keys place into the
+selected cell, which is what someone at a keyboard expects; arming a brush only
+saves taps on a touchscreen. Mixing the two would have made the same keystroke
+mean different things depending on a setting the keyboard never needed.
+
+Both modes route through one `placeDigit` helper in the reducer, so they cannot
+drift apart on pencil erasure, mistake counting or the win check.
+
+Toolbar went from four buttons to five; "Auto notes" shortened to "Auto" to keep
+the row comfortable at phone width.
+
+**Verified in the browser**: arming 3 lit all six existing 3s, two taps placed
+two 3s and the digit stayed armed, a third tap on the same cell cleared it, a
+given was untouched, notes mode toggled marks instead of placing, turning the
+mode off returned taps to plain selection, the keyboard still placed into the
+selected cell while the mode was on, and the setting survived a reload. Zero
+console errors.
+
+49 logic tests pass, 10 of them covering the new mode.
+
 ## v0.3.2 - 2026-07-31 - auto-complete fires earlier
 
 Zsomb reported the button arriving later than the equivalent in his iPad app and

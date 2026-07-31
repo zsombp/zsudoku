@@ -11,6 +11,8 @@ const DEFAULTS = {
   theme: 'dark',
   checkErrors: true,
   autoPencilOnStart: false,
+  // Quick input: arm a digit on the pad, then tap cells to fill them.
+  quickInput: false,
 }
 
 export function useSettings() {

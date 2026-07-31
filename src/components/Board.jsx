@@ -1,11 +1,11 @@
 import { rowOf, colOf, boxOf, range } from '../logic/topology.js'
 import { hasMark } from '../logic/marks.js'
-import { isWrong } from '../state/gameReducer.js'
+import { isWrong, highlightDigit } from '../state/gameReducer.js'
 
-export default function Board({ state, checkErrors, onSelect, blurred }) {
-  const { board, puzzle, marks, selected } = state
+export default function Board({ state, checkErrors, onCellTap, blurred }) {
+  const { board, puzzle, marks, selected, activeDigit } = state
   const ready = Boolean(board)
-  const selVal = ready && selected >= 0 ? board[selected] : 0
+  const lit = ready ? highlightDigit(state) : 0
 
   function cellClass(i) {
     const cls = ['cell']
@@ -19,7 +19,11 @@ export default function Board({ state, checkErrors, onSelect, blurred }) {
       (rowOf(i) === rowOf(selected) || colOf(i) === colOf(selected) || boxOf(i) === boxOf(selected))
     ) cls.push('peer')
 
-    if (selVal && board[i] === selVal && i !== selected) cls.push('same')
+    // With a digit armed, every cell holding it lights up, including the
+    // selected one. Without one, keep the old rule of not double-marking the
+    // cell you are already sitting on.
+    if (lit && board[i] === lit && (activeDigit || i !== selected)) cls.push('same')
+
     if (puzzle[i] !== 0) cls.push('given')
     else if (board[i] !== 0) cls.push('user')
     if (checkErrors && isWrong(state, i)) cls.push('wrong')
@@ -34,7 +38,7 @@ export default function Board({ state, checkErrors, onSelect, blurred }) {
           <button
             key={i}
             className={cellClass(i)}
-            onClick={() => onSelect(i)}
+            onClick={() => onCellTap(i)}
             aria-label={`row ${rowOf(i) + 1} column ${colOf(i) + 1}${v ? `, ${v}` : ', empty'}`}
           >
             {v !== 0 ? (
@@ -46,7 +50,7 @@ export default function Board({ state, checkErrors, onSelect, blurred }) {
                     const d = k + 1
                     const on = hasMark(marks[i], d)
                     return (
-                      <span key={k} className={'m' + (on && selVal === d ? ' mHi' : '')}>
+                      <span key={k} className={'m' + (on && lit === d ? ' mHi' : '')}>
                         {on ? d : ''}
                       </span>
                     )

@@ -4,6 +4,31 @@ Newest first. Every entry records what was decided, why, and what it rules out. 
 
 ---
 
+## 2026-07-31: quick input keeps the keyboard cell-first
+
+Quick input arms a digit and fills whatever cell you tap. The obvious question
+is what a digit *key* should then do: arm the brush, matching the mode, or place
+into the selected cell, matching every other keyboard sudoku.
+
+It places into the selected cell, in both modes.
+
+Reason: the mode exists to save taps on a touchscreen, and a keyboard has no tap
+to save. Arrow keys plus digits is already the fastest possible input, and it
+needs no brush. Making digit keys arm instead would mean the same keystroke did
+different things depending on a setting that was toggled on a phone, which is
+the kind of hidden state that makes an app feel unpredictable.
+
+So the mode changes what a **tap on a cell** does, and nothing else. `Q` toggles
+it, `Escape` disarms.
+
+Rules out: a keyboard-driven brush, and any future divergence where the two
+modes handle placement differently. Both route through one `placeDigit` helper
+in the reducer for exactly that reason.
+
+Also decided: with no digit armed, quick input behaves identically to
+cell-first. Without that there would be no way to just look at a cell, and
+tapping to inspect is something you do constantly.
+
 ## 2026-07-31: auto-complete uses the strict trigger
 
 Zsomb's call, and the reasoning is worth keeping because it corrects the way the

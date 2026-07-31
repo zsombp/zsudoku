@@ -103,6 +103,38 @@ export default function App() {
     [generator]
   )
 
+  // ---- input mode ----
+  //
+  // Cell-first (the default): tap a cell, then a digit.
+  // Quick input: tap a digit to arm it, then every cell you tap gets it.
+  //
+  // The keyboard stays cell-first in both modes. Digit keys place into the
+  // selected cell, which is what someone at a keyboard expects, and arming a
+  // brush only saves taps on a touchscreen anyway.
+
+  const onPadDigit = useCallback(
+    v => {
+      if (settings.quickInput) dispatch({ type: 'setActiveDigit', value: v })
+      else dispatch({ type: 'digit', value: v })
+    },
+    [settings.quickInput]
+  )
+
+  const onCellTap = useCallback(
+    i => {
+      // With nothing armed, quick input behaves exactly like cell-first, so
+      // there is always a way to just look at a cell.
+      if (settings.quickInput && stateRef.current.activeDigit) dispatch({ type: 'quickPlace', index: i })
+      else dispatch({ type: 'select', index: i })
+    },
+    [settings.quickInput]
+  )
+
+  const toggleQuick = useCallback(() => {
+    updateSettings({ quickInput: !settings.quickInput })
+    dispatch({ type: 'clearActiveDigit' })
+  }, [settings.quickInput, updateSettings])
+
   const restart = useCallback(() => {
     setShowPicker(false)
     setNewRecord(false)
@@ -186,6 +218,8 @@ export default function App() {
     else if (k.toLowerCase() === 'u') dispatch({ type: 'undo' })
     else if (k.toLowerCase() === 'p') dispatch({ type: 'togglePause' })
     else if (k.toLowerCase() === 'c' && autoFills) dispatch({ type: 'autoComplete', fills: autoFills })
+    else if (k.toLowerCase() === 'q') toggleQuick()
+    else if (k === 'Escape') dispatch({ type: 'clearActiveDigit' })
   })
 
   // ---- render ----
@@ -225,7 +259,7 @@ export default function App() {
           state={state}
           checkErrors={settings.checkErrors}
           blurred={paused}
-          onSelect={i => dispatch({ type: 'select', index: i })}
+          onCellTap={onCellTap}
         />
 
         {paused && (
@@ -284,18 +318,22 @@ export default function App() {
       <Toolbar
         canUndo={state.history.length > 0}
         notes={state.notes}
+        quick={settings.quickInput}
         disabled={busy}
         onUndo={() => dispatch({ type: 'undo' })}
         onErase={() => dispatch({ type: 'erase' })}
         onToggleNotes={() => dispatch({ type: 'toggleNotes' })}
         onAutoPencil={() => dispatch({ type: 'autoPencil' })}
+        onToggleQuick={toggleQuick}
       />
 
       <NumberPad
         counts={counts}
         notes={state.notes}
+        quick={settings.quickInput}
+        activeDigit={state.activeDigit}
         disabled={busy}
-        onDigit={v => dispatch({ type: 'digit', value: v })}
+        onDigit={onPadDigit}
       />
 
       <div className="footRow">
@@ -317,9 +355,14 @@ export default function App() {
       )}
 
       <div className="hint">
-        keys: 1–9 place · N notes · A auto notes · U/⌘Z undo · P pause · arrows move
+        keys: 1–9 place · N notes · A auto notes · U/⌘Z undo · P pause · Q quick · arrows move
         {autoFills && ' · C complete'}
       </div>
+      {settings.quickInput && (
+        <div className="modeHint">
+          Quick input: pick a number, then tap cells to fill them. Tap it again to put it down.
+        </div>
+      )}
 
       {showPicker && (
         <NewGameSheet

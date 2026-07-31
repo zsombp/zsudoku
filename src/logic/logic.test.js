@@ -10,7 +10,7 @@ import {
   gradePuzzle, createState, nextStep, applyStep,
   trivialTail, allCellsForced, forcedFills, autoCompleteFills, AUTO_COMPLETE_MAX,
 } from './grader.js'
-import { gameReducer, initialState } from '../state/gameReducer.js'
+import { gameReducer, initialState, highlightDigit } from '../state/gameReducer.js'
 import { TIERS, tierForScore } from './difficulty.js'
 import { TECHNIQUES, LADDER } from './techniques.js'
 import { mulberry32, seedFromDate, shuffle } from '../lib/prng.js'
@@ -332,6 +332,133 @@ describe('auto-complete reducer', () => {
   it('ignores an empty fill list', () => {
     const s = { ...initialState, status: 'playing', board: new Array(81).fill(1) }
     expect(gameReducer(s, { type: 'autoComplete', fills: [] })).toBe(s)
+  })
+})
+
+describe('quick input', () => {
+  // A board with a handful of holes, so placements are unambiguous to assert.
+  const holes = [3, 17, 40, 62, 78]
+  const setup = () => {
+    const rng = mulberry32(818)
+    const solution = generateFull(rng)
+    const puzzle = solution.slice()
+    for (const i of holes) puzzle[i] = 0
+    return gameReducer(initialState, {
+      type: 'ready',
+      made: { puzzle, solution, requested: 'Gentle', graded: 'Gentle', score: 0, hardest: null, counts: {}, clues: 76, seed: 1 },
+      now: 0,
+    })
+  }
+
+  it('arms a digit, and re-arming the same one disarms it', () => {
+    let s = setup()
+    expect(s.activeDigit).toBe(0)
+    s = gameReducer(s, { type: 'setActiveDigit', value: 5 })
+    expect(s.activeDigit).toBe(5)
+    s = gameReducer(s, { type: 'setActiveDigit', value: 7 })
+    expect(s.activeDigit).toBe(7)
+    s = gameReducer(s, { type: 'setActiveDigit', value: 7 })
+    expect(s.activeDigit).toBe(0)
+  })
+
+  it('drops the armed digit into a tapped cell and selects it', () => {
+    let s = setup()
+    const cell = holes[0]
+    const digit = s.solution[cell]
+    s = gameReducer(s, { type: 'setActiveDigit', value: digit })
+    s = gameReducer(s, { type: 'quickPlace', index: cell })
+    expect(s.board[cell]).toBe(digit)
+    expect(s.selected).toBe(cell)
+    expect(s.mistakes).toBe(0)
+  })
+
+  it('counts a wrong quick placement as a mistake, same as cell-first', () => {
+    let s = setup()
+    const cell = holes[1]
+    const wrong = (s.solution[cell] % 9) + 1
+    s = gameReducer(s, { type: 'setActiveDigit', value: wrong })
+    s = gameReducer(s, { type: 'quickPlace', index: cell })
+    expect(s.mistakes).toBe(1)
+  })
+
+  it('tapping a cell that already holds the armed digit clears it', () => {
+    let s = setup()
+    const cell = holes[2]
+    const digit = s.solution[cell]
+    s = gameReducer(s, { type: 'setActiveDigit', value: digit })
+    s = gameReducer(s, { type: 'quickPlace', index: cell })
+    expect(s.board[cell]).toBe(digit)
+    s = gameReducer(s, { type: 'quickPlace', index: cell })
+    expect(s.board[cell]).toBe(0)
+  })
+
+  it('never edits a given, but still moves the selection there', () => {
+    let s = setup()
+    const given = s.puzzle.findIndex(v => v !== 0)
+    const before = s.board[given]
+    s = gameReducer(s, { type: 'setActiveDigit', value: 9 })
+    s = gameReducer(s, { type: 'quickPlace', index: given })
+    expect(s.board[given]).toBe(before)
+    expect(s.selected).toBe(given)
+  })
+
+  it('does nothing with no digit armed', () => {
+    const s = setup()
+    expect(gameReducer(s, { type: 'quickPlace', index: holes[0] })).toBe(s)
+  })
+
+  it('toggles a pencil mark instead when notes mode is on', () => {
+    let s = setup()
+    const cell = holes[3]
+    s = gameReducer(s, { type: 'toggleNotes' })
+    s = gameReducer(s, { type: 'setActiveDigit', value: 4 })
+    s = gameReducer(s, { type: 'quickPlace', index: cell })
+    expect(s.board[cell]).toBe(0)
+    expect(marksToList(s.marks[cell])).toEqual([4])
+    s = gameReducer(s, { type: 'quickPlace', index: cell })
+    expect(marksToList(s.marks[cell])).toEqual([])
+  })
+
+  it('wins when a quick placement completes the board', () => {
+    let s = setup()
+    for (const cell of holes) {
+      // Disarm first: arming a digit that is already armed toggles it off, and
+      // two of these holes happen to want the same digit.
+      s = gameReducer(s, { type: 'clearActiveDigit' })
+      s = gameReducer(s, { type: 'setActiveDigit', value: s.solution[cell] })
+      s = gameReducer(s, { type: 'quickPlace', index: cell })
+    }
+    expect(s.status).toBe('won')
+    expect(s.board).toEqual(s.solution)
+  })
+
+  it('stays armed across placements, so runs of a digit are one tap each', () => {
+    // The whole point of the mode: arm once, then fill every cell that wants
+    // that digit without going back to the pad.
+    let s = setup()
+    const digit = s.solution[holes[0]]
+    const wants = holes.filter(i => s.solution[i] === digit)
+    s = gameReducer(s, { type: 'setActiveDigit', value: digit })
+    for (const cell of wants) s = gameReducer(s, { type: 'quickPlace', index: cell })
+    expect(s.activeDigit).toBe(digit)
+    for (const cell of wants) expect(s.board[cell]).toBe(digit)
+  })
+
+  it('highlights the armed digit, falling back to the selected cell', () => {
+    let s = setup()
+    expect(highlightDigit(s)).toBe(0)
+
+    const given = s.puzzle.findIndex(v => v !== 0)
+    s = gameReducer(s, { type: 'select', index: given })
+    expect(highlightDigit(s)).toBe(s.board[given])
+
+    // Arming wins over the selection: that is what makes number highlighting
+    // fall out of the mode instead of needing its own control.
+    s = gameReducer(s, { type: 'setActiveDigit', value: 6 })
+    expect(highlightDigit(s)).toBe(6)
+
+    s = gameReducer(s, { type: 'clearActiveDigit' })
+    expect(highlightDigit(s)).toBe(s.board[given])
   })
 })
 

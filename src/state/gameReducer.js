@@ -17,6 +17,8 @@ export const initialState = {
   marks: null,
   selected: -1,
   notes: false,
+  // Quick input: the digit currently armed on the number pad, 0 for none.
+  activeDigit: 0,
   history: [],
   // What was asked for, and what the grader actually measured. Kept apart
   // everywhere, because only `graded` is ever shown to the player.
@@ -43,6 +45,42 @@ const canEdit = s =>
 
 const isSolved = (board, solution) =>
   !board.includes(0) && board.every((v, i) => v === solution[i])
+
+/**
+ * Puts `v` into cell `i`, or clears it if `v` is already there.
+ *
+ * Shared by cell-first input (digit into the selected cell) and quick input
+ * (armed digit into a tapped cell) so the two modes cannot drift apart in how
+ * they handle pencil erasure, mistake counting or the win check. Callers are
+ * responsible for checking the cell is editable.
+ */
+function placeDigit(state, i, v) {
+  // Notes mode: toggle a pencil mark, but only in an empty cell.
+  if (state.notes) {
+    if (state.board[i] !== 0) return state
+    const marks = state.marks.slice()
+    marks[i] = toggleMark(marks[i], v)
+    return { ...state, marks, history: [...state.history, snapshot(state)] }
+  }
+
+  const board = state.board.slice()
+  const marks = state.marks.slice()
+  let mistakes = state.mistakes
+
+  if (board[i] === v) {
+    board[i] = 0
+  } else {
+    board[i] = v
+    marks[i] = 0
+    // Auto-erase this digit from every peer's pencil marks.
+    for (const p of PEERS[i]) if (hasMark(marks[p], v)) marks[p] = removeMark(marks[p], v)
+    if (v !== state.solution[i]) mistakes++
+  }
+
+  const next = { ...state, board, marks, mistakes, history: [...state.history, snapshot(state)] }
+  if (isSolved(board, state.solution)) next.status = 'won'
+  return next
+}
 
 export function gameReducer(state, action) {
   switch (action.type) {
@@ -131,42 +169,28 @@ export function gameReducer(state, action) {
 
     case 'digit': {
       if (!canEdit(state)) return state
-      const v = action.value
-      const i = state.selected
-
-      // Notes mode: toggle a pencil mark, but only in an empty cell.
-      if (state.notes) {
-        if (state.board[i] !== 0) return state
-        const marks = state.marks.slice()
-        marks[i] = toggleMark(marks[i], v)
-        return { ...state, marks, history: [...state.history, snapshot(state)] }
-      }
-
-      const board = state.board.slice()
-      const marks = state.marks.slice()
-      let mistakes = state.mistakes
-
-      if (board[i] === v) {
-        // Pressing the digit already there clears it.
-        board[i] = 0
-      } else {
-        board[i] = v
-        marks[i] = 0
-        // Auto-erase this digit from every peer's pencil marks.
-        for (const p of PEERS[i]) if (hasMark(marks[p], v)) marks[p] = removeMark(marks[p], v)
-        if (v !== state.solution[i]) mistakes++
-      }
-
-      const next = {
-        ...state,
-        board,
-        marks,
-        mistakes,
-        history: [...state.history, snapshot(state)],
-      }
-      if (isSolved(board, state.solution)) next.status = 'won'
-      return next
+      return placeDigit(state, state.selected, action.value)
     }
+
+    // Quick input: a digit is armed on the pad and tapping a cell drops it in.
+    // Far fewer taps on a phone, because digits get filled in runs.
+    case 'quickPlace': {
+      const i = action.index
+      if (!state.board || state.status !== 'playing') return state
+      if (!state.activeDigit) return state
+      if (state.puzzle[i] !== 0) return { ...state, selected: i }
+      return { ...placeDigit(state, i, state.activeDigit), selected: i }
+    }
+
+    case 'setActiveDigit': {
+      // Tapping the armed digit again disarms it, which is how you get back to
+      // plain selection without leaving the mode.
+      const v = state.activeDigit === action.value ? 0 : action.value
+      return { ...state, activeDigit: v }
+    }
+
+    case 'clearActiveDigit':
+      return state.activeDigit ? { ...state, activeDigit: 0 } : state
 
     case 'erase': {
       if (!canEdit(state)) return state
@@ -259,3 +283,17 @@ export const isWrong = (state, i) =>
 
 /** The grader's verdict. Never the requested tier. */
 export const currentLabel = state => state.graded
+
+/**
+ * Which digit the board should highlight everywhere.
+ *
+ * In quick input this is the armed digit, which is why that mode needs no
+ * separate "highlight this number" control: arming a digit to place it and
+ * arming it to look for it are the same gesture. Otherwise it falls back to
+ * whatever sits in the selected cell, which is the old behaviour.
+ */
+export const highlightDigit = state => {
+  if (state.activeDigit) return state.activeDigit
+  if (!state.board || state.selected < 0) return 0
+  return state.board[state.selected]
+}

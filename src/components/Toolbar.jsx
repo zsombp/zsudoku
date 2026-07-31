@@ -1,6 +1,9 @@
-import { Undo, Eraser, Pencil, Sparkles } from './Icons.jsx'
+import { Undo, Eraser, Pencil, Sparkles, Zap } from './Icons.jsx'
 
-export default function Toolbar({ canUndo, notes, disabled, onUndo, onErase, onToggleNotes, onAutoPencil }) {
+export default function Toolbar({
+  canUndo, notes, quick, disabled,
+  onUndo, onErase, onToggleNotes, onAutoPencil, onToggleQuick,
+}) {
   return (
     <div className="tools">
       <button className="tool" disabled={disabled || !canUndo} onClick={onUndo}>
@@ -22,7 +25,17 @@ export default function Toolbar({ canUndo, notes, disabled, onUndo, onErase, onT
       </button>
       <button className="tool" disabled={disabled} onClick={onAutoPencil}>
         <Sparkles size={19} />
-        <span>Auto notes</span>
+        <span>Auto</span>
+      </button>
+      <button
+        className={'tool' + (quick ? ' on' : '')}
+        disabled={disabled}
+        onClick={onToggleQuick}
+        aria-pressed={quick}
+        title="Pick a number, then tap cells to fill them"
+      >
+        <Zap size={19} />
+        <span>Quick</span>
       </button>
     </div>
   )

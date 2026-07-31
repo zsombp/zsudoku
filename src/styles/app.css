@@ -285,8 +285,8 @@ body {
 
 .tools {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 7px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
   margin-top: 12px;
 }
 .tool {
@@ -341,6 +341,16 @@ body {
 .key:not(:disabled):active { transform: scale(0.94); background: var(--panel2); }
 .pad.noteMode .key .kv { color: var(--accent); font-size: 16px; }
 
+/* Quick input: the armed digit has to be unmistakable, because every tap on the
+ * board now depends on which one it is. */
+.pad.quick .key.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.pad.quick .key.active .kv,
+.pad.quick .key.active .kc { color: var(--accent-ink); }
+.pad.quick .key.active .kc { opacity: 0.75; }
+
 /* ---- footer ---- */
 
 .footRow {
@@ -375,6 +385,13 @@ body {
 .newBtn:active { transform: scale(0.96); }
 
 .offMsg { margin-top: 10px; text-align: center; font-size: 12px; color: var(--error); }
+.modeHint {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--sub);
+  opacity: 0.85;
+}
 .hint {
   margin-top: 14px;
   text-align: center;

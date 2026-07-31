@@ -124,15 +124,20 @@ Tag `v0.3.0`.
 
 All of this rides on Phase 2's ladder returning structured results.
 
-### Quick input (digit-first mode)
+### Quick input (digit-first mode) — DONE in v0.4.0
 
-Requested 2026-07-30. Today the game is cell-first: select a cell, then choose a digit. Quick input inverts it. Pick a digit once, then every cell you tap gets that digit. Far fewer taps on a phone, and it matches how people actually fill a grid, in runs of the same number.
+Requested 2026-07-30, built 2026-07-31. Cell-first is select a cell then choose a digit. Quick input inverts it: arm a digit once, then every cell you tap gets it. Far fewer taps on a phone, and it matches how people actually fill a grid, in runs of the same number.
 
-- A toggle in the toolbar. The active digit stays lit on the number pad.
-- While a digit is active, **every cell already holding it is highlighted**, which as Zsomb noted makes number highlighting fall out of the mode for free instead of needing its own control.
-- Works in notes mode too: tap cells to toggle that pencil mark.
-- Tapping a cell that already holds the active digit clears it, matching the current same-digit-clears behaviour.
-- Cell-first stays available. This is a mode, not a replacement, and the setting persists.
+- Toolbar toggle, fifth button. The armed digit is filled brass on the pad.
+- While a digit is armed, **every cell already holding it is highlighted**, which as Zsomb noted makes number highlighting fall out of the mode for free instead of needing its own control.
+- Works in notes mode: tapping toggles that pencil mark instead of placing.
+- Tapping a cell that already holds the armed digit clears it, matching the existing same-digit-clears behaviour.
+- Tapping the armed digit on the pad disarms it, so there is always a way to just select a cell without leaving the mode.
+- Givens are never edited, but tapping one still moves the selection there.
+- Cell-first stays available and the setting persists.
+- **The keyboard stays cell-first in both modes.** Digit keys place into the selected cell, which is what someone at a keyboard expects; arming a brush only saves taps on a touchscreen. `Q` toggles the mode, `Escape` disarms.
+
+Both modes share one `placeDigit` helper in the reducer, so they cannot drift apart on pencil erasure, mistake counting or the win check.
 
 ### Auto-complete — DONE in v0.3.1, strict
 
