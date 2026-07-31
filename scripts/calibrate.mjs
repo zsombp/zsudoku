@@ -11,7 +11,7 @@
 //       technique mix and timing per tier.
 
 import { generateFull, dig, makePuzzle } from '../src/logic/generator.js'
-import { gradePuzzle, createState, nextStep, applyStep, forcedFills } from '../src/logic/grader.js'
+import { gradePuzzle, createState, nextStep, applyStep, forcedFills, trivialTail } from '../src/logic/grader.js'
 import { hasUniqueSolution } from '../src/logic/solver.js'
 import { TIERS, tierForScore } from '../src/logic/difficulty.js'
 import { TECHNIQUES } from '../src/logic/techniques.js'
@@ -142,40 +142,60 @@ function verify(n) {
  * solve in the grader's own order and checking after every placement.
  */
 function autocomplete(n) {
-  console.log(`\nStrict auto-complete trigger point, ${n} puzzles per tier.`)
-  console.log('"cells left" is how many were still empty the moment the button would appear.\n')
-  console.log('tier          fires   median cells left   p25    p75    max    never fires')
-  console.log('-'.repeat(80))
+  console.log(`\nAuto-complete trigger points, ${n} puzzles per tier.`)
+  console.log('"cells left" is how many were still empty when the button would appear.\n')
+  console.log('STRICT   every empty cell has exactly one candidate at once. What ships.')
+  console.log('CASCADE  the rest falls to naked singles, each revealing the next.')
+  console.log('         Looser, fires earlier, and still asks you to spot each forced cell.\n')
+  console.log('tier          strict p50   strict max   cascade p50   cascade max   gap (p50)')
+  console.log('-'.repeat(84))
+
+  const totals = { strict: [], cascade: [] }
 
   for (const tier of TIERS) {
-    const points = []
-    let never = 0
+    const strict = []
+    const cascade = []
 
     for (let i = 0; i < n; i++) {
       const made = makePuzzle(tier.name, { seed: 70000 + i })
       if (!made) continue
 
       const state = createState(made.puzzle)
-      let fired = null
+      let hitStrict = null
+      let hitCascade = null
+
       for (let s = 0; s < 400; s++) {
-        const fills = forcedFills(state.board)
-        if (fills) { fired = fills.length; break }
+        const empties = state.board.reduce((a, v) => a + (v ? 0 : 1), 0)
+        if (hitCascade === null && trivialTail(state.board)) hitCascade = empties
+        if (hitStrict === null && forcedFills(state.board)) { hitStrict = empties; break }
         const step = nextStep(state)
         if (!step) break
         applyStep(state, step)
       }
-      if (fired === null) never++
-      else points.push(fired)
+      if (hitStrict !== null) strict.push(hitStrict)
+      if (hitCascade !== null) cascade.push(hitCascade)
     }
 
-    points.sort((a, b) => a - b)
+    strict.sort((a, b) => a - b)
+    cascade.sort((a, b) => a - b)
+    totals.strict.push(...strict)
+    totals.cascade.push(...cascade)
+
+    const sp50 = pctl(strict, 0.5)
+    const cp50 = pctl(cascade, 0.5)
     console.log(
-      `${tier.name.padEnd(12)} ${pct(points.length, n).padStart(5)}   ` +
-      `${String(pctl(points, 0.5)).padStart(17)}   ${String(pctl(points, 0.25)).padStart(4)}   ` +
-      `${String(pctl(points, 0.75)).padStart(4)}   ${String(points[points.length - 1] ?? 0).padStart(4)}   ${never}`
+      `${tier.name.padEnd(12)} ${String(sp50).padStart(10)}   ${String(strict[strict.length - 1] ?? 0).padStart(10)}   ` +
+      `${String(cp50).padStart(11)}   ${String(cascade[cascade.length - 1] ?? 0).padStart(11)}   ` +
+      `${String(cp50 - sp50).padStart(9)}`
     )
   }
-  console.log()
+
+  totals.strict.sort((a, b) => a - b)
+  totals.cascade.sort((a, b) => a - b)
+  console.log(
+    `\nOverall median: strict ${pctl(totals.strict, 0.5)} cells left, ` +
+    `cascade ${pctl(totals.cascade, 0.5)} cells left.\n`
+  )
 }
 
 const mode = process.argv[2]

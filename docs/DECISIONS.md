@@ -31,6 +31,33 @@ Two implementation choices follow from the same principle:
 Rules out: the cascade trigger, and any setting toggling between the two. One
 correct answer, not a preference.
 
+### Measured gap, 2026-07-31
+
+Zsomb noted the button fires later than the equivalent in sudoku.com, and
+guessed it was because our rule is stricter. Measured with
+`npm run calibrate -- autocomplete`, walking each solve in the grader's order:
+
+| tier | strict p50 | cascade p50 |
+|---|---|---|
+| Gentle | 6 | 36 |
+| Easy | 7 | 29 |
+| Medium | 6 | 29 |
+| Hard | 5 | 26 |
+| Expert | 5 | 31 |
+| Diabolical | 6 | 27 |
+
+Overall median 5 cells left for strict against 29 for cascade. The guess was
+right in direction, and the gap is large.
+
+Cascade is very generous: on Gentle it would appear with 36 of 45 blanks left,
+which is most of the puzzle. There is no principled trigger in between the two,
+since "forced now" and "forced eventually by lone candidates" are the only two
+natural definitions. A cap (cascade, but only under N remaining) would give a
+dial at the cost of N being arbitrary. Not built; strict stands unless Zsomb
+asks otherwise.
+
+No claim is made here about what sudoku.com actually implements.
+
 ## 2026-07-30: Phase 2, the scoring model
 
 ### Naked singles cost nothing, and that is the whole fix
