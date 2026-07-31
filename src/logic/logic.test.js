@@ -8,7 +8,7 @@ import { countSolutions, solve, hasUniqueSolution } from './solver.js'
 import { generateFull, dig, makePuzzle } from './generator.js'
 import {
   gradePuzzle, createState, nextStep, applyStep,
-  trivialTail, allCellsForced, forcedFills, autoCompleteFills, AUTO_COMPLETE_MAX,
+  trivialTail, allCellsForced, forcedFills, autoCompleteFills, AUTO_COMPLETE_MAX, hintPlacement,
 } from './grader.js'
 import { gameReducer, initialState, highlightDigit } from '../state/gameReducer.js'
 import { TIERS, tierForScore } from './difficulty.js'
@@ -332,6 +332,116 @@ describe('auto-complete reducer', () => {
   it('ignores an empty fill list', () => {
     const s = { ...initialState, status: 'playing', board: new Array(81).fill(1) }
     expect(gameReducer(s, { type: 'autoComplete', fills: [] })).toBe(s)
+  })
+})
+
+describe('hints', () => {
+  it('only ever offers the correct digit, across a whole solve', () => {
+    for (const seed of [111, 222, 333]) {
+      const rng = mulberry32(seed)
+      const solution = generateFull(rng)
+      let board = dig(solution, 28, rng)
+
+      // Solve the entire puzzle using nothing but hints.
+      for (let n = 0; n < 100 && board.includes(0); n++) {
+        const hint = hintPlacement(board, solution)
+        expect(hint).toBeTruthy()
+        expect(hint.digit).toBe(solution[hint.cell])
+        expect(board[hint.cell]).toBe(0)
+        board = board.slice()
+        board[hint.cell] = hint.digit
+      }
+      expect(board).toEqual(solution)
+    }
+  })
+
+  it('names the technique that proves the cell', () => {
+    const rng = mulberry32(444)
+    const solution = generateFull(rng)
+    const hint = hintPlacement(dig(solution, 28, rng), solution)
+    expect(hint.derived).toBe(true)
+    expect(TECHNIQUES[hint.technique]).toBeTruthy()
+    expect(hint.detail.length).toBeGreaterThan(0)
+  })
+
+  it('picks the easiest available cell, not an arbitrary one', () => {
+    // On a board where a naked single exists, the hint must be that cell rather
+    // than some cell needing an X-Wing. This is the whole reason it is not
+    // random: a random empty cell may not be derivable yet.
+    const rng = mulberry32(555)
+    const solution = generateFull(rng)
+    const board = solution.slice()
+    for (const i of [5, 14, 23, 32, 41, 50, 59, 68, 77]) board[i] = 0
+    const hint = hintPlacement(board, solution)
+    expect(hint.technique).toBe('nakedSingle')
+  })
+
+  it('still returns a correct digit when the board has a mistake', () => {
+    const rng = mulberry32(666)
+    const solution = generateFull(rng)
+    const board = dig(solution, 30, rng)
+    // Poison the board: a wrong digit makes the candidate sets lie.
+    const empty = board.findIndex(v => v === 0)
+    board[empty] = (solution[empty] % 9) + 1
+    const hint = hintPlacement(board, solution)
+    expect(hint).toBeTruthy()
+    expect(hint.digit).toBe(solution[hint.cell])
+    expect(board[hint.cell]).toBe(0)
+  })
+
+  it('returns null on a finished board', () => {
+    const solution = generateFull(mulberry32(777))
+    expect(hintPlacement(solution, solution)).toBeNull()
+  })
+})
+
+describe('hint reducer', () => {
+  const setup = () => {
+    const rng = mulberry32(888)
+    const solution = generateFull(rng)
+    const puzzle = dig(solution, 30, rng)
+    return gameReducer(initialState, {
+      type: 'ready',
+      made: { puzzle, solution, requested: 'Medium', graded: 'Medium', score: 200, hardest: 'pointing', counts: {}, clues: 30, seed: 1 },
+      now: 0,
+    })
+  }
+
+  it('places the digit, counts it, and logs the technique', () => {
+    let s = setup()
+    const hint = hintPlacement(s.board, s.solution)
+    s = gameReducer(s, { type: 'hint', hint })
+    expect(s.board[hint.cell]).toBe(hint.digit)
+    expect(s.hints).toBe(1)
+    expect(s.hintLog).toHaveLength(1)
+    expect(s.hintLog[0].technique).toBe(hint.technique)
+    expect(s.hintCell).toBe(hint.cell)
+    expect(s.selected).toBe(hint.cell)
+    expect(s.mistakes).toBe(0)
+  })
+
+  it('places even in notes mode, and leaves notes mode as it found it', () => {
+    let s = gameReducer(setup(), { type: 'toggleNotes' })
+    const hint = hintPlacement(s.board, s.solution)
+    s = gameReducer(s, { type: 'hint', hint })
+    expect(s.board[hint.cell]).toBe(hint.digit)
+    expect(s.notes).toBe(true)
+  })
+
+  it('clears the hint marker on the next move', () => {
+    let s = setup()
+    s = gameReducer(s, { type: 'hint', hint: hintPlacement(s.board, s.solution) })
+    expect(s.hintCell).not.toBe(-1)
+    s = gameReducer(s, { type: 'select', index: 0 })
+    expect(s.hintCell).toBe(-1)
+  })
+
+  it('is undoable', () => {
+    let s = setup()
+    const hint = hintPlacement(s.board, s.solution)
+    s = gameReducer(s, { type: 'hint', hint })
+    s = gameReducer(s, { type: 'undo' })
+    expect(s.board[hint.cell]).toBe(0)
   })
 })
 

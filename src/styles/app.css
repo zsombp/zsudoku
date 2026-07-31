@@ -161,6 +161,16 @@ body {
 .cell.user .val { color: var(--accent); animation: pop 0.13s ease; }
 .cell.wrong .val { color: var(--error); }
 
+/* A hint puts one digit on the board. Without a marker it reads as nothing
+ * having happened, especially if you were not looking at that corner. */
+.cell.hinted { box-shadow: inset 0 0 0 2px var(--accent); }
+.cell.hinted .val { animation: hintPop 0.45s ease; }
+@keyframes hintPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  55% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
 @keyframes pop {
   from { transform: scale(0.6); opacity: 0.4; }
   to { transform: scale(1); opacity: 1; }
@@ -227,6 +237,26 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .winSub { font-size: 12.5px; color: var(--sub); margin-bottom: 8px; }
+
+/* Post-game only. What the hints were standing in for, which is the teaching
+ * the hint button deliberately leaves out during play. */
+.hintSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+  font-size: 11.5px;
+  color: var(--sub);
+  text-align: center;
+}
+.hsRow { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
+.hsCount {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 12px;
+  text-align: right;
+}
 .winBtns { display: flex; gap: 8px; }
 
 .bigBtn {
@@ -285,8 +315,8 @@ body {
 
 .tools {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 5px;
   margin-top: 12px;
 }
 .tool {

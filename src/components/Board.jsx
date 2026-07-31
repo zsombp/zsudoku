@@ -3,7 +3,7 @@ import { hasMark } from '../logic/marks.js'
 import { isWrong, highlightDigit } from '../state/gameReducer.js'
 
 export default function Board({ state, checkErrors, onCellTap, blurred }) {
-  const { board, puzzle, marks, selected, activeDigit } = state
+  const { board, puzzle, marks, selected, activeDigit, hintCell } = state
   const ready = Boolean(board)
   const lit = ready ? highlightDigit(state) : 0
 
@@ -26,6 +26,8 @@ export default function Board({ state, checkErrors, onCellTap, blurred }) {
 
     if (puzzle[i] !== 0) cls.push('given')
     else if (board[i] !== 0) cls.push('user')
+    // Otherwise a hint looks like nothing happened. Cleared by the next move.
+    if (i === hintCell) cls.push('hinted')
     if (checkErrors && isWrong(state, i)) cls.push('wrong')
     return cls.join(' ')
   }

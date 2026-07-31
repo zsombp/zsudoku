@@ -31,6 +31,11 @@ export const initialState = {
   seed: null,
   mistakes: 0,
   hints: 0,
+  // Which technique each hint stood in for. Not shown during play; it feeds the
+  // post-game summary, which is where teaching belongs.
+  hintLog: [],
+  // The cell the last hint filled, so it can be marked. Cleared by the next move.
+  hintCell: -1,
   // A game finished with auto-complete is not the same as one finished by hand.
   // Phase 5 stats read this.
   autoCompleted: false,
@@ -83,6 +88,15 @@ function placeDigit(state, i, v) {
 }
 
 export function gameReducer(state, action) {
+  const next = reduce(state, action)
+  // The hint marker survives only until the next thing you do.
+  if (action.type !== 'hint' && next !== state && next.hintCell !== -1) {
+    return { ...next, hintCell: -1 }
+  }
+  return next
+}
+
+function reduce(state, action) {
   switch (action.type) {
     case 'generating':
       return { ...state, status: 'generating', requested: action.requested ?? state.requested }
@@ -128,6 +142,7 @@ export function gameReducer(state, action) {
         seed: s.seed,
         mistakes: s.mistakes || 0,
         hints: s.hints || 0,
+        hintLog: s.hintLog || [],
         autoCompleted: s.autoCompleted || false,
         startedAt: s.startedAt,
         elapsedMs: s.elapsedMs || 0,
@@ -180,6 +195,23 @@ export function gameReducer(state, action) {
       if (!state.activeDigit) return state
       if (state.puzzle[i] !== 0) return { ...state, selected: i }
       return { ...placeDigit(state, i, state.activeDigit), selected: i }
+    }
+
+    case 'hint': {
+      if (!state.board || state.status !== 'playing') return state
+      const h = action.hint
+      if (!h) return state
+      // A hint always places the digit, even in notes mode. Pencilling it in
+      // would not be a hint.
+      const placed = placeDigit({ ...state, notes: false }, h.cell, h.digit)
+      return {
+        ...placed,
+        notes: state.notes,
+        selected: h.cell,
+        hintCell: h.cell,
+        hints: state.hints + 1,
+        hintLog: [...state.hintLog, { cell: h.cell, technique: h.technique, derived: h.derived }],
+      }
     }
 
     case 'setActiveDigit': {

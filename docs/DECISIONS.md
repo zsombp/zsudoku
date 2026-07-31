@@ -4,6 +4,47 @@ Newest first. Every entry records what was decided, why, and what it rules out. 
 
 ---
 
+## 2026-07-31: hints fill a cell, teaching moves to the post-game screen
+
+Zsomb weighed a simple hint (put a correct number on the board) against an
+educational one (name the technique, point at the unit, then the cell). He
+leaned simple, for game flow, on the grounds that "if you want to learn just
+check the after game statistics".
+
+Taken, with one correction and one addition.
+
+**Correction: not a random cell.** The hint fills the cell the ladder would do
+next. The interaction is identical, one tap and a digit appears, but a random
+empty cell may not be derivable from the board yet, so it is arbitrary *and*
+fails to unblock anything. The ladder is ordered cheapest-first and restarts
+after each success, so its first placement is the easiest move actually
+available: the one worth giving away. It also costs less code than picking
+randomly, because `nextStep` already existed.
+
+**Addition: record what it stood in for.** Every hint logs its technique. The
+hint itself stays silent during play, and the win screen reports "2 hints on
+hidden singles, 1 on a pointing pair". That is Zsomb's own suggestion, and it
+composes better than an in-game explanation: during a game an explanation
+interrupts the thing you are enjoying, afterwards the same information tells you
+which pattern you keep failing to spot.
+
+Details:
+
+- Steps past elimination-only moves. A hint has to put a number on the board to
+  be worth a tap.
+- Verified against the solution before being applied. A wrong digit already on
+  the board poisons the candidate sets, so the ladder can be confidently wrong;
+  in that case it falls back to the most constrained empty cell and records
+  `derived: false`.
+- Always places, even in notes mode. Pencilling a hint in would not be a hint.
+- Marked on the board until the next move, otherwise a hint reads as nothing
+  having happened.
+- Undoable, and never counted as a mistake.
+
+Rules out: escalating multi-level hints, and any in-game technique explanation.
+The `detail` sentence each technique returns is still produced and still tested;
+it is simply not shown during play. It is there for Phase 5.
+
 ## 2026-07-31: quick input keeps the keyboard cell-first
 
 Quick input arms a digit and fills whatever cell you tap. The obvious question

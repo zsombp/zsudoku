@@ -158,6 +158,59 @@ export function forcedFills(board) {
 export const allCellsForced = board => forcedFills(board) !== null
 
 /**
+ * The next cell a hint should fill, and what technique proves it.
+ *
+ * Deliberately not a random empty cell. The interaction is identical, one tap
+ * and a digit appears, but a random cell may not be derivable from the board
+ * yet, so it teaches nothing and unblocks nothing. The ladder is ordered
+ * cheapest-first and restarts from the top after each success, so the first
+ * placement it reaches is the easiest move actually available. That is the cell
+ * worth giving away.
+ *
+ * Elimination-only steps are applied and stepped past, because a hint has to
+ * put a number on the board to be worth a tap.
+ *
+ * The technique is returned but not shown during play. It is recorded so the
+ * post-game summary can say what you kept needing help with, which is where
+ * the teaching belongs: during a game it interrupts, afterwards it informs.
+ */
+export function hintPlacement(board, solution) {
+  const state = createState(board)
+
+  for (let n = 0; n < 300; n++) {
+    if (broken(state)) break
+    const step = nextStep(state)
+    if (!step) break
+
+    if (step.placements.length) {
+      const { cell, digit } = step.placements[0]
+      // A wrong digit already on the board poisons the candidates, so the
+      // ladder can derive something confidently and be wrong. Check before
+      // handing it over.
+      if (digit === solution[cell]) {
+        return { cell, digit, technique: step.technique, detail: step.detail, unit: step.unit, derived: true }
+      }
+      break
+    }
+    applyStep(state, step)
+  }
+
+  // Fallback for a board the ladder cannot reason about, which in practice
+  // means the player has a wrong digit somewhere. Give the most constrained
+  // empty cell: still the most useful one, just not provably the easiest.
+  let best = -1
+  let bestCount = 10
+  const fresh = createState(board)
+  for (let i = 0; i < 81; i++) {
+    if (board[i] !== 0) continue
+    const n = countMarks(fresh.cands[i]) || 10
+    if (n < bestCount) { bestCount = n; best = i }
+  }
+  if (best === -1) return null
+  return { cell: best, digit: solution[best], technique: null, detail: null, unit: null, derived: false }
+}
+
+/**
  * How many cells may remain for auto-complete to offer itself.
  *
  * Arbitrary, and openly so. Strict alone fired with a median of 5 cells left,

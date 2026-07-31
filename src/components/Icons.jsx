@@ -93,6 +93,14 @@ export const Plus = props => (
   </Svg>
 )
 
+export const Bulb = props => (
+  <Svg {...props}>
+    <path d="M9 18h6" />
+    <path d="M10 22h4" />
+    <path d="M15.1 14a5 5 0 1 0-6.2 0c.6.5 1 1.2 1.1 2h4c.1-.8.5-1.5 1.1-2Z" />
+  </Svg>
+)
+
 export const Zap = props => (
   <Svg {...props}>
     <path d="M13 2 4 14h7l-1 8 9-12h-7z" />

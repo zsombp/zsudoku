@@ -2,6 +2,53 @@
 
 Newest first.
 
+## v0.4.1 - 2026-07-31 - hints
+
+One tap, one number. Sixth toolbar button, `H` on the keyboard.
+
+Zsomb weighed a simple hint against an educational one and leaned simple for
+game flow, reasoning that the teaching could live in the post-game statistics.
+Taken, with one correction and one addition.
+
+**It fills the cell the ladder would do next, not a random one.** Identical
+interaction, but a random empty cell may not be derivable from the board yet, so
+it would be arbitrary and unblock nothing. The ladder is ordered cheapest-first
+and restarts after each success, so its first placement is the easiest move
+actually available. It is also less code than picking randomly, since `nextStep`
+already existed.
+
+**Every hint records what it stood in for**, and the win screen reports it:
+"2 mistakes, 2 hints on hidden singles, 1 hint on a pointing pair". That is
+Zsomb's own suggestion and it composes better than an in-game explanation.
+During a game an explanation interrupts; afterwards the same information tells
+you which pattern you keep failing to spot.
+
+Details:
+
+- Steps past elimination-only moves, because a hint has to put a number on the
+  board to be worth a tap.
+- Verified against the solution before being applied. A wrong digit already on
+  the board poisons the candidate sets, so the ladder can be confidently wrong;
+  it then falls back to the most constrained empty cell.
+- Always places, even in notes mode. Pencilling a hint in would not be a hint.
+- Marked on the board until the next move, otherwise it reads as nothing having
+  happened.
+- Undoable, and never counted as a mistake.
+
+The escalating three-level hint from the original plan is dropped. The per-step
+`detail` sentences each technique returns are still produced and still tested,
+just not shown during play; Phase 5's coach uses them.
+
+Toolbar is now six buttons.
+
+**Verified in the browser**: three hints in a row each filled a correct cell,
+the marker moved with them and never doubled up, the log recorded the technique
+each time, mistakes stayed at zero, and the win screen rendered the summary.
+Zero console errors.
+
+58 logic tests pass. The strongest one solves entire puzzles using nothing but
+hints and checks every digit against the solution.
+
 ## v0.4.0 - 2026-07-31 - quick input
 
 Digit-first entry, requested 2026-07-30. Arm a digit on the pad, then every cell

@@ -158,7 +158,7 @@ Measured with `npm run calibrate -- autocomplete`: walking a solve in the grader
 
 ### The rest
 
-- **Hints, three escalating levels.** First: name the technique and the unit ("there is a hidden single in the middle-left box"). Second: point at the cell. Third: fill it. This teaches rather than solves, and it is counted in stats.
+- **Hints — DONE in v0.4.1, one tap.** The escalating three-level design was dropped. Zsomb chose a single tap that fills a cell, for game flow, with the teaching moved to the post-game screen. It fills the cell the ladder would do next rather than a random one, and records which technique it stood in for; the win screen reports "2 hints on hidden singles, 1 on a pointing pair". See `docs/DECISIONS.md`. The per-step `detail` sentences are still produced and tested, ready for Phase 5.
 - **Auto-maintain pencil marks** as a proper mode. Auto-pencil already fills them; the missing half is keeping them correct continuously as you place, erase, and undo. That is the "auto remove pencil marks" ask done fully rather than the one-directional version in the prototype.
 - **Check board** with two modes, chosen in settings: against the solution (tells you a digit is wrong), or against the rules (tells you two of the same digit share a unit, which is a lighter form of help).
 - Undo history persisted with the save so resuming a game keeps its undo stack.

@@ -4,10 +4,11 @@ import NumberPad from './components/NumberPad.jsx'
 import Toolbar from './components/Toolbar.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import NewGameSheet from './components/NewGameSheet.jsx'
+import HintSummary from './components/HintSummary.jsx'
 import { Moon, Sun, Play, Plus, Trophy, Sparkles } from './components/Icons.jsx'
 import { gameReducer, initialState, remainingCounts, currentLabel } from './state/gameReducer.js'
 import { techFor, tierForScore } from './logic/difficulty.js'
-import { gradePuzzle, autoCompleteFills } from './logic/grader.js'
+import { gradePuzzle, autoCompleteFills, hintPlacement } from './logic/grader.js'
 import { GRADER_VERSION } from './logic/techniques.js'
 import { useTimer } from './hooks/useTimer.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
@@ -65,6 +66,7 @@ export default function App() {
       seed: s.seed,
       graderVersion: GRADER_VERSION,
       autoCompleted: s.autoCompleted,
+      hintLog: s.hintLog,
       mistakes: s.mistakes,
       hints: s.hints,
       startedAt: s.startedAt,
@@ -129,6 +131,15 @@ export default function App() {
     },
     [settings.quickInput]
   )
+
+  // One tap, one number. Computed on demand rather than on every render,
+  // because unlike auto-complete this runs the whole ladder.
+  const onHint = useCallback(() => {
+    const s = stateRef.current
+    if (!s.board || s.status !== 'playing') return
+    const hint = hintPlacement(s.board, s.solution)
+    if (hint) dispatch({ type: 'hint', hint })
+  }, [])
 
   const toggleQuick = useCallback(() => {
     updateSettings({ quickInput: !settings.quickInput })
@@ -219,6 +230,7 @@ export default function App() {
     else if (k.toLowerCase() === 'p') dispatch({ type: 'togglePause' })
     else if (k.toLowerCase() === 'c' && autoFills) dispatch({ type: 'autoComplete', fills: autoFills })
     else if (k.toLowerCase() === 'q') toggleQuick()
+    else if (k.toLowerCase() === 'h') onHint()
     else if (k === 'Escape') dispatch({ type: 'clearActiveDigit' })
   })
 
@@ -297,6 +309,7 @@ export default function App() {
                   ? ` · best ${fmtMs(records[label])}`
                   : ''}
             </div>
+            <HintSummary hintLog={state.hintLog} mistakes={state.mistakes} />
             <div className="winBtns">
               <button className="bigBtn" onClick={() => startNew(label)}>Play again</button>
               <button className="bigBtn ghost" onClick={() => setShowPicker(true)}>New difficulty</button>
@@ -325,6 +338,7 @@ export default function App() {
         onToggleNotes={() => dispatch({ type: 'toggleNotes' })}
         onAutoPencil={() => dispatch({ type: 'autoPencil' })}
         onToggleQuick={toggleQuick}
+        onHint={onHint}
       />
 
       <NumberPad
@@ -355,7 +369,7 @@ export default function App() {
       )}
 
       <div className="hint">
-        keys: 1–9 place · N notes · A auto notes · U/⌘Z undo · P pause · Q quick · arrows move
+        keys: 1–9 place · N notes · A auto · U/⌘Z undo · P pause · Q quick · H hint · arrows move
         {autoFills && ' · C complete'}
       </div>
       {settings.quickInput && (

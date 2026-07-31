@@ -1,8 +1,8 @@
-import { Undo, Eraser, Pencil, Sparkles, Zap } from './Icons.jsx'
+import { Undo, Eraser, Pencil, Sparkles, Zap, Bulb } from './Icons.jsx'
 
 export default function Toolbar({
   canUndo, notes, quick, disabled,
-  onUndo, onErase, onToggleNotes, onAutoPencil, onToggleQuick,
+  onUndo, onErase, onToggleNotes, onAutoPencil, onToggleQuick, onHint,
 }) {
   return (
     <div className="tools">
@@ -36,6 +36,15 @@ export default function Toolbar({
       >
         <Zap size={19} />
         <span>Quick</span>
+      </button>
+      <button
+        className="tool"
+        disabled={disabled}
+        onClick={onHint}
+        title="Fill in the easiest cell available"
+      >
+        <Bulb size={19} />
+        <span>Hint</span>
       </button>
     </div>
   )
