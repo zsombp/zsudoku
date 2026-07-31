@@ -10,7 +10,7 @@ import { hasMark, toggleMark, removeMark, addMark, emptyMarks } from '../logic/m
 import { LEGACY_LEVEL_NAME } from '../logic/difficulty.js'
 
 export const initialState = {
-  status: 'generating', // generating | playing | paused | won
+  status: 'generating', // generating | playing | paused | won | lost
   puzzle: null,
   solution: null,
   board: null,
@@ -296,11 +296,19 @@ function reduce(state, action) {
       }
     }
 
+    // Giving up ends the game rather than pausing it forever. The board is not
+    // touched: the solution is revealed at render time, so the move log stays a
+    // record of what you actually did and the review still works.
+    case 'forfeit':
+      if (state.status !== 'playing' && state.status !== 'paused') return state
+      return { ...state, status: 'lost', forfeited: true, selected: -1, activeDigit: 0 }
+
     case 'restart':
       if (!state.puzzle) return state
       return {
         ...state,
         status: 'playing',
+        forfeited: false,
         board: state.puzzle.slice(),
         marks: emptyMarks(),
         history: [],

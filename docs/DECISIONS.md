@@ -493,3 +493,62 @@ Keyed on `mode === 'development'` instead.
 
 Worth recording because a broken base looks like a working preview right up
 until the install fails on the phone.
+
+### The move classifier grades justification, not brilliance
+
+Resolved at v1.5.0, when the review gained a per-move report.
+
+Chess reviews work because an engine can say what the position offered. The
+technique ladder does the same job here, so the natural move was to reuse it.
+What did not carry over is the axis. In chess a move is better for being harder
+to find; in sudoku a placement is either justified by the board or it is not,
+and a hard-won deduction and a lucky guess can put the same digit in the same
+cell. So the classes measure "could you know this at the moment you played it",
+and a correct-but-unproven placement is called Lucky rather than praised.
+
+The consequence worth remembering: **Sharp must be earned, never assumed.** It
+began as the fallthrough branch, which classed a digit dropped on an empty grid
+as brilliant deduction. It now runs the ladder's eliminations and only holds if
+they turn the cell into a lone candidate or a hidden single.
+
+Rules out: any scoring that rewards difficulty for its own sake, and any
+classifier that reads the player's own pencil marks as evidence. Marks are what
+someone believes, and the whole question is whether the board agreed.
+
+### Candidates are re-derived, never read from the board alone
+
+`createState` computes candidates from the placed digits, so every elimination
+established by a pointing pair, a claiming pair or a subset is absent. Anything
+asking "was this derivable" has to replay those eliminations first, or it will
+report that moves the ladder itself derived were unprovable.
+
+This was found by `scripts/classcheck.mjs`, which is the pattern to reach for
+whenever a judgment call gets automated: run two players whose results must
+differ, not one whose results look plausible. A ladder-perfect player must score
+zero Lucky and zero Mistake, and a reading-order player must score Lucky often.
+A classifier that always answers the same thing passes either test alone.
+
+### Giving up is recorded as a loss
+
+Resolved at v1.5.0. Abandoning by starting a new game was already recorded, but
+there was no way to say "I am done with this one" and see the answer.
+
+Forfeiting records the game with `completed: false, forfeited: true` and reveals
+the solution at render time. The board is never written to: the move log stays a
+record of what was actually played, so the review still works on a game you gave
+up on. The save slot's `completed` flag means "over, do not resume" rather than
+"won", so a forfeited game does not come back as a game in progress.
+
+Rules out: a give-up that silently discards the game, which would make the win
+rate a measure of how often you remembered to quit cleanly.
+
+### The clock runs only where the game is
+
+The timestamp clock was always right, and stays. What was wrong was the
+condition: `status === 'playing'` only ever meant "not paused", so the clock ran
+on the dashboard, in statistics and in settings. It now also requires the game
+view to be the one in front of you.
+
+Recorded because the obvious diagnosis was the wrong one. Every statistic in the
+app divides by this number, and the bug looked like a timing bug while being a
+scoping bug.

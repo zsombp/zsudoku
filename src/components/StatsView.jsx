@@ -16,7 +16,7 @@ function shortDuration(ms) {
   return `${Math.round(ms / 60000)}m`
 }
 
-export default function StatsView({ onClose }) {
+export default function StatsView({ onClose, onPractice }) {
   const [games, setGames] = useState(null)
   const [showNumbers, setShowNumbers] = useState(false)
   const [notice, setNotice] = useState(null)
@@ -135,6 +135,11 @@ export default function StatsView({ onClose }) {
               <div className="insightTitle">{c.title}</div>
               <div className="insightBody">{c.body}</div>
               <div className="insightSample">based on {c.sample}</div>
+              {c.practice && onPractice && (
+                <button className="newBtn insightAct" onClick={() => onPractice(c.practice)}>
+                  Practise this now
+                </button>
+              )}
             </div>
           ))
         ) : (

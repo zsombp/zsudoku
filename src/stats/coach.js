@@ -43,6 +43,8 @@ function hintWeakness(games) {
   }
   return {
     id: 'hints-technique',
+    // The whole point of naming it is being able to act on it.
+    practice: key,
     title: `${sentence(TECHNIQUES[key].label)} is your weak spot`,
     body: `${share}% of your hints (${n} of ${total}) were on a ${TECHNIQUES[key].label}. That is the pattern to learn next: when you get stuck, look for it before reaching for the bulb.`,
     sample: `${total} hints`,

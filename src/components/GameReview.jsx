@@ -3,6 +3,7 @@ import { rowOf, colOf, range } from '../logic/topology.js'
 import { fmtMs } from '../lib/format.js'
 import { TECHNIQUES } from '../logic/techniques.js'
 import { boardAt, replaySteps, stallHeatmap, summarise } from '../stats/replay.js'
+import { analyseGame, verdict, CLASSES } from '../stats/analysis.js'
 import { Play, Pause } from './Icons.jsx'
 
 /**
@@ -14,6 +15,10 @@ import { Play, Pause } from './Icons.jsx'
  * here is interactive, and reusing it would mean threading a read-only mode
  * through a component whose whole job is input.
  */
+/** Sharp, Solid and the rest are adjectives; these two are nouns and count. */
+const plural = (key, n) =>
+  n === 1 || (key !== 'mistake' && key !== 'hint') ? CLASSES[key].label : CLASSES[key].label + 's'
+
 export default function GameReview({ game, onBack }) {
   const [mode, setMode] = useState('replay')
   const steps = useMemo(() => replaySteps(game), [game])
@@ -22,6 +27,10 @@ export default function GameReview({ game, onBack }) {
 
   const heat = useMemo(() => stallHeatmap(game), [game])
   const info = useMemo(() => summarise(game), [game])
+  // Roughly 1600 operations per placement, so a 60-move game costs about a
+  // tenth of a second. Cheap enough to do on open rather than in the worker.
+  const analysis = useMemo(() => analyseGame(game), [game])
+  const line = useMemo(() => verdict(analysis), [analysis])
 
   const stepIndex = steps.length ? steps[Math.min(pos, steps.length - 1)] : -1
   const board = useMemo(() => boardAt(game, stepIndex), [game, stepIndex])
@@ -56,7 +65,11 @@ export default function GameReview({ game, onBack }) {
         <div className="reviewTitle">
           {game.graded}
           {game.daily && <span className="reviewTag">daily</span>}
-          {!game.completed && <span className="reviewTag warn">unfinished</span>}
+          {/* Walked away and gave up are both incomplete, and only one was a
+              decision. The record knows which; say it. */}
+          {!game.completed && (
+            <span className="reviewTag warn">{game.forfeited ? 'gave up' : 'unfinished'}</span>
+          )}
         </div>
         <div className="reviewMeta">
           {new Date(game.endedAt).toLocaleString()} · {fmtMs(game.durationMs)}
@@ -78,11 +91,15 @@ export default function GameReview({ game, onBack }) {
             </button>
             <button role="tab" aria-selected={mode === 'heatmap'}
               className={'segTab' + (mode === 'heatmap' ? ' on' : '')} onClick={() => setMode('heatmap')}>
-              Where the time went
+              Time
+            </button>
+            <button role="tab" aria-selected={mode === 'moves'}
+              className={'segTab' + (mode === 'moves' ? ' on' : '')} onClick={() => setMode('moves')}>
+              Every move
             </button>
           </div>
 
-          <div className="reviewBoard">
+          {mode !== 'moves' && <div className="reviewBoard">
             {range(81).map(i => {
               const given = game.puzzle[i] !== 0
               const v = mode === 'replay' ? board[i] : game.solution[i]
@@ -103,9 +120,53 @@ export default function GameReview({ game, onBack }) {
                 </div>
               )
             })}
-          </div>
+          </div>}
 
-          {mode === 'replay' ? (
+          {mode === 'moves' && (
+            <div className="moveReview">
+              {line && <p className="verdict">{line}</p>}
+              <div className="clsRow">
+                {['sharp', 'solid', 'routine', 'lucky', 'mistake', 'hint']
+                  .filter(k => analysis.counts[k])
+                  .map(k => (
+                    <span className={'clsPip ' + k} key={k}>
+                      {analysis.counts[k]} {plural(k, analysis.counts[k])}
+                    </span>
+                  ))}
+              </div>
+              <ol className="moveList">
+                {analysis.moves.map(mv => (
+                  <li className={'moveItem ' + mv.cls} key={mv.index}>
+                    <button
+                      className="moveJump"
+                      onClick={() => {
+                        setMode('replay')
+                        const at = steps.indexOf(mv.index)
+                        if (at >= 0) { setPlaying(false); setPos(at) }
+                      }}
+                      title="Show this move on the board"
+                    >
+                      <span className="moveHead">
+                        <span className="moveNo">{mv.n}</span>
+                        <span className="moveWhat">{mv.value} to {mv.cellName}</span>
+                        <span className={'moveCls ' + mv.cls}>{CLASSES[mv.cls].label}</span>
+                        <span className="moveGap">{(mv.gap / 1000).toFixed(1)}s</span>
+                      </span>
+                      <span className="moveWhy">{mv.why}</span>
+                      {mv.alternative && (
+                        <span className="moveAlt">
+                          Easier was {mv.alternative.digit} to r{Math.floor(mv.alternative.cell / 9) + 1}
+                          c{(mv.alternative.cell % 9) + 1}: {mv.alternative.detail}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {mode === 'replay' && (
             <div className="scrubRow">
               <button className="iconBtn" aria-label={playing ? 'Pause replay' : 'Play replay'}
                 onClick={() => {
@@ -127,7 +188,8 @@ export default function GameReview({ game, onBack }) {
                 {pos + 1}/{steps.length} · {fmtMs(current?.t || 0)}
               </span>
             </div>
-          ) : (
+          )}
+          {mode === 'heatmap' && (
             <div className="heatKey">
               <span>quick</span>
               <span className="hkSwatch h1" /><span className="hkSwatch h2" />

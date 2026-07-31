@@ -2,6 +2,76 @@
 
 Newest first.
 
+## v1.5.0 - 2026-07-31 - post-game review, and giving up
+
+Seven things off the feedback list. Most of them are the app being quieter about
+what it knows.
+
+### The review is a chess-style move report now
+
+A third tab in the game review, **Every move**, that says what each placement
+was worth. Six classes, and the axis is deliberately "could you know this",
+not "how clever was it", because a sudoku move is not better for being harder.
+
+- **Routine** the cell had one candidate left
+- **Solid** the digit had one home left in a unit
+- **Sharp** it took a real pattern to rule the rest out, and it names which
+- **Lucky** correct, but nothing on the board proved it when you played it
+- **Mistake** with the reason, naming the clashing cell where there is one
+- **Hint** the app filled it
+
+Each row also carries what was available instead, and clicking a row jumps to
+that move in the replay.
+
+**Sharp started out as a bug.** It was the fallthrough case, so a digit dropped
+onto an empty grid came back as brilliant deduction. A move is only sharp if
+something actually proved it, so it now runs the ladder's eliminations and asks
+whether they make the cell a lone candidate or a hidden single. A second bug
+turned up underneath: `createState` recomputes candidates from the board alone,
+so every elimination a pointing pair had already established was missing, and
+moves the ladder itself derived were coming back "lucky".
+
+`scripts/classcheck.mjs` is what caught both. It runs two players over the same
+puzzles: one follows the ladder exactly and must never be lucky and never wrong,
+one fills correct digits in reading order and must be lucky often. Either test
+alone passes for a classifier that always answers the same thing.
+
+The "easier was" line is shown once per cell. An easy placement you keep walking
+past stays the cheapest move for as long as you ignore it, so it was printing
+one fact thirteen times and reading like a broken template.
+
+### The review comes to you
+
+A **Review** button on the win screen and on the give-up screen. It was only
+reachable through the statistics tab, which is the one moment nobody goes
+looking for it.
+
+### The coach is clickable
+
+The insight that names the technique you keep needing hints on now carries
+**Practise this now**, which starts a puzzle requiring exactly that. Naming a
+weakness and then doing nothing about it was half a feature.
+
+### Giving up
+
+A quiet **Give up** in the footer, two-step so it cannot be hit by accident. It
+records the game as a loss, because a win rate computed only from wins is not a
+win rate, and reveals the rest of the grid in a dimmer ink than your own digits.
+The review tells the two apart: a game you walked away from reads "unfinished",
+one you gave up on reads "gave up".
+
+### Three things the app was giving away
+
+- **The wrong-digit sound played even with mistake marking off.** If the board
+  is not telling you, neither is the speaker.
+- **A bookmarked branch is a simulation**, so it no longer marks mistakes at
+  all. Speculating is the entire point of the branch. Dropping the mark brings
+  marking straight back.
+- **The clock ran on the dashboard, in statistics and in settings.** "Playing"
+  only ever meant "not paused". It now means the game is actually in front of
+  you. The timestamp clock itself was right and stays: the defect was what
+  counted as running, not how it counted.
+
 ## v1.4.0 - 2026-07-31 - hard-puzzle tools
 
 The last of the four. Both are for Diabolical-grade puzzles, where undo alone is

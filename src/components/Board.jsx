@@ -3,8 +3,8 @@ import { rowOf, colOf, boxOf, range } from '../logic/topology.js'
 import { hasMark } from '../logic/marks.js'
 import { isWrong, highlightDigit } from '../state/gameReducer.js'
 
-export default function Board({ state, checkErrors, canGo, revealWrong, onCellTap, onCellTint, blurred }) {
-  const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status, tints } = state
+export default function Board({ state, checkErrors, canGo, revealWrong, onCellTap, onCellTint, blurred, reveal }) {
+  const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status, tints, solution } = state
   const flashSet = flash?.length ? new Set(flash) : null
   const ready = Boolean(board)
   const litDigit = ready ? highlightDigit(state) : 0
@@ -72,6 +72,9 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
     if ((checkErrors || revealWrong) && isWrong(state, i)) cls.push('wrong')
     // Empty cells the highlighted digit could still legally occupy.
     if (canGo?.has(i)) cls.push('canGo')
+    // After giving up, the cells you never filled carry the answer, marked as
+    // the app's digits rather than yours.
+    if (reveal && board[i] === 0) cls.push('revealed')
     if (tints?.[i]) cls.push('tint' + tints[i])
     return cls.join(' ')
   }
@@ -86,7 +89,8 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
       className={'board' + (blurred ? ' blurred' : '') + (status === 'won' ? ' isWon' : '')}
     >
       {range(81).map(i => {
-        const v = ready ? board[i] : 0
+        const own = ready ? board[i] : 0
+        const v = own === 0 && reveal && solution ? solution[i] : own
         const isFlashing = flashSet?.has(i)
         return (
           <button

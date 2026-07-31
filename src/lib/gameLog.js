@@ -42,6 +42,9 @@ export function buildRecord(state, { completed, durationMs, endedAt }) {
     checks: state.checks || 0,
     hintLog: state.hintLog || [],
     autoCompleted: Boolean(state.autoCompleted),
+    // Gave up, as opposed to walked away: both are incomplete, only one is a
+    // decision, and the review says which.
+    forfeited: Boolean(state.forfeited),
     moveLog: state.moveLog || [],
   }
 }
@@ -50,13 +53,18 @@ export function buildRecord(state, { completed, durationMs, endedAt }) {
 export const worthRecording = state =>
   Boolean(state?.board) && (state.moveLog?.length || 0) > 0
 
-export async function record(state, opts) {
-  if (!worthRecording(state)) return false
+export async function saveRecord(record) {
   try {
-    return await idb.put(buildRecord(state, opts))
+    await idb.put(record)
+    return true
   } catch {
     return false
   }
+}
+
+export async function record(state, opts) {
+  if (!worthRecording(state)) return false
+  return saveRecord(buildRecord(state, opts))
 }
 
 export const all = () => idb.getAll()

@@ -1564,3 +1564,168 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cell.sel.tint1, .cell.sel.tint2, .cell.sel.tint3, .cell.sel.tint4 {
   box-shadow: inset 0 0 0 2px var(--tint), inset 0 0 0 4px var(--accent);
 }
+
+/* ---- move review ----
+ *
+ * The class colours are a support cue only. Every pip and every row label spells
+ * the class out in text, so nothing here is carried by colour alone and the
+ * categorical ΔE floor does not apply the way it does to a chart. Mistake uses
+ * the reserved error token because it genuinely is one. */
+
+.moveReview { display: flex; flex-direction: column; }
+.verdict {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+.clsRow { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.clsPip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--sub);
+}
+.clsPip::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: baseline;
+  background: var(--cls, var(--sub));
+}
+.clsPip.sharp, .moveItem.sharp { --cls: var(--t1); }
+.clsPip.solid, .moveItem.solid { --cls: var(--t2); }
+.clsPip.routine, .moveItem.routine { --cls: var(--line-strong); }
+.clsPip.lucky, .moveItem.lucky { --cls: var(--t4); }
+.clsPip.mistake, .moveItem.mistake { --cls: var(--error); }
+.clsPip.hint, .moveItem.hint { --cls: var(--t3); }
+
+.moveList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.moveItem {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cls, var(--line-strong));
+  border-radius: var(--ctl-radius);
+}
+.moveJump {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-family: inherit;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: var(--ctl-radius);
+}
+.moveJump:hover { background: var(--panel2); }
+.moveJump:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.moveHead {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.moveNo {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--sub);
+  min-width: 2ch;
+}
+.moveWhat {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.moveCls {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cls, var(--sub));
+}
+/* Routine is the baseline, so it gets text colour rather than a hue that would
+ * make the commonest move in the game look like a category. */
+.moveCls.routine { color: var(--sub); }
+.moveGap {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+.moveWhy { font-size: 12px; color: var(--sub); line-height: 1.45; }
+.moveAlt {
+  font-size: 11.5px;
+  color: var(--accent);
+  line-height: 1.45;
+}
+
+/* ---- acting on an insight ---- */
+
+.insightAct { margin-top: 9px; }
+
+/* ---- giving up ---- */
+
+.footBtns { display: flex; align-items: center; gap: 10px; }
+.linkBtn {
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--sub);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.linkBtn:hover { color: var(--ink); }
+.linkBtn.danger { color: var(--error); font-weight: 600; }
+.quitAsk {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--sub);
+  /* "Give up?" broke across two lines when the confirm expanded the row. */
+  white-space: nowrap;
+}
+.footRow { gap: 10px; flex-wrap: wrap; }
+.footBtns { flex: 0 0 auto; }
+
+.veil.lost { animation: winCard 0.4s ease backwards; }
+.lostTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.lostBody {
+  font-size: 12px;
+  color: var(--sub);
+  line-height: 1.5;
+  max-width: 30ch;
+  text-align: center;
+  margin-bottom: 12px;
+}
+/* The answers you never reached. Deliberately quiet: they are the app's digits,
+ * not yours, and the contrast between the two is the point of looking. */
+.cell.revealed .val {
+  color: var(--sub);
+  font-weight: 400;
+}

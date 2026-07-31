@@ -7,6 +7,7 @@ import NewGameSheet from './components/NewGameSheet.jsx'
 import HintSummary from './components/HintSummary.jsx'
 import { Moon, Sun, Play, Plus, Trophy, Sparkles, Chart } from './components/Icons.jsx'
 import StatsView from './components/StatsView.jsx'
+import GameReview from './components/GameReview.jsx'
 import * as gameLog from './lib/gameLog.js'
 import { gameReducer, initialState, remainingCounts, currentLabel, highlightDigit } from './state/gameReducer.js'
 import { candMaskAt } from './logic/topology.js'
@@ -34,14 +35,20 @@ export default function App() {
   const [records, setRecords] = useState(() => getSync(KEYS.records) || {})
   const [showPicker, setShowPicker] = useState(false)
   const [newRecord, setNewRecord] = useState(false)
+  // The record for the game that just ended, so the review can open straight
+  // from the end screen instead of being hunted for in the statistics tab.
+  const [lastGame, setLastGame] = useState(null)
+  const [confirmQuit, setConfirmQuit] = useState(false)
   const [genError, setGenError] = useState(null)
-  // home | game | stats | settings. Home is the front door: the app used to
-  // drop you straight onto a board, which left the daily, the streaks and the
-  // history as things you had to go looking for.
-  const [view, setView] = useState('home')
   const [practicing, setPracticing] = useState(null)
 
-  const timer = useTimer(state.status === 'playing', 0)
+  // The clock runs only while you are actually looking at the board. It used
+  // to keep counting while you browsed the stats or sat on the dashboard,
+  // because "playing" only meant "not paused". Leaving the tab was already
+  // handled; leaving the game screen was not.
+  const [view, setViewRaw] = useState('home')
+  const setView = setViewRaw
+  const timer = useTimer(state.status === 'playing' && view === 'game', 0)
   const generator = useGenerator()
 
   const stateRef = useRef(state)
@@ -138,7 +145,9 @@ export default function App() {
       hints: s.hints,
       startedAt: s.startedAt,
       elapsedMs: timerRef.current.read(),
-      completed: s.status === 'won',
+      // Means "over, do not resume" rather than "won": a game you gave up on
+      // must not come back as a game in progress.
+      completed: s.status === 'won' || s.status === 'lost',
     })
   }, [])
 
@@ -180,6 +189,7 @@ export default function App() {
     async tier => {
       setShowPicker(false)
       setNewRecord(false)
+      setConfirmQuit(false)
       recordAbandon()
       updateSettings({ lastMode: 'casual' })
       dispatch({ type: 'generating', requested: tier })
@@ -310,6 +320,25 @@ export default function App() {
     dispatch({ type: 'clearActiveDigit' })
   }, [settings.quickInput, updateSettings])
 
+  /**
+   * Giving up. A recorded result like any other, so the win rate stays honest,
+   * and the board reveals itself afterwards because the only reason to give up
+   * is wanting to know.
+   */
+  const forfeit = useCallback(() => {
+    const prev = stateRef.current
+    if (prev.status !== 'playing' && prev.status !== 'paused') return
+    setConfirmQuit(false)
+    dispatch({ type: 'forfeit' })
+    if (!gameLog.worthRecording(prev)) return
+    const rec = gameLog.buildRecord(
+      { ...prev, forfeited: true },
+      { completed: false, durationMs: timerRef.current.read(), endedAt: Date.now() }
+    )
+    gameLog.saveRecord(rec)
+    setLastGame(rec)
+  }, [])
+
   const restart = useCallback(() => {
     setShowPicker(false)
     setNewRecord(false)
@@ -409,10 +438,15 @@ export default function App() {
     lastMoveRef.current = log.length
     const m = log[log.length - 1]
     if (!m || state.status === 'won') return
-    if (m.kind === 'place') (m.correct === false ? sound.wrong : sound.place)()
+    // The wrong-digit sound gave the answer away even with mistake marking
+    // turned off, and during a bookmarked branch, where the whole point is that
+    // you are speculating. If the board is not telling you, neither is the
+    // speaker.
+    const tellingYou = settings.checkErrors && !state.bookmark
+    if (m.kind === 'place') (m.correct === false && tellingYou ? sound.wrong : sound.place)()
     else if (m.kind === 'erase' || m.kind === 'clear') sound.erase()
     else if (m.kind === 'hint') sound.hint()
-  }, [state.moveLog, state.status])
+  }, [state.moveLog, state.status, settings.checkErrors, state.bookmark])
 
   // ---- win ----
 
@@ -421,7 +455,13 @@ export default function App() {
     sound.win()
     const ms = timerRef.current.read()
 
-    gameLog.record(stateRef.current, { completed: true, durationMs: ms, endedAt: Date.now() })
+    const rec = gameLog.buildRecord(stateRef.current, {
+      completed: true,
+      durationMs: ms,
+      endedAt: Date.now(),
+    })
+    gameLog.saveRecord(rec)
+    setLastGame(rec)
 
     const prev = records[label]
     if (prev === undefined || ms < prev) {
@@ -495,13 +535,22 @@ export default function App() {
   const generating = state.status === 'generating'
   const paused = state.status === 'paused'
   const won = state.status === 'won'
+  const lost = state.status === 'lost'
   const allFilledButWrong =
-    state.board && !won && !state.board.includes(0)
+    state.board && !won && !lost && !state.board.includes(0)
+
+  if (view === 'review' && lastGame) {
+    return (
+      <div className="app wide">
+        <GameReview game={lastGame} onBack={() => setView('game')} />
+      </div>
+    )
+  }
 
   if (view === 'stats') {
     return (
       <div className="app wide">
-        <StatsView onClose={() => setView('home')} />
+        <StatsView onClose={() => setView('home')} onPractice={startPractice} />
       </div>
     )
   }
@@ -588,14 +637,15 @@ export default function App() {
         hardest={state.hardest}
         ms={timer.ms}
         paused={paused}
-        canPause={Boolean(state.board) && !won && !generating}
+        canPause={Boolean(state.board) && !won && !lost && !generating}
         onTogglePause={() => dispatch({ type: 'togglePause' })}
       />
 
       <div className="boardWrap">
         <Board
           state={state}
-          checkErrors={settings.checkErrors}
+          checkErrors={settings.checkErrors && !state.bookmark}
+          reveal={lost}
           canGo={canGo}
           revealWrong={revealWrong}
           blurred={paused}
@@ -626,6 +676,26 @@ export default function App() {
           </div>
         )}
 
+        {lost && (
+          <div className="veil lost">
+            <div className="lostTitle">Gave up</div>
+            <div className="winSub">
+              {label} · {tech} · {fmtMs(timer.ms)}
+            </div>
+            <div className="lostBody">
+              The rest of the grid is filled in below. It counts as a loss, which
+              is the only way the win rate means anything.
+            </div>
+            <div className="winBtns">
+              <button className="bigBtn" onClick={() => startNew(label)}>Play again</button>
+              {lastGame && (
+                <button className="bigBtn ghost" onClick={() => setView('review')}>Review</button>
+              )}
+              <button className="bigBtn ghost" onClick={() => setShowPicker(true)}>New game</button>
+            </div>
+          </div>
+        )}
+
         {won && (
           <div className="veil win">
             <Trophy size={34} className="trophy" />
@@ -641,7 +711,12 @@ export default function App() {
             <HintSummary hintLog={state.hintLog} mistakes={state.mistakes} />
             <div className="winBtns">
               <button className="bigBtn" onClick={() => startNew(label)}>Play again</button>
-              <button className="bigBtn ghost" onClick={() => setShowPicker(true)}>New difficulty</button>
+              {/* The review used to be buried in the statistics tab, which is
+                  the one moment nobody goes looking for it. */}
+              {lastGame && (
+                <button className="bigBtn ghost" onClick={() => setView('review')}>Review</button>
+              )}
+              <button className="bigBtn ghost" onClick={() => setShowPicker(true)}>New game</button>
             </div>
           </div>
         )}
@@ -696,9 +771,22 @@ export default function App() {
           />
           <span>Show mistakes</span>
         </label>
-        <button className="newBtn" onClick={() => setShowPicker(true)}>
-          <Plus size={15} /> New game
-        </button>
+        <div className="footBtns">
+          {!won && !lost && !generating && state.moveLog.length > 0 && (
+            confirmQuit ? (
+              <span className="quitAsk">
+                Give up?
+                <button className="linkBtn danger" onClick={forfeit}>yes</button>
+                <button className="linkBtn" onClick={() => setConfirmQuit(false)}>no</button>
+              </span>
+            ) : (
+              <button className="linkBtn" onClick={() => setConfirmQuit(true)}>Give up</button>
+            )
+          )}
+          <button className="newBtn" onClick={() => setShowPicker(true)}>
+            <Plus size={15} /> New game
+          </button>
+        </div>
       </div>
 
       {allFilledButWrong && (
