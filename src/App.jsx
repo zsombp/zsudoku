@@ -420,7 +420,21 @@ export default function App() {
       return
     }
     const k = e.key
-    if (k >= '1' && k <= '9') dispatch({ type: 'digit', value: Number(k) })
+    // Quick input means the same thing on a keyboard as it does under a thumb:
+    // a digit key arms the brush, it does not place. Filling stays with the
+    // cell, whether you click it or press Enter on it.
+    //
+    // This reverses the Phase 3 decision, which kept the keyboard cell-first on
+    // the grounds that arming only saves taps on a touchscreen. True, but it
+    // made one setting mean two different things depending on what you were
+    // typing on, which is worse than the efficiency it bought.
+    if (k >= '1' && k <= '9') {
+      if (settings.quickInput) dispatch({ type: 'setActiveDigit', value: Number(k) })
+      else dispatch({ type: 'digit', value: Number(k) })
+    } else if ((k === 'Enter' || k === ' ') && settings.quickInput && state.selected >= 0) {
+      e.preventDefault()
+      dispatch({ type: 'quickPlace', index: state.selected })
+    }
     else if (k === 'Backspace' || k === 'Delete' || k === '0') { e.preventDefault(); dispatch({ type: 'erase' }) }
     else if (k === 'ArrowUp') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: 0, dy: -1 }) }
     else if (k === 'ArrowDown') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: 0, dy: 1 }) }
@@ -596,6 +610,7 @@ export default function App() {
         canRedo={state.future.length > 0}
         notes={state.notes}
         quick={settings.quickInput}
+        showCheck={!settings.checkErrors}
         disabled={busy}
         onUndo={() => dispatch({ type: 'undo' })}
         onRedo={() => dispatch({ type: 'redo' })}
@@ -635,12 +650,12 @@ export default function App() {
       )}
 
       <div className="hint">
-        keys: 1–9 place · N notes · A auto · U undo · R redo · P pause · Q quick · H hint · arrows move
+        keys: {settings.quickInput ? '1–9 pick · Enter place' : '1–9 place'} · N notes · A auto · U undo · R redo · P pause · Q quick · H hint · arrows move
         {autoFills && ' · C complete'}
       </div>
       {settings.quickInput && (
         <div className="modeHint">
-          Quick input: pick a number, then tap cells to fill them. Tap it again to put it down.
+          Quick input: pick a number with the pad or the number keys, then tap cells (or press Enter) to fill them. Pick it again to put it down.
         </div>
       )}
       </div>

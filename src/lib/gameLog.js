@@ -39,6 +39,7 @@ export function buildRecord(state, { completed, durationMs, endedAt }) {
 
     mistakes: state.mistakes,
     hints: state.hints,
+    checks: state.checks || 0,
     hintLog: state.hintLog || [],
     autoCompleted: Boolean(state.autoCompleted),
     moveLog: state.moveLog || [],

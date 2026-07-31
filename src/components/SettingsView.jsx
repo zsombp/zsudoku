@@ -128,7 +128,10 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
             onChange={v => updateSettings({ candidateHints: v })}
           />
         </Row>
-        <Row label="Show mistakes" hint="Marks a digit red as soon as it disagrees with the solution.">
+        <Row
+          label="Show mistakes"
+          hint="Marks a digit red the moment it disagrees with the solution. Turn it off and a Check button appears instead, so you can ask when you want to."
+        >
           <Switch
             label="Show mistakes"
             checked={settings.checkErrors}

@@ -1,7 +1,7 @@
 import { Undo, Redo, Eraser, Pencil, Sparkles, Zap, Bulb, Check } from './Icons.jsx'
 
 export default function Toolbar({
-  canUndo, canRedo, notes, quick, disabled,
+  canUndo, canRedo, notes, quick, disabled, showCheck,
   onUndo, onRedo, onErase, onToggleNotes, onAutoPencil, onToggleQuick, onHint, onCheck,
 }) {
   return (
@@ -50,15 +50,21 @@ export default function Toolbar({
         <Bulb size={19} />
         <span>Hint</span>
       </button>
-      <button
-        className="tool"
-        disabled={disabled}
-        onClick={onCheck}
-        title="Briefly show any wrong digits"
-      >
-        <Check size={19} />
-        <span>Check</span>
-      </button>
+      {/* Redundant when "Show mistakes" is on: a wrong digit is already marked
+          the instant it is placed, so asking is asking a question you can
+          already see the answer to. It only earns a slot when you are playing
+          without that net. */}
+      {showCheck && (
+        <button
+          className="tool"
+          disabled={disabled}
+          onClick={onCheck}
+          title="Briefly show any wrong digits"
+        >
+          <Check size={19} />
+          <span>Check</span>
+        </button>
+      )}
     </div>
   )
 }

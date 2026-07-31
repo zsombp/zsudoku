@@ -2,6 +2,58 @@
 
 Newest first.
 
+## v1.2.0 - 2026-07-31 - game review, replay and heatmap
+
+Zsomb went looking for these after a Diabolical game and could not find them,
+because they did not exist yet. They do now.
+
+### Recent games, and a review for each
+
+The stats screen lists recent games; tapping one opens its review. Two views of
+the same log:
+
+- **Replay** walks the solve forward with a scrubber and a play button, marking
+  the cell each step touched, so you can watch how it actually unfolded.
+- **Where the time went** collapses it into a heatmap of how long you sat on
+  each cell before filling it, with the time printed in the corner.
+
+Plus the per-game facts: placements, wrong digits, undos, hints, time to first
+move, longest pause and where it was, pencil marks, checks.
+
+### The move log had to become a real history first
+
+It recorded *that* an undo happened, not what it undid, and *that* auto-complete
+ran, not which cells it filled. Enough to count, not enough to replay. Both now
+record an explicit diff of what changed, which makes replay exact rather than
+approximate.
+
+Verified on a game played entirely through real actions: replaying the log from
+the starting puzzle reproduces the solution exactly, 36 empty cells down to 0.
+
+Games recorded before this replay approximately through undos, which is the
+honest limit of what was stored, and games with no log at all say so rather
+than showing an empty board.
+
+One detail worth knowing: the review reports a wrong digit even if you undid it.
+The mistakes counter is reverted by undo on purpose, but the log is not, so the
+review can still tell you a wrong digit was tried.
+
+### Two changes from Zsomb's feedback
+
+- **Check only appears when "Show mistakes" is off.** It was redundant: a wrong
+  digit was already marked the instant it was placed, so the button asked a
+  question you could already see the answer to. It now earns its slot only when
+  you are playing without that net, and Settings says so.
+- **In quick input, number keys pick the digit rather than placing it.** Filling
+  stays with the cell, by click or by Enter.
+
+  This reverses the Phase 3 decision, which kept the keyboard cell-first on the
+  grounds that arming a brush only saves taps on a touchscreen. That was true
+  and beside the point: it made one setting mean two different things depending
+  on what you were typing on, which is worse than the efficiency it bought.
+
+121 tests pass, 13 new over replay and reconstruction.
+
 ## v1.1.0 - 2026-07-31 - four defects, and notes you can trust
 
 Found by going hunting rather than by reading the code: every item below was

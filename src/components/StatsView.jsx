@@ -4,6 +4,7 @@ import * as compute from '../stats/compute.js'
 import { insights, needed } from '../stats/coach.js'
 import { achievements } from '../stats/achievements.js'
 import { dailyStreak } from '../logic/daily.js'
+import GameReview from './GameReview.jsx'
 import * as gameLog from '../lib/gameLog.js'
 import { fmtMs } from '../lib/format.js'
 
@@ -19,6 +20,7 @@ export default function StatsView({ onClose }) {
   const [games, setGames] = useState(null)
   const [showNumbers, setShowNumbers] = useState(false)
   const [notice, setNotice] = useState(null)
+  const [reviewing, setReviewing] = useState(null)
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -66,6 +68,14 @@ export default function StatsView({ onClose }) {
       <div className="statsView">
         <StatsHeader onClose={onClose} />
         <div className="statsEmpty">Loading…</div>
+      </div>
+    )
+  }
+
+  if (reviewing) {
+    return (
+      <div className="statsView">
+        <GameReview game={reviewing} onBack={() => setReviewing(null)} />
       </div>
     )
   }
@@ -147,6 +157,27 @@ export default function StatsView({ onClose }) {
                 </div>
               )}
             </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Recent games">
+        <div className="gameList">
+          {[...games].reverse().slice(0, 12).map(g => (
+            <button className="gameRow" key={g.id} onClick={() => setReviewing(g)}>
+              <span className="grTier">{g.graded}</span>
+              <span className="grMeta">
+                {new Date(g.endedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                {g.daily && ' · daily'}
+                {!g.completed && ' · unfinished'}
+              </span>
+              <span className="grTime">{fmtMs(g.durationMs)}</span>
+              <span className="grFlags">
+                {g.mistakes > 0 && <em title="mistakes">{g.mistakes}✕</em>}
+                {g.hints > 0 && <em title="hints">{g.hints}?</em>}
+                {g.mistakes === 0 && g.hints === 0 && <em className="clean">clean</em>}
+              </span>
+            </button>
           ))}
         </div>
       </Section>

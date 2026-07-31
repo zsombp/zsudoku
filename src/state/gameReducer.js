@@ -103,6 +103,21 @@ function completedUnitCells(board, i) {
 const logMove = (state, entry, t) => [...state.moveLog, { t: Math.round(t ?? 0), ...entry }]
 
 /**
+ * Which cells changed and what they became.
+ *
+ * Undo, redo and auto-complete each move an unknown number of cells, and the
+ * log only recorded that they happened. That is enough to count them and not
+ * enough to replay them: a review could not reconstruct the board at a given
+ * moment without knowing what an undo actually undid. Recording the diff makes
+ * the log a complete history rather than a summary.
+ */
+function boardDiff(before, after) {
+  const changes = []
+  for (let i = 0; i < 81; i++) if (before[i] !== after[i]) changes.push([i, after[i]])
+  return changes
+}
+
+/**
  * Puts `v` back into the pencil marks of the peers it was taken from.
  *
  * Placing a digit strips it from every peer's marks, which is right. Erasing it
@@ -385,7 +400,7 @@ function reduce(state, action) {
         stripped: prev.stripped || {},
         history: state.history.slice(0, -1),
         future: [...state.future, snapshot(state)],
-        moveLog: logMove(state, { kind: 'undo' }, action.t),
+        moveLog: logMove(state, { kind: 'undo', changes: boardDiff(state.board, prev.board) }, action.t),
       }
     }
 
@@ -400,7 +415,7 @@ function reduce(state, action) {
         stripped: next.stripped || {},
         history: [...state.history, snapshot(state)],
         future: state.future.slice(0, -1),
-        moveLog: logMove(state, { kind: 'redo' }, action.t),
+        moveLog: logMove(state, { kind: 'redo', changes: boardDiff(state.board, next.board) }, action.t),
       }
     }
 
@@ -434,7 +449,11 @@ function reduce(state, action) {
         marks,
         autoCompleted: true,
         history: [...state.history, snapshot(state)],
-        moveLog: logMove(state, { kind: 'autoComplete', count: fills.length }, action.t),
+        moveLog: logMove(state, {
+          kind: 'autoComplete',
+          count: fills.length,
+          changes: fills.map(f => [f.cell, f.digit]),
+        }, action.t),
       }
       if (isSolved(board, state.solution)) next.status = 'won'
       return next
