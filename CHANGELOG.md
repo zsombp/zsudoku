@@ -2,6 +2,77 @@
 
 Newest first.
 
+## v1.0.2 - 2026-07-31 - pencil marks, highlight contrast, theme menu
+
+All three from Zsomb's report after playing v1.0.1.
+
+### Pencil marks moved depending on which other marks were present
+
+He spotted it precisely: a 4 sat lower in a cell using two rows of marks than in
+one using three. Reproduced and measured.
+
+| rows of marks used | where the 4 sat |
+|---|---|
+| 3 | 18.2px |
+| 2 | **22.4px** |
+
+Plus a 9.8px case where the top row happened to be empty.
+
+The marks grid declared `grid-template-columns` but not rows, so the rows were
+implicit and auto-sized. An empty row collapsed to nothing and the occupied rows
+absorbed the free space, which moved every digit in the cell.
+
+This is not cosmetic. A pencil mark's **position is information** — you learn to
+read "4 is left-of-centre" without counting — and that only works if the
+position never moves. Fixed with `grid-template-rows: repeat(3, 1fr)`. Verified:
+1/2/3 at 0px, 4/5/6 at 18.2px, 7/8/9 at 36.4px, in every cell regardless of
+which marks are present.
+
+### A highlighted pencil mark is now a filled chip, not a recoloured digit
+
+Zsomb: outside ink and brass it is "almost impossible to tell which number you
+have highlighted".
+
+He is right, and the reason is that recolouring only works when the accent sits
+far from `--sub` in both hue and lightness. Measured in Nord, the highlighted
+mark against a plain one was **1.07:1** — two light blue-greys at 9px, which is
+invisible by any standard.
+
+Highlighted marks now swap figure and ground: `--accent` background,
+`--accent-ink` text. That removes the comparison entirely, and it is legible in
+every theme by construction rather than by luck, because `--accent-ink` is
+already validated at 4.5:1 or better against `--accent` in all six. Nord now
+measures **7.41:1**.
+
+### Cell highlights were weaker in every theme than in ink
+
+Also his observation, and also true. The `--sel` and `--same` alphas had been
+copied from ink rather than computed per theme, so on lighter panels the same
+alpha produced far less separation.
+
+| theme | selected, before | after |
+|---|---|---|
+| ink | 1.86 | 1.86 |
+| paper | 1.44 | 1.87 |
+| newsprint | 1.47 | 1.86 |
+| contrast | 1.48 | 1.88 |
+| nord | 1.72 | 1.88 |
+| midnight | 1.82 | 1.88 |
+
+Alphas are now computed per theme to land on ink's strength against that theme's
+own panel. Same-digit highlight is 1.36 in all six.
+
+### The theme switcher is a menu
+
+Was a button that cycled through six. Cycling is fine for two options and
+miserable for six: you cannot see where you are going, and reaching the last one
+means passing through four you did not want.
+
+Now a dropdown listing all six, each row rendered in its own theme's tokens with
+a miniature board, so you choose from the thing itself rather than from a name.
+Closes on selection, Escape, or a click outside; `aria-haspopup`, `aria-expanded`
+and `menuitemradio` throughout. Available from both the game and the dashboard.
+
 ## v1.0.1 - 2026-07-31 - fixes from an adversarial UI review
 
 An independent review pass over the UI layer, verified in the running app rather

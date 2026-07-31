@@ -22,15 +22,7 @@ import { dailyPlan, weekdayName, dailyStreak } from './logic/daily.js'
 import SettingsView from './components/SettingsView.jsx'
 import { Gear, Home } from './components/Icons.jsx'
 import Dashboard from './components/Dashboard.jsx'
-import { THEMES } from './components/SettingsView.jsx'
-
-const LIGHT_THEMES = new Set(['paper', 'newsprint', 'contrast'])
-const isLightTheme = t => LIGHT_THEMES.has(t)
-const themeName = t => THEMES.find(x => x.id === t)?.name || t
-const nextTheme = t => {
-  const i = THEMES.findIndex(x => x.id === t)
-  return THEMES[(i + 1) % THEMES.length].id
-}
+import ThemeMenu from './components/ThemeMenu.jsx'
 import * as sound from './lib/sound.js'
 
 export default function App() {
@@ -435,6 +427,8 @@ export default function App() {
           }
           daily={dailyInfo}
           records={records}
+          theme={settings.theme}
+          onTheme={th => updateSettings({ theme: th })}
           onResume={() => setView('game')}
           onPick={t => { startNew(t); setView('game') }}
           onDaily={() => { startDaily(); setView('game') }}
@@ -456,18 +450,7 @@ export default function App() {
           <button className="iconBtn" aria-label="Statistics" onClick={() => setView('stats')}>
             <Chart size={17} />
           </button>
-          {/* Cycles all six rather than flipping between ink and paper. The
-              two-way toggle silently threw away whichever theme was chosen in
-              Settings: picking Midnight and tapping here gave you paper, with
-              no way back except reopening Settings. */}
-          <button
-            className="iconBtn"
-            aria-label={`Theme: ${themeName(settings.theme)}. Next theme`}
-            title={`Theme: ${themeName(settings.theme)}`}
-            onClick={() => updateSettings({ theme: nextTheme(settings.theme) })}
-          >
-            {isLightTheme(settings.theme) ? <Moon size={17} /> : <Sun size={17} />}
-          </button>
+          <ThemeMenu theme={settings.theme} onPick={t => updateSettings({ theme: t })} />
           <button className="iconBtn" aria-label="Settings" onClick={() => setView('settings')}>
             <Gear size={17} />
           </button>

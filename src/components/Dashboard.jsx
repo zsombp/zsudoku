@@ -5,6 +5,7 @@ import * as gameLog from '../lib/gameLog.js'
 import * as compute from '../stats/compute.js'
 import { dailyStreak } from '../logic/daily.js'
 import { Calendar, Chart, Gear, Play, Trophy } from './Icons.jsx'
+import ThemeMenu from './ThemeMenu.jsx'
 
 /**
  * The home screen.
@@ -14,7 +15,7 @@ import { Calendar, Chart, Gear, Play, Trophy } from './Icons.jsx'
  * the front door: what is in progress, what today's puzzle is, how you are
  * doing, and every way in.
  */
-export default function Dashboard({ inProgress, daily, records, onResume, onPick, onDaily, onStats, onSettings }) {
+export default function Dashboard({ inProgress, daily, records, theme, onTheme, onResume, onPick, onDaily, onStats, onSettings }) {
   const [summary, setSummary] = useState(null)
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function Dashboard({ inProgress, daily, records, onResume, onPick
         <div className="brand">ZSUDOKU</div>
         <div className="topBtns">
           <button className="iconBtn" aria-label="Statistics" onClick={onStats}><Chart size={17} /></button>
+          <ThemeMenu theme={theme} onPick={onTheme} />
           <button className="iconBtn" aria-label="Settings" onClick={onSettings}><Gear size={17} /></button>
         </div>
       </header>

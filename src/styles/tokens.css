@@ -57,8 +57,8 @@
   --line-strong: #3a3f4d;
   --accent: #9a6c12;
   --accent-ink: #ffffff;
-  --sel: rgba(154, 108, 18, 0.28);
-  --same: rgba(154, 108, 18, 0.14);
+  --sel: rgba(154, 108, 18, 0.46);
+  --same: rgba(154, 108, 18, 0.24);
   --peer: rgba(20, 24, 40, 0.055);
   --error: #c0392f;
   --veil: rgba(243, 244, 246, 0.86);
@@ -73,7 +73,12 @@
   color-scheme: light;
 }
 
-/* Every ramp below was validated with the dataviz validator against its own
+/* Selection and same-digit alphas are per-theme, computed so each lands at the
+ * ink theme's highlight strength against its OWN panel (1.86 and 1.36). They
+ * started as copies of ink's alphas, which made the light themes noticeably
+ * weaker: paper's selected cell was 1.44 against ink's 1.86.
+ *
+ * Every ramp below was validated with the dataviz validator against its own
  * panel colour: monotone lightness, adjacent gaps >= 0.06, light end clearing
  * 2:1 against the surface, single hue. Re-run it if any value changes.
  *
@@ -90,8 +95,8 @@
   --line-strong: #3d4b58;
   --accent: #5dd2db;
   --accent-ink: #00171a;
-  --sel: rgba(93, 210, 219, 0.28);
-  --same: rgba(93, 210, 219, 0.15);
+  --sel: rgba(93, 210, 219, 0.29);
+  --same: rgba(93, 210, 219, 0.17);
   --peer: rgba(255, 255, 255, 0.05);
   --error: #ff6a5c;
   --veil: rgba(0, 0, 0, 0.86);
@@ -112,8 +117,8 @@
   --line-strong: #717f96;
   --accent: #95b9dd;
   --accent-ink: #202632;
-  --sel: rgba(149, 185, 221, 0.30);
-  --same: rgba(149, 185, 221, 0.16);
+  --sel: rgba(149, 185, 221, 0.35);
+  --same: rgba(149, 185, 221, 0.17);
   --peer: rgba(229, 233, 240, 0.055);
   --error: #f48288;
   --veil: rgba(46, 52, 64, 0.86);
@@ -134,8 +139,8 @@
   --line-strong: #4b4034;
   --accent: #924834;
   --accent-ink: #fbf7ee;
-  --sel: rgba(146, 72, 52, 0.26);
-  --same: rgba(146, 72, 52, 0.13);
+  --sel: rgba(146, 72, 52, 0.40);
+  --same: rgba(146, 72, 52, 0.21);
   --peer: rgba(74, 56, 32, 0.06);
   --error: #c30a3e;
   --veil: rgba(236, 227, 210, 0.88);
@@ -159,8 +164,8 @@
   --line-strong: #000000;
   --accent: #6a1ec7;
   --accent-ink: #ffffff;
-  --sel: rgba(106, 30, 199, 0.22);
-  --same: rgba(106, 30, 199, 0.12);
+  --sel: rgba(106, 30, 199, 0.34);
+  --same: rgba(106, 30, 199, 0.18);
   --peer: rgba(0, 0, 0, 0.07);
   --error: #b3000f;
   --veil: rgba(0, 0, 0, 0.72);

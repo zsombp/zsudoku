@@ -358,9 +358,21 @@ body {
   to { transform: scale(1); opacity: 1; }
 }
 
+/* Fixed thirds in BOTH directions.
+ *
+ * The rows used to be implicit and therefore auto-sized, so an empty row
+ * collapsed and the occupied rows absorbed its space: a 4 sat 18.2px down in a
+ * cell using three rows but 22.4px down in one using two, and near the top if
+ * row one happened to be empty. The same digit moved depending on which OTHER
+ * digits were present.
+ *
+ * That is not cosmetic. A pencil mark's position is information — you learn to
+ * read "4 is left-of-centre" at a glance without counting — and it only works
+ * if the position never moves. */
 .marks {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   width: 88%;
   height: 88%;
 }
@@ -373,7 +385,23 @@ body {
   justify-content: center;
   line-height: 1;
 }
-.m.mHi { color: var(--accent); font-weight: 600; }
+/* A highlighted pencil mark is a filled chip, not a recoloured digit.
+ *
+ * Colouring it with --accent only reads clearly when the accent is far from
+ * --sub in both hue and lightness, which is true of brass on slate and of
+ * almost nothing else. Nord's accent (#95b9dd) against its --sub (#a3b0c5) is
+ * two light blue-greys at 9px, effectively invisible.
+ *
+ * Swapping figure and ground removes the comparison entirely. --accent-ink is
+ * already validated at 4.5:1 or better against --accent in every theme, because
+ * it exists to be text sitting on the accent, so this is legible everywhere by
+ * construction rather than by luck. */
+.m.mHi {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 3px;
+  font-weight: 600;
+}
 
 /* ---- overlays ---- */
 
@@ -1197,3 +1225,73 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
  * need explicit block display to keep the original layout. */
 .cardKicker, .cardTitle, .cardMeta, .cardTrack { display: block; }
 .cardKicker { display: flex; }
+
+/* ---- theme menu ---- */
+
+.themeMenuWrap { position: relative; display: inline-flex; }
+
+.themeMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  width: 246px;
+  max-height: min(70dvh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  animation: menuIn 0.14s ease;
+}
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.themeItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 7px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--ink);
+}
+.themeItem.on { box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* The swatch draws in the row's own data-theme, so it is the theme rather than
+ * an approximation of it. */
+.themeSwatch {
+  flex-shrink: 0;
+  display: block;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 4px;
+}
+.tsBoard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 1.5px;
+  width: 30px;
+  height: 30px;
+}
+.tsCell { background: var(--panel2); border-radius: 1.5px; }
+.tsCell.given { background: var(--line-strong); }
+.tsCell.sel { background: var(--accent); }
+
+.themeItemText { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.themeItemName { font-size: 12.5px; font-weight: 600; }
+.themeItemDesc { font-size: 10px; color: var(--sub); line-height: 1.3; }
