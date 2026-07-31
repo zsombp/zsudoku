@@ -11,7 +11,7 @@
 //       technique mix and timing per tier.
 
 import { generateFull, dig, makePuzzle } from '../src/logic/generator.js'
-import { gradePuzzle } from '../src/logic/grader.js'
+import { gradePuzzle, createState, nextStep, applyStep, forcedFills } from '../src/logic/grader.js'
 import { hasUniqueSolution } from '../src/logic/solver.js'
 import { TIERS, tierForScore } from '../src/logic/difficulty.js'
 import { TECHNIQUES } from '../src/logic/techniques.js'
@@ -133,6 +133,52 @@ function verify(n) {
   console.log()
 }
 
+/**
+ * When does the strict auto-complete trigger actually fire?
+ *
+ * Strict means every remaining cell has exactly one candidate at once. That is
+ * a late state by construction, and if it only ever fires with three cells left
+ * the button is decoration. This measures it instead of assuming, by walking a
+ * solve in the grader's own order and checking after every placement.
+ */
+function autocomplete(n) {
+  console.log(`\nStrict auto-complete trigger point, ${n} puzzles per tier.`)
+  console.log('"cells left" is how many were still empty the moment the button would appear.\n')
+  console.log('tier          fires   median cells left   p25    p75    max    never fires')
+  console.log('-'.repeat(80))
+
+  for (const tier of TIERS) {
+    const points = []
+    let never = 0
+
+    for (let i = 0; i < n; i++) {
+      const made = makePuzzle(tier.name, { seed: 70000 + i })
+      if (!made) continue
+
+      const state = createState(made.puzzle)
+      let fired = null
+      for (let s = 0; s < 400; s++) {
+        const fills = forcedFills(state.board)
+        if (fills) { fired = fills.length; break }
+        const step = nextStep(state)
+        if (!step) break
+        applyStep(state, step)
+      }
+      if (fired === null) never++
+      else points.push(fired)
+    }
+
+    points.sort((a, b) => a - b)
+    console.log(
+      `${tier.name.padEnd(12)} ${pct(points.length, n).padStart(5)}   ` +
+      `${String(pctl(points, 0.5)).padStart(17)}   ${String(pctl(points, 0.25)).padStart(4)}   ` +
+      `${String(pctl(points, 0.75)).padStart(4)}   ${String(points[points.length - 1] ?? 0).padStart(4)}   ${never}`
+    )
+  }
+  console.log()
+}
+
 const mode = process.argv[2]
 if (mode === 'explore') explore(Number(process.argv[3] || 30))
+else if (mode === 'autocomplete') autocomplete(Number(process.argv[3] || 12))
 else verify(Number(process.argv[2] || 20))

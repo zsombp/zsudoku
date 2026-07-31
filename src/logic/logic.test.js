@@ -6,7 +6,8 @@ import { describe, it, expect } from 'vitest'
 import { UNITS, PEERS, candsAt, candMaskAt, range, unitName, UNIT_META } from './topology.js'
 import { countSolutions, solve, hasUniqueSolution } from './solver.js'
 import { generateFull, dig, makePuzzle } from './generator.js'
-import { gradePuzzle, createState, nextStep, applyStep, trivialTail, allCellsForced } from './grader.js'
+import { gradePuzzle, createState, nextStep, applyStep, trivialTail, allCellsForced, forcedFills } from './grader.js'
+import { gameReducer, initialState } from '../state/gameReducer.js'
 import { TIERS, tierForScore } from './difficulty.js'
 import { TECHNIQUES, LADDER } from './techniques.js'
 import { mulberry32, seedFromDate, shuffle } from '../lib/prng.js'
@@ -231,6 +232,75 @@ describe('auto-complete triggers', () => {
     nearly[10] = 0
     expect(allCellsForced(nearly)).toBe(true)
     expect(allCellsForced(solution)).toBe(false)
+  })
+
+  // The one that matters: the button fills the board for you, so if it ever
+  // offers a wrong digit it silently ruins a finished game.
+  it('forcedFills only ever offers the correct digit', () => {
+    for (const seed of [101, 202, 303, 404]) {
+      const rng = mulberry32(seed)
+      const solution = generateFull(rng)
+      const puzzle = dig(solution, 30, rng)
+      const state = createState(puzzle)
+
+      for (let s = 0; s < 400; s++) {
+        const fills = forcedFills(state.board)
+        if (fills) {
+          for (const { cell, digit } of fills) expect(solution[cell]).toBe(digit)
+          // And it must finish the job: no empty cells left afterwards.
+          const done = state.board.slice()
+          for (const { cell, digit } of fills) done[cell] = digit
+          expect(done).toEqual(solution)
+          break
+        }
+        const step = nextStep(state)
+        if (!step) break
+        applyStep(state, step)
+      }
+    }
+  })
+
+  it('forcedFills refuses a board with a contradiction', () => {
+    const rng = mulberry32(505)
+    const solution = generateFull(rng)
+    const wrecked = solution.slice()
+    // Blank two cells in a row, then put the wrong digit in one of them, so a
+    // peer is left with no candidates at all.
+    const [a, b] = [0, 1]
+    wrecked[a] = 0
+    wrecked[b] = 0
+    wrecked[a] = solution[b]
+    expect(forcedFills(wrecked)).toBeNull()
+  })
+})
+
+describe('auto-complete reducer', () => {
+  it('fills the board and wins, and stays undoable', () => {
+    const rng = mulberry32(606)
+    const solution = generateFull(rng)
+    const puzzle = solution.slice()
+    for (const i of [3, 17, 40, 62, 78]) puzzle[i] = 0
+
+    let s = gameReducer(initialState, {
+      type: 'ready',
+      made: { puzzle, solution, requested: 'Gentle', graded: 'Gentle', score: 0, hardest: null, counts: {}, clues: 76, seed: 1 },
+      now: 0,
+    })
+    const fills = forcedFills(s.board)
+    expect(fills).toHaveLength(5)
+
+    s = gameReducer(s, { type: 'autoComplete', fills })
+    expect(s.board).toEqual(solution)
+    expect(s.status).toBe('won')
+    expect(s.autoCompleted).toBe(true)
+
+    const undone = gameReducer({ ...s, status: 'playing' }, { type: 'undo' })
+    expect(undone.board.filter(v => v === 0)).toHaveLength(5)
+  })
+
+  it('ignores an empty fill list', () => {
+    const s = { ...initialState, status: 'playing', board: new Array(81).fill(1) }
+    expect(gameReducer(s, { type: 'autoComplete', fills: [] })).toBe(s)
   })
 })
 

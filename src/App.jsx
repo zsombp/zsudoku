@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import Board from './components/Board.jsx'
 import NumberPad from './components/NumberPad.jsx'
 import Toolbar from './components/Toolbar.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import NewGameSheet from './components/NewGameSheet.jsx'
-import { Moon, Sun, Play, Plus, Trophy } from './components/Icons.jsx'
+import { Moon, Sun, Play, Plus, Trophy, Sparkles } from './components/Icons.jsx'
 import { gameReducer, initialState, remainingCounts, currentLabel } from './state/gameReducer.js'
 import { techFor, tierForScore } from './logic/difficulty.js'
-import { gradePuzzle } from './logic/grader.js'
+import { gradePuzzle, forcedFills } from './logic/grader.js'
 import { GRADER_VERSION } from './logic/techniques.js'
 import { useTimer } from './hooks/useTimer.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
@@ -37,6 +37,14 @@ export default function App() {
   const counts = remainingCounts(state.board)
   const busy = state.status !== 'playing'
 
+  // Auto-complete offers itself only when every remaining cell is forced, so
+  // there is genuinely nothing left to work out. Recomputed on each board
+  // change, which is cheap: one pass building candidate masks.
+  const autoFills = useMemo(
+    () => (state.status === 'playing' && state.board ? forcedFills(state.board) : null),
+    [state.board, state.status]
+  )
+
   // ---- persistence ----
 
   const persist = useCallback(() => {
@@ -55,6 +63,7 @@ export default function App() {
       clues: s.clues,
       seed: s.seed,
       graderVersion: GRADER_VERSION,
+      autoCompleted: s.autoCompleted,
       mistakes: s.mistakes,
       hints: s.hints,
       startedAt: s.startedAt,
@@ -175,6 +184,7 @@ export default function App() {
     else if (k.toLowerCase() === 'a') dispatch({ type: 'autoPencil' })
     else if (k.toLowerCase() === 'u') dispatch({ type: 'undo' })
     else if (k.toLowerCase() === 'p') dispatch({ type: 'togglePause' })
+    else if (k.toLowerCase() === 'c' && autoFills) dispatch({ type: 'autoComplete', fills: autoFills })
   })
 
   // ---- render ----
@@ -260,6 +270,14 @@ export default function App() {
         )}
       </div>
 
+      {autoFills && (
+        <button className="autoDone" onClick={() => dispatch({ type: 'autoComplete', fills: autoFills })}>
+          <Sparkles size={16} />
+          Fill the last {autoFills.length}
+          <span className="autoDoneSub">every cell is forced</span>
+        </button>
+      )}
+
       <Toolbar
         canUndo={state.history.length > 0}
         notes={state.notes}
@@ -297,6 +315,7 @@ export default function App() {
 
       <div className="hint">
         keys: 1–9 place · N notes · A auto notes · U/⌘Z undo · P pause · arrows move
+        {autoFills && ' · C complete'}
       </div>
 
       {showPicker && (

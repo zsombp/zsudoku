@@ -246,6 +246,41 @@ body {
 .bigBtn:active { transform: scale(0.96); }
 .bigBtn.ghost { background: var(--panel); color: var(--ink); border: 1px solid var(--line); }
 
+/* ---- auto-complete ----
+ * Only appears when every remaining cell is forced, which is rare and late, so
+ * it gets to be loud rather than hiding as a fifth toolbar icon. */
+
+.autoDone {
+  width: 100%;
+  margin-top: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: var(--ctl-radius);
+  padding: 11px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  animation: slideIn 0.22s ease;
+}
+.autoDone:active { transform: scale(0.98); }
+.autoDoneSub {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.72;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
 /* ---- tools ---- */
 
 .tools {

@@ -29,6 +29,9 @@ export const initialState = {
   seed: null,
   mistakes: 0,
   hints: 0,
+  // A game finished with auto-complete is not the same as one finished by hand.
+  // Phase 5 stats read this.
+  autoCompleted: false,
   startedAt: null,
   elapsedMs: 0,
 }
@@ -87,6 +90,7 @@ export function gameReducer(state, action) {
         seed: s.seed,
         mistakes: s.mistakes || 0,
         hints: s.hints || 0,
+        autoCompleted: s.autoCompleted || false,
         startedAt: s.startedAt,
         elapsedMs: s.elapsedMs || 0,
       }
@@ -185,6 +189,31 @@ export function gameReducer(state, action) {
         mistakes: prev.mistakes,
         history: state.history.slice(0, -1),
       }
+    }
+
+    case 'autoComplete': {
+      // The button is only offered when every remaining cell is forced, so this
+      // is pure mop-up. Still goes through history like any other move.
+      if (!state.board || state.status !== 'playing') return state
+      const fills = action.fills
+      if (!fills?.length) return state
+
+      const board = state.board.slice()
+      const marks = state.marks.slice()
+      for (const { cell, digit } of fills) {
+        board[cell] = digit
+        marks[cell] = 0
+      }
+
+      const next = {
+        ...state,
+        board,
+        marks,
+        autoCompleted: true,
+        history: [...state.history, snapshot(state)],
+      }
+      if (isSolved(board, state.solution)) next.status = 'won'
+      return next
     }
 
     case 'autoPencil': {

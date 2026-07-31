@@ -13,7 +13,7 @@
 // a single number captures that where "hardest technique" cannot.
 
 import { PEERS, candMaskAt } from './topology.js'
-import { removeMark, countMarks } from './marks.js'
+import { removeMark, countMarks, marksToList } from './marks.js'
 import { TECHNIQUES, LADDER } from './techniques.js'
 
 export function createState(puzzle) {
@@ -126,14 +126,33 @@ export function trivialTail(board) {
   return placements
 }
 
-/** Every empty cell has exactly one candidate right now. The strict reading. */
-export function allCellsForced(board) {
+/**
+ * The auto-complete trigger, in its strict reading: every empty cell has
+ * exactly one candidate right now. Returns the fills, or null.
+ *
+ * Strict is Zsomb's call, and the reasoning is the right one. The looser
+ * reading (the rest falls to naked singles, each revealing the next) still asks
+ * you to notice which cell has become forced, and a cell being forced is not
+ * always obvious: a cell may hold several candidates while some digit has only
+ * one home left in its box. Noticing that is a hidden single, and it is
+ * thinking. This fires only when there is nothing left to notice at all.
+ *
+ * Deliberately computed from the true candidates rather than from the player's
+ * pencil marks. Keying it on the marks would make the button appear or not
+ * depending on how diligently they had been pencilling, which is nonsense.
+ *
+ * A contradiction on the board (a cell with no candidates left) fails the
+ * single-candidate check, so a wrecked board never offers the button.
+ */
+export function forcedFills(board) {
   const state = createState(board)
-  let empty = 0
+  const fills = []
   for (let i = 0; i < 81; i++) {
     if (state.board[i] !== 0) continue
-    empty++
-    if (countMarks(state.cands[i]) !== 1) return false
+    if (countMarks(state.cands[i]) !== 1) return null
+    fills.push({ cell: i, digit: marksToList(state.cands[i])[0] })
   }
-  return empty > 0
+  return fills.length > 0 ? fills : null
 }
+
+export const allCellsForced = board => forcedFills(board) !== null

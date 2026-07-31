@@ -2,6 +2,41 @@
 
 Newest first.
 
+## v0.3.1 - 2026-07-31 - auto-complete, strict
+
+The first slice of Phase 3. It was specced in v0.3.0 but not built, which Zsomb
+correctly noticed: the button never appeared because it did not exist yet.
+
+**Strict trigger, chosen by Zsomb**, and his reasoning improved the spec. The
+cascade alternative still asks you to notice which cell has become forced, and a
+cell being forced is not always obvious: a cell can hold several pencil marks
+while some digit has only one home left in its box. Spotting that is a hidden
+single, and it is thinking. Strict fires only when there is nothing left to
+notice at all: every empty cell down to exactly one candidate.
+
+- Computed from the true candidates rather than the player's pencil marks, so
+  the button does not depend on how diligently they pencilled.
+- A contradiction on the board fails the check, so a wrecked board never offers
+  it.
+- Goes through undo history, and sets an `autoCompleted` flag for Phase 5 stats.
+  A game finished this way is not the same as one finished by hand.
+- Keyboard `C`. Appears as a full-width brass bar under the board, because it is
+  rare and late and should not hide as a fifth toolbar icon.
+
+**Measured**, `npm run calibrate -- autocomplete`: walking a solve in the
+grader's own order, it fires on every puzzle at every tier, median 5 to 7 cells
+left, never more than 10. A player filling in a different order can reach the
+all-forced state earlier, so it is not strictly a last-six-cells affair.
+
+**Verified in the browser**: seeded a six-cell endgame, button appeared reading
+"Fill the last 6, every cell is forced", one click took the board from 75 to 81
+filled, matched the solution exactly, won, and set the flag. On a fresh 50-blank
+Medium puzzle the button is correctly absent.
+
+36 logic tests pass, including one asserting `forcedFills` only ever offers the
+digit from the solution. That matters more than usual here: this button fills
+the board for you, so a wrong digit would silently ruin a finished game.
+
 ## v0.3.0 - 2026-07-30 - Phase 2, the honest difficulty engine
 
 Four tiers became six, three techniques became twelve, and no puzzle that needs

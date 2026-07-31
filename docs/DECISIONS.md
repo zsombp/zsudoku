@@ -4,6 +4,33 @@ Newest first. Every entry records what was decided, why, and what it rules out. 
 
 ---
 
+## 2026-07-31: auto-complete uses the strict trigger
+
+Zsomb's call, and the reasoning is worth keeping because it corrects the way the
+choice was originally framed.
+
+The two candidates were strict (every remaining cell has exactly one candidate
+right now) and cascade (the rest falls to naked singles, each revealing the
+next). Cascade was presented as closer to "no thinking left". It is not. Cascade
+still asks the player to notice which cell has become forced, and a cell being
+forced is not always visible: a cell can hold several pencil marks while some
+digit has only one home left in its box. Noticing that is a hidden single, which
+is a genuinely harder spot than a lone candidate, and it is thinking.
+
+Strict fires only when there is nothing left to notice at all.
+
+Two implementation choices follow from the same principle:
+
+- The trigger reads the **true candidates**, not the player's pencil marks. If
+  it read the marks, the button would appear or not depending on how thoroughly
+  they had pencilled, which makes an objective property of the board look like a
+  reward for bookkeeping.
+- A contradiction on the board fails the single-candidate test, so a wrecked
+  board never offers to finish itself.
+
+Rules out: the cascade trigger, and any setting toggling between the two. One
+correct answer, not a preference.
+
 ## 2026-07-30: Phase 2, the scoring model
 
 ### Naked singles cost nothing, and that is the whole fix

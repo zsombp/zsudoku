@@ -134,18 +134,22 @@ Requested 2026-07-30. Today the game is cell-first: select a cell, then choose a
 - Tapping a cell that already holds the active digit clears it, matching the current same-digit-clears behaviour.
 - Cell-first stays available. This is a mode, not a replacement, and the setting persists.
 
-### Auto-complete
+### Auto-complete — DONE in v0.3.1, strict
 
-Requested 2026-07-30, for the point where "there is literally no thinking left to do, it is just filling in the cells". A button that appears only when that is true, and fills everything in one tap.
+Requested 2026-07-30, for the point where "there is literally no thinking left to do, it is just filling in the cells".
 
-**Open decision, to settle when this gets built.** Two readings of the trigger, and they feel very different:
+**Settled 2026-07-31: strict.** The button appears only when every remaining empty cell has exactly one candidate, and fills them all in one tap.
 
-1. **Strict.** Every empty cell has exactly one candidate right now. Appears very late, usually the last handful of cells. Pure mop-up, cannot possibly rob you of a puzzle.
-2. **Cascade.** The rest of the board is solvable by naked singles alone, each one revealing the next. This is closer to the intent, because "no thinking left" is exactly what a naked-singles-only tail means. But on an Easy puzzle it can light up with thirty cells still empty, which is a big chunk of the game to hand away.
+Zsomb chose strict over the cascade reading, and his reasoning corrected the framing rather than just picking an option. The cascade version still asks you to notice which cell has become forced, and a cell being forced is not always obvious: a cell can hold several pencil marks while some digit has only one home left in its box. Spotting that is a hidden single, and it is thinking. Strict fires only when there is nothing left to notice at all.
 
-Leaning cascade, because it matches what was asked for, but gated so it never appears before the board is meaningfully filled. Needs to be felt rather than argued about, so build it behind a setting and try both.
+Details that matter:
 
-Either way the check is nearly free: it reuses the Phase 2 ladder restricted to its first rung. Using it is recorded in stats, since a game finished with auto-complete is not the same as one finished by hand.
+- Computed from the **true candidates**, not from the player's pencil marks. Keying it on the marks would make the button appear or not depending on how diligently they had been pencilling.
+- A contradiction on the board fails the single-candidate check, so a wrecked board never offers it.
+- Goes through undo history like any other move, and sets an `autoCompleted` flag that Phase 5 stats read. A game finished with it is not the same as one finished by hand.
+- Keyboard: `C`.
+
+Measured with `npm run calibrate -- autocomplete`: walking a solve in the grader's own order, it fires on every puzzle at every tier, with a median of 5 to 7 cells left and never more than 10. A real player who fills cells in a different order can reach the all-forced state earlier, so the button is not strictly a last-six-cells affair.
 
 ### The rest
 
