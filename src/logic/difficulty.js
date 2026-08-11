@@ -103,3 +103,30 @@ export const techFor = name => tierByName(name).tech
 // Kept so old saves written before the six-tier rebuild still load with a
 // sensible label instead of showing undefined.
 export const LEGACY_LEVEL_NAME = { 1: 'Gentle', 2: 'Easy', 3: 'Medium', 4: 'Expert' }
+
+/**
+ * How long this player is likely to take on a puzzle, from their own history.
+ *
+ * A range rather than a number, because a point estimate for something this
+ * variable is a lie with a decimal place on it. The spread comes from their own
+ * middle 50%, so a consistent player gets a tight range and an erratic one gets
+ * an honest wide one.
+ */
+export function predictTime(games, tier, variant = 'classic') {
+  const same = games.filter(
+    g => g.completed && g.graded === tier && (g.variant || 'classic') === variant
+  )
+  if (same.length < 5) return null
+
+  const times = same.map(g => g.durationMs).sort((a, b) => a - b)
+  const at = q => times[Math.min(times.length - 1, Math.floor(times.length * q))]
+  return {
+    low: at(0.25),
+    mid: at(0.5),
+    high: at(0.75),
+    sample: times.length,
+    // Recent games weigh more than old ones in how it feels, so say whether
+    // the last few have been faster than the middle.
+    trend: same.slice(-5).reduce((a, g) => a + g.durationMs, 0) / Math.min(5, same.length) < at(0.5),
+  }
+}

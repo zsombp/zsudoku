@@ -20,7 +20,7 @@ import ThemeMenu from './ThemeMenu.jsx'
  * the front door: what is in progress, what today's puzzle is, how you are
  * doing, and every way in.
  */
-export default function Dashboard({ inProgress, daily, records, theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice }) {
+export default function Dashboard({ inProgress, daily, records, theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice, onTailored }) {
   const [summary, setSummary] = useState(null)
 
   useEffect(() => {
@@ -34,7 +34,10 @@ export default function Dashboard({ inProgress, daily, records, theme, onTheme, 
       const weak = ranked.length >= 1 && ranked[0][1] >= 3
         ? { key: ranked[0][0], count: ranked[0][1], label: TECHNIQUES[ranked[0][0]].label }
         : null
-      setSummary({ ...compute.overview(games), daily: dailyStreak(games), weak })
+      // The top few, for a puzzle built around all of them rather than a drill
+      // on one. Needs a real history behind it, or "tailored" means nothing.
+      const wants = ranked.filter(([, n]) => n >= 2).slice(0, 3).map(([k]) => k)
+      setSummary({ ...compute.overview(games), daily: dailyStreak(games), weak, wants })
     })
   }, [])
 
@@ -118,6 +121,21 @@ export default function Dashboard({ inProgress, daily, records, theme, onTheme, 
                 : 'Pick a technique and get a puzzle that needs it'}
             </span>
           </button>
+
+          {/* A whole game around your weak spots, as opposed to a drill on one
+              of them. Only offered once there is enough history to know what
+              they are: a puzzle that claims to be tailored and is not would be
+              worse than not offering it. */}
+          {summary?.wants?.length >= 2 && onTailored && (
+            <button className="card cardTailored" onClick={() => onTailored(summary.wants)}>
+              <span className="cardKicker">Built for you</span>
+              <span className="cardTitle">Your weak spots</span>
+              <span className="cardMeta">
+                A full game needing {summary.wants.map(k => TECHNIQUES[k].label).slice(0, 2).join(' and ')}
+                {summary.wants.length > 2 ? ', among others' : ''}
+              </span>
+            </button>
+          )}
 
           <div className="dashPick">
             <div className="dashPickHead">New game</div>

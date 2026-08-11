@@ -330,3 +330,69 @@ export function makePuzzle(wanted, opts = {}) {
 
   return best
 }
+
+/**
+ * A puzzle aimed at one particular player.
+ *
+ * Not a tier, a specification: it must need these techniques, and it should
+ * take about this long. Both are things the engine already records, so this is
+ * a filter over generation rather than new machinery, exactly like practice
+ * mode. The difference is that practice drills one rung in isolation and this
+ * builds a whole game around what you are worst at.
+ *
+ * `wants` is a list of technique keys in preference order. A puzzle needing the
+ * first is best, needing any of them is acceptable, and needing none is
+ * rejected. Returns null if the budget runs out rather than shipping something
+ * that does not meet the specification, because a "tailored" puzzle that was
+ * not tailored is worse than an honest failure.
+ */
+export function makeTailoredPuzzle({
+  wants = [],
+  tiers = ['Medium', 'Hard', 'Expert'],
+  seed = randomSeed(),
+  budgetMs = 12000,
+  topo = CLASSIC,
+  solution: given = null,
+} = {}) {
+  if (!wants.length) return null
+  const rng = mulberry32(seed)
+  const t0 = Date.now()
+  let best = null
+  let tries = 0
+
+  while (Date.now() - t0 < budgetMs) {
+    for (const tierName of tiers) {
+      if (Date.now() - t0 > budgetMs) break
+      tries++
+      const tier = tierByName(tierName)
+      const solution = tries === 1 && given ? given : generateFull(rng, topo)
+      if (!solution) continue
+      const { puzzle, grade } = shapeToBand(solution, tier, rng, { topo })
+      if (!grade.solved) continue
+
+      const hit = wants.filter(k => grade.counts[k])
+      if (!hit.length) continue
+
+      const graded = tierForScore(grade.score)
+      const cand = {
+        puzzle,
+        solution,
+        seed,
+        requested: graded.name,
+        graded: graded.name,
+        score: grade.score,
+        hardest: grade.hardest,
+        counts: grade.counts,
+        clues: clueCount(puzzle),
+        variant: topo.id,
+        tailored: hit,
+        attempts: tries,
+      }
+      // The first want is what was really asked for; anything else is a
+      // fallback worth keeping while the search continues for something better.
+      if (hit[0] === wants[0]) return cand
+      if (!best || hit.length > best.tailored.length) best = cand
+    }
+  }
+  return best
+}

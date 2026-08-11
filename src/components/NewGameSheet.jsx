@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { TIERS } from '../logic/difficulty.js'
+import { TIERS, predictTime } from '../logic/difficulty.js'
 import { VARIANT_LIST, VARIANTS } from '../logic/variants.js'
 import { fmtMs } from '../lib/format.js'
 import { Calendar } from './Icons.jsx'
 
 export default function NewGameSheet({
-  records, canRestart, daily, variant = 'classic', onPick, onDaily, onRestart, onClose,
+  records, canRestart, daily, variant = 'classic', games = [], onPick, onDaily, onRestart, onClose,
 }) {
   // Chosen before the difficulty, because it changes what the difficulty means
   // to play rather than how hard it is.
@@ -66,6 +66,13 @@ export default function NewGameSheet({
             </span>
             <span className="tierMeta">
               {t.tech}
+              {/* What it is likely to cost you, from your own history on this
+                  board. A range rather than a number: a point estimate for
+                  something this variable is a lie with a decimal place on it. */}
+              {(() => {
+                const p = predictTime(games, t.name, pickedVariant)
+                return p ? <em>{fmtMs(p.low)}–{fmtMs(p.high)} for you</em> : null
+              })()}
               {records[recordKey(pickedVariant, t.name)] !== undefined && (
                 <em>best {fmtMs(records[recordKey(pickedVariant, t.name)])}</em>
               )}

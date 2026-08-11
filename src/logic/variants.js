@@ -13,7 +13,7 @@
 
 import { makeTopology, CLASSIC, range, rowOf, colOf } from './topology.js'
 import { mulberry32, randomSeed } from '../lib/prng.js'
-import { generateFull, makePuzzle, makePracticePuzzle } from './generator.js'
+import { generateFull, makePuzzle, makePracticePuzzle, makeTailoredPuzzle } from './generator.js'
 
 /**
  * A jigsaw layout together with a grid that fills it.
@@ -314,5 +314,20 @@ export function makeVariantPractice(variantId, technique, opts = {}) {
   }
 
   const made = makePracticePuzzle(technique, { ...opts, seed, topo: variant.topology(seed) })
+  return made && { ...made, variant: variant.id }
+}
+
+/** A tailored puzzle on any board, jigsaw's paired layout included. */
+export function makeVariantTailored(variantId, opts = {}) {
+  const seed = opts.seed ?? randomSeed()
+  const variant = VARIANTS[variantId] || VARIANTS.classic
+
+  if (variant.id === 'jigsaw') {
+    const { regions, solution } = jigsawLayout(seed)
+    const topo = makeTopology({ id: 'jigsaw', name: 'Jigsaw', regions, regionNamer: i => `region ${i + 1}` })
+    const made = makeTailoredPuzzle({ ...opts, seed, topo, solution })
+    return made && { ...made, variant: 'jigsaw', regions }
+  }
+  const made = makeTailoredPuzzle({ ...opts, seed, topo: variant.topology(seed) })
   return made && { ...made, variant: variant.id }
 }

@@ -271,6 +271,34 @@ export default function App() {
   )
 
   /**
+   * A whole game built around this player's weak spots.
+   *
+   * The same shape as practice: it can genuinely fail, and says so rather than
+   * quietly handing over an ordinary puzzle. A tailored puzzle that was not
+   * tailored is worse than an honest failure.
+   */
+  const startTailored = useCallback(
+    async wants => {
+      setPracticing('tailored')
+      setGenError(null)
+      setNewRecord(false)
+      recordAbandon()
+      dispatch({ type: 'generating', requested: 'tailored' })
+      setView('game')
+      try {
+        const made = await generator.tailored(wants, settingsRef.current.variant || 'classic')
+        timerRef.current.reset(0)
+        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual' })
+      } catch (err) {
+        setGenError(String(err.message || err))
+      } finally {
+        setPracticing(null)
+      }
+    },
+    [generator, recordAbandon]
+  )
+
+  /**
    * A puzzle that requires a given technique.
    *
    * Not cached and not seeded: this is a request for one specific property, and
@@ -496,6 +524,10 @@ export default function App() {
   // Loaded when the sheet opens rather than on every render: it reads the
   // history out of IndexedDB and nothing else needs it.
 
+  // The finished-game history, for anything that predicts from it. Refreshed
+  // whenever the picker or the dashboard is about to be looked at.
+  const [allGames, setAllGames] = useState([])
+
   const [dailyInfo, setDailyInfo] = useState(() => {
     const p = dailyPlan()
     return { weekday: weekdayName(), tier: p.tier, variant: p.variant, done: false, inProgress: false, streak: 0, durationMs: 0 }
@@ -507,6 +539,7 @@ export default function App() {
     const p = dailyPlan()
     gameLog.all().then(games => {
       if (!alive) return
+      setAllGames(games)
       const streak = dailyStreak(games, p.key)
       const todays = games.find(g => g.daily && g.dayKey === p.key && g.completed)
       const saved = getSync(KEYS.daily)
@@ -711,6 +744,7 @@ export default function App() {
           onDaily={() => { startDaily(); setView('game') }}
           onStats={() => setView('stats')}
           onPractice={() => setView('practice')}
+          onTailored={startTailored}
           onSettings={() => setView('settings')}
         />
       </div>
@@ -772,12 +806,20 @@ export default function App() {
           <div className="veil">
             <div className="gen">
               <div className="spinner" />
-              {genError ? genError : `Crafting a ${state.requested} puzzle…`}
+              {genError
+                ? genError
+                : state.requested === 'tailored'
+                  ? 'Building a puzzle around your weak spots…'
+                  : `Crafting a ${state.requested} puzzle…`}
               {/* Diabolical genuinely takes a while: most grids cannot be dug
                   that hard while staying solvable by logic, so it keeps trying
                   until one is. Say so rather than looking hung. */}
-              {state.requested === 'Diabolical' && !genError && (
-                <span className="genSub">these are rare, it may take a moment</span>
+              {(state.requested === 'Diabolical' || state.requested === 'tailored') && !genError && (
+                <span className="genSub">
+                  {state.requested === 'tailored'
+                    ? 'searching for one that needs the patterns you keep missing'
+                    : 'these are rare, it may take a moment'}
+                </span>
               )}
             </div>
           </div>
@@ -941,6 +983,7 @@ export default function App() {
         <NewGameSheet
           records={records}
           variant={settings.variant}
+          games={allGames}
           canRestart={Boolean(state.puzzle)}
           daily={dailyInfo}
           onPick={startNew}
