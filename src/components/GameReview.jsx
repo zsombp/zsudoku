@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { rowOf, colOf, range } from '../logic/topology.js'
+import { rowOf, colOf } from '../logic/topology.js'
 import { fmtMs } from '../lib/format.js'
 import { TECHNIQUES } from '../logic/techniques.js'
-import { boardAt, replaySteps, stallHeatmap, summarise } from '../stats/replay.js'
-import { analyseGame, verdict, CLASSES } from '../stats/analysis.js'
+import { createState } from '../logic/grader.js'
+import { boardAt, stateAt, replaySteps, stallHeatmap, summarise } from '../stats/replay.js'
+import { analyseGame, verdict, settledCands, CLASSES } from '../stats/analysis.js'
+import ReviewBoard from './ReviewBoard.jsx'
 import { Play, Pause } from './Icons.jsx'
 
 /**
@@ -35,6 +37,54 @@ export default function GameReview({ game, onBack }) {
   const stepIndex = steps.length ? steps[Math.min(pos, steps.length - 1)] : -1
   const board = useMemo(() => boardAt(game, stepIndex), [game, stepIndex])
   const current = game.moveLog?.[stepIndex]
+
+  // Which move the explanation panel is talking about. The replay scrubber and
+  // the move list both point at it, so stepping the board and clicking a row
+  // are the same gesture.
+  const [selected, setSelected] = useState(null)
+
+  /**
+   * What to open on. The review used to land on the last move of the game,
+   * where one cell is empty and there is nothing to see. The first mistake is
+   * the thing most worth looking at, then the first guess that happened to
+   * work, then the first move that needed a real pattern.
+   */
+  const notable = useMemo(() => {
+    const first = cls => analysis.moves.find(m => m.cls === cls)
+    return first('mistake') || first('lucky') || first('sharp') || analysis.moves[0] || null
+  }, [analysis.moves])
+
+  const move = useMemo(() => {
+    if (selected !== null) return analysis.moves.find(m => m.index === selected) || null
+    return notable
+  }, [analysis.moves, selected, notable])
+
+  // The position immediately before the move under discussion, which is the
+  // only position in which its explanation is true.
+  const at = move ? move.index - 1 : stepIndex
+  const before = useMemo(() => stateAt(game, at), [game, at])
+  const trueCands = useMemo(() => createState(before.board).cands, [before])
+  // What the board actually proves, eliminations included. Only computed for
+  // the one position on screen, so the ladder run costs a few milliseconds.
+  const settled = useMemo(() => settledCands(before.board), [before])
+  const [layer, setLayer] = useState('cands')
+
+  // The replay board shows the position after the step it is parked on, which
+  // is a different moment from the one the move panel explains.
+  const replayState = useMemo(() => stateAt(game, stepIndex), [game, stepIndex])
+  const replayMarks = replayState.marks
+  const replayCands = useMemo(() => createState(replayState.board).cands, [replayState])
+
+  // How many of your own notes had already been ruled out by the board.
+  const staleCount = useMemo(() => {
+    if (!before.marks) return 0
+    let n = 0
+    for (let i = 0; i < 81; i++) {
+      const bad = before.marks[i] & ~settled[i]
+      for (let d = 0; d < 9; d++) if (bad & (1 << d)) n++
+    }
+    return n
+  }, [before, settled])
 
   useEffect(() => {
     if (!playing) return
@@ -99,32 +149,24 @@ export default function GameReview({ game, onBack }) {
             </button>
           </div>
 
-          {mode !== 'moves' && <div className="reviewBoard">
-            {range(81).map(i => {
-              const given = game.puzzle[i] !== 0
-              const v = mode === 'replay' ? board[i] : game.solution[i]
-              const cls = ['rvCell']
-              if (colOf(i) % 3 === 2 && colOf(i) !== 8) cls.push('bR')
-              if (rowOf(i) % 3 === 2 && rowOf(i) !== 8) cls.push('bB')
-              if (given) cls.push('given')
-              if (mode === 'heatmap' && !given) cls.push('h' + level(heat.cells[i]))
-              if (mode === 'replay' && current && !current.changes && current.cell === i) cls.push('now')
-              if (mode === 'replay' && current?.changes?.some(([c]) => c === i)) cls.push('now')
-              if (mode === 'replay' && !given && v !== 0 && v !== game.solution[i]) cls.push('bad')
-              return (
-                <div key={i} className={cls.join(' ')}>
-                  {v !== 0 && <span className="rvVal">{v}</span>}
-                  {mode === 'heatmap' && !given && heat.cells[i] > 0 && (
-                    <span className="rvTime">{Math.round(heat.cells[i] / 1000)}s</span>
-                  )}
-                </div>
-              )
-            })}
-          </div>}
+          {mode !== 'moves' && (
+            <ReviewBoard
+              puzzle={game.puzzle}
+              board={mode === 'replay' ? board : game.solution}
+              solution={game.solution}
+              cands={mode === 'replay' ? replayCands : null}
+              marks={mode === 'replay' ? replayMarks : null}
+              showing={mode === 'replay' ? layer : 'none'}
+              focus={mode === 'replay' && current && !current.changes ? current.cell : -1}
+              heat={mode === 'heatmap' ? heat.cells : null}
+              heatLevel={mode === 'heatmap' ? level : null}
+            />
+          )}
 
           {mode === 'moves' && (
             <div className="moveReview">
               {line && <p className="verdict">{line}</p>}
+
               <div className="clsRow">
                 {['sharp', 'solid', 'routine', 'lucky', 'mistake', 'hint']
                   .filter(k => analysis.counts[k])
@@ -134,35 +176,126 @@ export default function GameReview({ game, onBack }) {
                     </span>
                   ))}
               </div>
-              <ol className="moveList">
-                {analysis.moves.map(mv => (
-                  <li className={'moveItem ' + mv.cls} key={mv.index}>
-                    <button
-                      className="moveJump"
-                      onClick={() => {
-                        setMode('replay')
-                        const at = steps.indexOf(mv.index)
-                        if (at >= 0) { setPlaying(false); setPos(at) }
-                      }}
-                      title="Show this move on the board"
-                    >
-                      <span className="moveHead">
-                        <span className="moveNo">{mv.n}</span>
-                        <span className="moveWhat">{mv.value} to {mv.cellName}</span>
-                        <span className={'moveCls ' + mv.cls}>{CLASSES[mv.cls].label}</span>
-                        <span className="moveGap">{(mv.gap / 1000).toFixed(1)}s</span>
+              {/* The board the explanation is about, with the pattern drawn on
+                  it. Without this the review asserted things about candidates
+                  while showing a grid that had none. */}
+              {move && (
+                <div className="moveStage">
+                  <ReviewBoard
+                    puzzle={game.puzzle}
+                    board={before.board}
+                    solution={game.solution}
+                    cands={trueCands}
+                    marks={before.marks}
+                    settled={settled}
+                    showing={layer}
+                    pattern={move.pattern || move.alternative?.step || null}
+                    focus={move.cell}
+                    alternative={move.alternative?.cell ?? -1}
+                  />
+                  <div className="stageSide">
+                    <div className="stageHead">
+                      <span className="moveNo">{move.n}</span>
+                      <span className="moveWhat">{move.value} to {move.cellName}</span>
+                      <span className={'moveCls ' + move.cls} title={CLASSES[move.cls].about}>
+                        {CLASSES[move.cls].label}
                       </span>
-                      <span className="moveWhy">{mv.why}</span>
-                      {mv.alternative && (
-                        <span className="moveAlt">
-                          Easier was {mv.alternative.digit} to r{Math.floor(mv.alternative.cell / 9) + 1}
-                          c{(mv.alternative.cell % 9) + 1}: {mv.alternative.detail}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ol>
+                      <span className="moveGap">{(move.gap / 1000).toFixed(1)}s</span>
+                    </div>
+                    <p className="stageWhy">{move.why}</p>
+                    {move.alternative && (
+                      <p className="moveAlt">
+                        Easier was {move.alternative.digit} to r{Math.floor(move.alternative.cell / 9) + 1}
+                        c{(move.alternative.cell % 9) + 1}: {move.alternative.detail}
+                      </p>
+                    )}
+                    <div className="segTabs small" role="tablist">
+                      <button role="tab" aria-selected={layer === 'cands'}
+                        className={'segTab' + (layer === 'cands' ? ' on' : '')}
+                        onClick={() => setLayer('cands')}>
+                        What the board proved
+                      </button>
+                      <button role="tab" aria-selected={layer === 'marks'}
+                        className={'segTab' + (layer === 'marks' ? ' on' : '')}
+                        onClick={() => setLayer('marks')}>
+                        Your notes
+                      </button>
+                    </div>
+                    {layer !== 'marks' && move.pattern?.derived && (
+                      <p className="stageNote">
+                        These candidates include the eliminations the ladder can make first. On the
+                        raw board the pattern is not visible yet, which is exactly what made this
+                        move worth more than a scan.
+                      </p>
+                    )}
+                    {layer === 'marks' && (
+                      <p className="stageNote">
+                        {!before.exact
+                          ? 'This game was recorded before undos stored their notes, so these are approximate after the first undo.'
+                          : staleCount > 0
+                            ? `${staleCount} of your notes here were already impossible, struck through below. Some of those take a pattern to see, so this is what the board knew, not what you should have spotted.`
+                            : 'Every note here was still possible.'}
+                      </p>
+                    )}
+                    <ol className="moveList">
+                      {analysis.moves.map(mv => (
+                        <li
+                          className={'moveItem ' + mv.cls + (move?.index === mv.index ? ' on' : '')}
+                          key={mv.index}
+                        >
+                          <button
+                            className="moveJump"
+                            aria-current={move?.index === mv.index}
+                            onClick={() => {
+                              // Selecting drives the board above rather than jumping
+                              // away to the replay tab: the explanation and the
+                              // evidence should be on screen together.
+                              setSelected(mv.index)
+                              const at = steps.indexOf(mv.index)
+                              if (at >= 0) { setPlaying(false); setPos(at) }
+                            }}
+                            title="Show this move on the board"
+                          >
+                            <span className="moveHead">
+                              <span className="moveNo">{mv.n}</span>
+                              <span className="moveWhat">{mv.value} to {mv.cellName}</span>
+                              <span className={'moveCls ' + mv.cls}>{CLASSES[mv.cls].label}</span>
+                              <span className="moveGap">{(mv.gap / 1000).toFixed(1)}s</span>
+                            </span>
+                            <span className="moveWhy">{mv.why}</span>
+                            {mv.alternative && (
+                              <span className="moveAlt">
+                                Easier was {mv.alternative.digit} to r{Math.floor(mv.alternative.cell / 9) + 1}
+                                c{(mv.alternative.cell % 9) + 1}: {mv.alternative.detail}
+                              </span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {mode === 'replay' && (
+            <div className="segTabs small" role="tablist">
+              <button role="tab" aria-selected={layer === 'cands'}
+                className={'segTab' + (layer === 'cands' ? ' on' : '')}
+                onClick={() => setLayer('cands')}>
+                What the board proved
+              </button>
+              <button role="tab" aria-selected={layer === 'marks'}
+                className={'segTab' + (layer === 'marks' ? ' on' : '')}
+                onClick={() => setLayer('marks')}>
+                Your notes
+              </button>
+              <button role="tab" aria-selected={layer === 'none'}
+                className={'segTab' + (layer === 'none' ? ' on' : '')}
+                onClick={() => setLayer('none')}>
+                Digits only
+              </button>
             </div>
           )}
 

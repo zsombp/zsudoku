@@ -2,6 +2,75 @@
 
 Newest first.
 
+## v1.6.0 - 2026-08-11 - the review shows its working, and backup to GitHub
+
+### The review draws the evidence
+
+The last version would tell you a move was Sharp because "r3c1 still showed
+2/3/6" and then show you a board with no candidates on it. The claim was
+uncheckable, which is the one thing a review must not be.
+
+The board now carries everything the analysis is talking about:
+
+- **Candidates in every empty cell**, so a statement about candidates can be read
+  off the board it is about.
+- **Your own notes**, rebuilt from the move log, on a toggle beside them.
+- **The pattern drawn rather than described.** The four cells of a naked quad
+  outlined, the unit tinted, the digit it kills struck through. Every technique
+  already returned its `cells`, `digits` and `unit`, and all of it was being
+  thrown away.
+- **The better move marked on the board.** "Easier was 5 to r7c8" used to send
+  you hunting for r7c8 yourself.
+- The move list sits beside the board, so choosing a move and seeing it are one
+  glance, and the review opens on the first mistake rather than the last move of
+  the game, where one cell is empty and there is nothing to look at.
+
+**Patterns are drawn over the candidates they were actually found in.** A naked
+quad found after a pointing pair has cleared the way does not look like a quad
+on the raw board, and the first version drew one over four cells that visibly
+contradicted it. The candidate state the pattern fired in is kept with the
+pattern, and the panel says when what you are seeing includes eliminations.
+
+### Stale notes
+
+A note you kept after the board had already ruled it out. The game only erases
+marks when you place a digit, so anything killed by a pointing pair or a naked
+pair sits there looking valid indefinitely.
+
+Finding these needs more than the naive candidate set: a peer scan finds almost
+none of them. `settledCands` runs the ladder's eliminations to exhaustion, and
+the difference against your notes is the answer. The wording is deliberately not
+scolding, because some of those eliminations take a pattern to see.
+
+### Pencil marks are replayable at all now
+
+`stateAt` rebuilds the marks alongside the board. Every rule that changes a mark
+was already in the log except one: undo, redo and returning to a bookmark
+restore a snapshot, and only the board half of it was recorded. Those entries
+now carry a mark diff too. Games recorded before this replay approximately after
+the first undo, and the review says so rather than pretending.
+
+### Backup to GitHub
+
+Off until you turn it on. A fine-grained token with Contents write on one
+private repository, and the game log goes up as one file per month under
+`games/`.
+
+The token lives in its own storage key so it can never travel with the settings
+or an export, and it is only saved after GitHub confirms it actually works: a
+backup you believe in but that has been failing for three weeks is worse than
+none. Sharding by month is because a game record runs about 7KB with its move
+log, so a single file would outgrow what the contents API hands back in one read
+within a few hundred games.
+
+The merge is a union by game id and already computes what the remote has that
+this device does not, which is the half two-way sync needs. Sync is not wired
+up, but nothing here has to be rebuilt to add it.
+
+This is a deliberate exception to the rule that the app makes no network
+requests, and `CLAUDE.md` now says so explicitly rather than being quietly
+violated.
+
 ## v1.5.0 - 2026-07-31 - post-game review, and giving up
 
 Seven things off the feedback list. Most of them are the app being quieter about

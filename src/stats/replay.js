@@ -4,7 +4,8 @@
 // These functions are what actually spend it: reconstructing the board at any
 // moment, and working out where on the grid the time went.
 
-import { boxOf } from '../logic/topology.js'
+import { boxOf, PEERS, candMaskAt, range } from '../logic/topology.js'
+import { hasMark, addMark, removeMark, toggleMark } from '../logic/marks.js'
 
 /** Entries that move a digit. Pencilling and checking do not change the board. */
 const CHANGES_BOARD = new Set(['place', 'clear', 'erase', 'hint', 'undo', 'redo', 'autoComplete'])
@@ -18,19 +19,119 @@ const CHANGES_BOARD = new Set(['place', 'clear', 'erase', 'hint', 'undo', 'redo'
  * approximately through undos, which is the honest limit of what was stored.
  */
 export function boardAt(record, step) {
+  return walk(record, step, false).board
+}
+
+/**
+ * The board and the pencil marks as they stood immediately after move `step`.
+ *
+ * The marks are the reason this exists. The review used to show a board with no
+ * candidates on it while the analysis said things like "r3c1 still showed
+ * 2/3/6", which is a claim you had no way to check. Notes are not in the log
+ * directly, but every rule that changes them is, so they can be rebuilt:
+ *
+ *   pencil       toggles one digit in one cell
+ *   place        clears the cell and strips the digit from its peers
+ *   clear/erase  puts back exactly what the placement took, via the ledger
+ *   autoPencil   recomputes every mark from the board
+ *
+ * Snapshot restores are the exception. Undo, redo and returning to a bookmark
+ * put back marks nothing else describes, so those entries now carry a
+ * `markChanges` diff. Games recorded before that carry no such diff and their
+ * marks go approximate after the first undo, which `marksExact` reports rather
+ * than hides.
+ */
+export function stateAt(record, step) {
+  return walk(record, step, true)
+}
+
+/** True when nothing in the log up to `step` forces the marks to be guessed. */
+export function marksExact(record, step) {
+  return walk(record, step, true).exact
+}
+
+const RESTORES = new Set(['undo', 'redo', 'returnToBookmark'])
+
+function walk(record, step, wantMarks) {
   const board = record.puzzle.slice()
+  const marks = wantMarks ? new Int16Array(81) : null
+  // What each placed digit took out of its peers' marks, so erasing puts back
+  // exactly that. Mirrors the reducer's ledger of the same name.
+  let stripped = {}
+  let exact = true
+
   const log = record.moveLog || []
   for (let i = 0; i <= step && i < log.length; i++) {
     const m = log[i]
+
+    if (wantMarks && m.kind === 'pencil') {
+      marks[m.cell] = toggleMark(marks[m.cell], m.value)
+      continue
+    }
+    if (wantMarks && m.kind === 'autoPencil') {
+      // Deterministic from the board, which is why it needs nothing logged.
+      for (const c of range(81)) marks[c] = board[c] === 0 ? candMaskAt(board, c) : 0
+      stripped = {}
+      continue
+    }
+
+    if (wantMarks && RESTORES.has(m.kind)) {
+      if (m.markChanges) {
+        for (const [cell, mask] of m.markChanges) marks[cell] = mask
+      } else if (marksTouched(marks)) {
+        // An older log, and marks existed to be disturbed. Say so.
+        exact = false
+      }
+    }
+
+    // ---- the board, and the mark rules that follow from it ----
     if (m.changes) {
-      for (const [cell, value] of m.changes) board[cell] = value
+      for (const [cell, value] of m.changes) {
+        if (wantMarks) applyCellChange(board, marks, cell, value, stripped)
+        board[cell] = value
+      }
     } else if (m.kind === 'place' || m.kind === 'hint') {
+      if (wantMarks) applyCellChange(board, marks, m.cell, m.value, stripped)
       board[m.cell] = m.value
     } else if (m.kind === 'clear' || m.kind === 'erase') {
+      if (wantMarks) applyCellChange(board, marks, m.cell, 0, stripped)
       board[m.cell] = 0
     }
   }
-  return board
+
+  return { board, marks, exact }
+}
+
+const marksTouched = marks => {
+  for (let i = 0; i < 81; i++) if (marks[i] !== 0) return true
+  return false
+}
+
+/**
+ * One cell changing value, and what that does to the pencil marks around it.
+ * Exactly the rules `placeDigit` applies, so the replay and the game agree.
+ */
+function applyCellChange(board, marks, cell, value, stripped) {
+  // Whatever the previous occupant took out of its peers goes back first.
+  const rec = stripped[cell]
+  if (rec) {
+    for (const [p, digit] of rec.peers) marks[p] = addMark(marks[p], digit)
+    if (rec.own) marks[cell] = rec.own
+    delete stripped[cell]
+  }
+
+  if (value === 0) return
+
+  const own = marks[cell]
+  marks[cell] = 0
+  const taken = []
+  for (const p of PEERS[cell]) {
+    if (hasMark(marks[p], value)) {
+      marks[p] = removeMark(marks[p], value)
+      taken.push([p, value])
+    }
+  }
+  if (taken.length || own) stripped[cell] = { own, peers: taken }
 }
 
 /** Indices of log entries worth stepping through. Pencilling is skipped. */

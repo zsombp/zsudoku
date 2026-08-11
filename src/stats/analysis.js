@@ -38,7 +38,11 @@ function justification(state, cell, digit) {
   if (!hasMark(cands, digit)) return null
 
   if (countMarks(cands) === 1) {
-    return { kind: 'routine', why: `${cellName(cell)} had only ${digit} left.` }
+    return {
+      kind: 'routine',
+      why: `${cellName(cell)} had only ${digit} left.`,
+      pattern: { technique: 'nakedSingle', cells: [cell], digits: [digit], unit: null, eliminations: [] },
+    }
   }
 
   // Hidden single: the digit has one home in some unit containing the cell.
@@ -51,6 +55,15 @@ function justification(state, cell, digit) {
       return {
         kind: 'solid',
         why: `${digit} had only one place left in ${unitName(UNIT_META[u])}.`,
+        // The whole unit is the evidence, so the whole unit gets drawn.
+        pattern: {
+          technique: 'hiddenSingle',
+          cells: [cell],
+          digits: [digit],
+          unit: UNIT_META[u],
+          unitCells: unit,
+          eliminations: [],
+        },
       }
     }
   }
@@ -61,13 +74,16 @@ function justification(state, cell, digit) {
   // "Sharp" used to be the fallthrough, which meant a digit dropped onto an
   // empty grid was classed as brilliant deduction. A move is only sharp if
   // something actually proved it.
-  const by = provenBy(state, cell, digit)
-  if (!by) return null
+  const proof = provenBy(state, cell, digit)
+  if (!proof) return null
 
   return {
     kind: 'sharp',
-    why: `${cellName(cell)} still showed ${marksToList(cands).join('/')}; ${TECHNIQUES[by]?.label || by} ruled the rest out.`,
-    technique: by,
+    why: `${cellName(cell)} still showed ${marksToList(cands).join('/')}; ${TECHNIQUES[proof.key]?.label || proof.key} ruled the rest out.`,
+    technique: proof.key,
+    // The step that did the ruling out, kept whole so the review can draw it
+    // rather than describe it, along with the candidate state it fired in.
+    pattern: { ...proof.step, target: { cell, digit }, cands: proof.cands, derived: true },
   }
 }
 
@@ -102,11 +118,46 @@ function provenBy(state, cell, digit) {
       changed = true
       // Checked after every technique rather than at the end, so the answer is
       // the one that actually did the work rather than the first to fire.
-      if (directJustification(work, cell, digit)) return key
+      if (directJustification(work, cell, digit)) {
+        // The candidates as they stood when the pattern fired, not the naive
+        // peer-only set. A naked quad found after a pointing pair has cleared
+        // the way does not look like a quad on the raw board, so drawing it
+        // over raw candidates shows a pattern whose cells visibly contradict
+        // it. This is the state in which the pattern is actually true.
+        return { key, step, cands: work.cands.slice() }
+      }
     }
     if (!changed) break
   }
   return null
+}
+
+/**
+ * Every candidate the ladder can rule out, applied to exhaustion.
+ *
+ * `createState` gives the naive set: a digit is a candidate unless a peer holds
+ * it. That is not everything the board proves. A pointing pair or a naked pair
+ * kills candidates no peer scan will find, and the game never erases those
+ * marks for you, so they are precisely the notes that go quietly stale while
+ * you keep trusting them. Comparing your notes against the naive set finds
+ * almost nothing; comparing against this finds the ones worth knowing about.
+ */
+export function settledCands(board) {
+  const work = createState(board)
+  for (let pass = 0; pass < 12; pass++) {
+    let changed = false
+    for (const key of LADDER) {
+      const step = TECHNIQUES[key].fn(work)
+      if (!step?.eliminations?.length) continue
+      for (const e of step.eliminations) {
+        if (!hasMark(work.cands[e.cell], e.digit)) continue
+        work.cands[e.cell] = removeMark(work.cands[e.cell], e.digit)
+        changed = true
+      }
+    }
+    if (!changed) break
+  }
+  return work.cands
 }
 
 /** Lone candidate or hidden single, in whatever position is handed in. */
@@ -171,6 +222,7 @@ export function analyseGame(record) {
 
     let cls
     let why
+    let pattern = null
     if (m.kind === 'hint') {
       cls = 'hint'
       why = m.technique ? `Found by ${TECHNIQUES[m.technique]?.label || m.technique}.` : 'You asked for this one.'
@@ -181,6 +233,7 @@ export function analyseGame(record) {
       const j = justification(state, m.cell, m.value)
       cls = j ? j.kind : 'lucky'
       why = j ? j.why : `Nothing on the board proved ${m.value} here yet.`
+      pattern = j?.pattern || null
     }
 
     // Only worth mentioning an alternative when yours was not the easy one.
@@ -195,7 +248,15 @@ export function analyseGame(record) {
         : null
     const alternative =
       offered && !toldAbout.has(offered.cell)
-        ? { cell: offered.cell, digit: offered.digit, detail: best.detail, technique: best.technique }
+        ? {
+            cell: offered.cell,
+            digit: offered.digit,
+            detail: best.detail,
+            technique: best.technique,
+            // Drawable, so "easier was 9 to r5c3" can point at r5c3 instead of
+            // making you go and find it.
+            step: best,
+          }
         : null
     if (alternative) toldAbout.add(alternative.cell)
     if (offered && cls !== 'mistake') missed++
@@ -211,6 +272,7 @@ export function analyseGame(record) {
       value: m.value,
       cls,
       why,
+      pattern,
       alternative,
     })
   }

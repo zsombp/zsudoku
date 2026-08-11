@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as gameLog from '../lib/gameLog.js'
 import { dayKey } from '../logic/daily.js'
+import BackupSettings from './BackupSettings.jsx'
 
 export const THEMES = [
   { id: 'ink', name: 'Ink & Brass', desc: 'The original. Deep blue, warm brass.' },
@@ -147,7 +148,7 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
         <h2 className="statHeading">Data</h2>
         <p className="dataNote">
           {count === null ? 'Counting…' : `${count} ${count === 1 ? 'game' : 'games'} recorded on this device.`}
-          {' '}Nothing is uploaded anywhere, so nothing is backed up unless you export it.
+          {' '}Everything stays on this device unless you turn on GitHub backup below.
         </p>
         <div className="dataRow">
           <button className="newBtn" onClick={doExport}>Export backup</button>
@@ -175,12 +176,15 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
         {notice && <p className="dataNote notice">{notice}</p>}
       </section>
 
+      <BackupSettings />
+
       <section className="statSection">
         <h2 className="statHeading">About</h2>
         <p className="dataNote">
-          Zsudoku is offline, free, and has no accounts, ads or tracking of any kind. It makes no
-          network requests at all once loaded. Everything it knows about you is in the export file
-          and nowhere else.
+          Zsudoku is offline, free, and has no accounts, ads or tracking of any kind. The only
+          network request it can ever make is the GitHub backup above, to a repository you own,
+          and only once you have switched it on. There is no analytics endpoint, no error
+          reporting and no third-party anything.
         </p>
       </section>
     </div>

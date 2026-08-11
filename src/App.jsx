@@ -9,6 +9,7 @@ import { Moon, Sun, Play, Plus, Trophy, Sparkles, Chart } from './components/Ico
 import StatsView from './components/StatsView.jsx'
 import GameReview from './components/GameReview.jsx'
 import * as gameLog from './lib/gameLog.js'
+import * as backup from './lib/backup.js'
 import { gameReducer, initialState, remainingCounts, currentLabel, highlightDigit } from './state/gameReducer.js'
 import { candMaskAt } from './logic/topology.js'
 import { hasMark } from './logic/marks.js'
@@ -170,6 +171,23 @@ export default function App() {
   // ---- generation ----
 
   /**
+   * Push to GitHub after a game ends, if it is switched on.
+   *
+   * Fire and forget, and deliberately silent: a backup that failed is worth
+   * knowing about on the settings screen, not in the middle of the win
+   * animation. The error is stored, and the dashboard says so if it persists.
+   */
+  const pushBackup = useCallback(() => {
+    const cfg = backup.loadCfg()
+    if (!cfg.enabled) return
+    gameLog
+      .all()
+      .then(games => backup.backup(games, { cfg }))
+      .then(res => { if (res?.cfg) backup.saveCfg(res.cfg) })
+      .catch(() => {})
+  }, [])
+
+  /**
    * Abandoning is a result. Recording only wins would make the win rate
    * meaningless. Switching to the daily does NOT abandon: that game keeps its
    * own slot and is still there when you come back.
@@ -177,13 +195,15 @@ export default function App() {
   const recordAbandon = useCallback(() => {
     const prev = stateRef.current
     if (prev.status === 'playing' && gameLog.worthRecording(prev)) {
-      gameLog.record(prev, {
-        completed: false,
-        durationMs: timerRef.current.read(),
-        endedAt: Date.now(),
-      })
+      gameLog
+        .record(prev, {
+          completed: false,
+          durationMs: timerRef.current.read(),
+          endedAt: Date.now(),
+        })
+        .then(pushBackup)
     }
-  }, [])
+  }, [pushBackup])
 
   const startNew = useCallback(
     async tier => {
@@ -335,9 +355,9 @@ export default function App() {
       { ...prev, forfeited: true },
       { completed: false, durationMs: timerRef.current.read(), endedAt: Date.now() }
     )
-    gameLog.saveRecord(rec)
+    gameLog.saveRecord(rec).then(pushBackup)
     setLastGame(rec)
-  }, [])
+  }, [pushBackup])
 
   const restart = useCallback(() => {
     setShowPicker(false)
@@ -460,7 +480,7 @@ export default function App() {
       durationMs: ms,
       endedAt: Date.now(),
     })
-    gameLog.saveRecord(rec)
+    gameLog.saveRecord(rec).then(pushBackup)
     setLastGame(rec)
 
     const prev = records[label]

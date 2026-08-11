@@ -124,6 +124,21 @@ function boardDiff(before, after) {
 }
 
 /**
+ * The same thing for pencil marks.
+ *
+ * Placing, erasing and auto-pencilling all change marks by rules the replay can
+ * re-derive from the board. Restoring a snapshot cannot be: undo, redo and
+ * returning to a bookmark put back marks that nothing in the log describes, so
+ * the review had no way to show what was actually written down at that moment.
+ * These entries carry the difference instead.
+ */
+function markDiff(before, after) {
+  const changes = []
+  for (let i = 0; i < 81; i++) if (before[i] !== after[i]) changes.push([i, after[i]])
+  return changes
+}
+
+/**
  * Puts `v` back into the pencil marks of the peers it was taken from.
  *
  * Placing a digit strips it from every peer's marks, which is right. Erasing it
@@ -407,6 +422,7 @@ function reduce(state, action) {
         moveLog: logMove(state, {
           kind: 'returnToBookmark',
           changes: boardDiff(state.board, b.board),
+          markChanges: markDiff(state.marks, b.marks),
         }, action.t),
       }
     }
@@ -475,7 +491,15 @@ function reduce(state, action) {
         tints: prev.tints || {},
         history: state.history.slice(0, -1),
         future: [...state.future, snapshot(state)],
-        moveLog: logMove(state, { kind: 'undo', changes: boardDiff(state.board, prev.board) }, action.t),
+        moveLog: logMove(
+          state,
+          {
+            kind: 'undo',
+            changes: boardDiff(state.board, prev.board),
+            markChanges: markDiff(state.marks, prev.marks),
+          },
+          action.t
+        ),
       }
     }
 
@@ -491,7 +515,15 @@ function reduce(state, action) {
         tints: next.tints || {},
         history: [...state.history, snapshot(state)],
         future: state.future.slice(0, -1),
-        moveLog: logMove(state, { kind: 'redo', changes: boardDiff(state.board, next.board) }, action.t),
+        moveLog: logMove(
+          state,
+          {
+            kind: 'redo',
+            changes: boardDiff(state.board, next.board),
+            markChanges: markDiff(state.marks, next.marks),
+          },
+          action.t
+        ),
       }
     }
 

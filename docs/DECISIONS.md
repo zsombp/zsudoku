@@ -552,3 +552,81 @@ view to be the one in front of you.
 Recorded because the obvious diagnosis was the wrong one. Every statistic in the
 app divides by this number, and the bug looked like a timing bug while being a
 scoping bug.
+
+### GitHub backup is an exception to the no-network rule, stated as one
+
+Resolved at v1.6.0. Browser storage gets evicted, `navigator.storage.persist()`
+is a no-op in Safari, and the manual export is the kind of thing that happens
+once and then never. The history was one cache purge from gone.
+
+Backing up to a repository Zsomb owns is not what "no third-party requests" was
+defending against, but it is a violation of it as written, so `CLAUDE.md` now
+carries the exception explicitly with the bar a second one would have to clear:
+opt-in, the user's own infrastructure, useless to anyone else, and nothing in
+the app may depend on it.
+
+Three decisions inside it worth keeping:
+
+- **The token has its own storage key.** Settings get exported, pasted into
+  notes and read by anything that knows the key. A write token has no business
+  travelling with them, so it does not share their container, and the export
+  path cannot reach it.
+- **The token is only saved once GitHub confirms it works.** "Saved" is not the
+  same as "works", and a backup you believe in that has been failing silently
+  for three weeks is worse than knowing you have none.
+- **Sharded by month.** A game record runs about 7KB with its move log, so a
+  single file outgrows what the contents API returns in one read within a few
+  hundred games. Monthly files also make an evening's push tiny.
+
+The merge is a union by game id and already computes what the remote holds that
+this device does not, which is exactly what two-way sync would apply locally.
+Sync was deferred, not designed out.
+
+Rules out: any dependency on the network for normal operation, a classic
+repo-scoped token, and last-write-wins on a whole-history file, which would
+silently lose games the moment a second device existed.
+
+### A review must draw its evidence, not assert it
+
+Resolved at v1.6.0, after the first version of the move report shipped without
+candidates on the board. It would say "r3c1 still showed 2/3/6" over a grid that
+showed no candidates at all, so every claim had to be taken on faith. That is
+the one thing a review cannot be.
+
+The consequence that cost the most to get right: **a pattern must be drawn over
+the candidate state it was found in.** A naked quad discovered after a pointing
+pair has cleared the way does not look like a quad on the raw board, and the
+first attempt outlined four cells whose visible candidates contradicted the
+label. The candidate set is now carried with the pattern, and the panel says
+when what is on screen includes eliminations.
+
+Rules out: rendering any pattern against `createState` candidates, which are
+peer-only and therefore not what most techniques operate on.
+
+### Stale notes are measured against everything the ladder proves
+
+The game only erases pencil marks when you place a digit. Anything killed by a
+pointing pair or a naked pair sits in your notes looking valid for the rest of
+the game, and that is the mark most worth knowing about.
+
+Finding them by comparing against the naive candidate set finds almost nothing,
+because that set is also peer-only. `settledCands` runs every elimination the
+ladder can make to exhaustion, and the difference against the reconstructed
+notes is the answer. Computed only for the position on screen, so the ladder run
+costs a few milliseconds rather than being paid per move.
+
+The wording matters and was chosen deliberately: some of those eliminations take
+a real pattern to see, so the copy reports what the board knew rather than what
+the player should have spotted.
+
+### Marks are reconstructible, but snapshot restores had to start recording
+
+Every rule that changes a pencil mark was already derivable from the log except
+one. Undo, redo and returning to a bookmark restore a whole position, and only
+the board half was ever written down, so the marks went unknowable after the
+first undo.
+
+Those entries now carry a mark diff alongside the board diff. Games recorded
+before this replay approximately after the first undo, and `stateAt` reports
+that rather than hiding it, which is the same principle as `requested` versus
+`graded`: when the app cannot be certain, it says so.

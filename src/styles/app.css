@@ -1369,7 +1369,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   border-radius: var(--board-radius);
   overflow: hidden;
   container-type: inline-size;
-  max-width: 460px;
+  /* Was 460px, before the grid had candidates in it to read. */
+  max-width: 520px;
 }
 .rvCell {
   position: relative;
@@ -1728,4 +1729,144 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cell.revealed .val {
   color: var(--sub);
   font-weight: 400;
+}
+
+/* ---- text fields ----
+ *
+ * The app had no text input at all until GitHub backup needed three. Kept plain
+ * on purpose: this is a form you fill in once. */
+
+.fieldRow { display: flex; gap: 8px; flex-wrap: wrap; }
+.fieldRow .field { flex: 1 1 160px; }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+}
+.fieldLabel { font-size: 11px; font-weight: 600; color: var(--sub); }
+.fieldInput {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--ctl-radius);
+  color: var(--ink);
+  font-family: var(--mono);
+  /* 16px exactly. iOS zooms the page when a focused input is smaller, and the
+   * viewport meta deliberately allows zoom for accessibility, so the font size
+   * is the only lever. A settings page stuck zoomed in is worse than a field
+   * that runs slightly large. */
+  font-size: 16px;
+  padding: 9px 10px;
+  width: 100%;
+}
+.fieldInput::placeholder { color: var(--sub); opacity: 0.7; }
+.fieldInput:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.dataNote code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--panel2);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+/* ---- the move stage ----
+ *
+ * Board and explanation side by side, because the explanation is a claim about
+ * the board and reading one without the other is what made the first version of
+ * this review hard to trust. */
+
+.moveStage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 14px;
+}
+/* Only the board inside the stage fills its column. Standalone it keeps a cap,
+ * or the replay grid grows to the full width of a desktop window. */
+.moveStage .reviewBoard { max-width: none; }
+
+.stageSide { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.stageHead { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.stageWhy { font-size: 13px; line-height: 1.5; color: var(--ink); margin: 0; }
+.stageNote { font-size: 11.5px; line-height: 1.45; color: var(--sub); margin: 0; }
+.segTabs.small { margin: 2px 0 0; }
+.segTabs.small .segTab { font-size: 11px; padding: 6px 8px; }
+
+/* Candidates in the review grid. Same 3x3 geometry as the playable board,
+ * including the explicit rows: without them the rows auto-size and a cell with
+ * two occupied rows sits its digits lower than one with three. */
+.rvMarks {
+  position: absolute;
+  inset: 7%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  place-items: center;
+}
+.rvM {
+  font-family: var(--mono);
+  /* Larger than the playable board's marks, deliberately. On the board these
+   * are a glance; here they are the evidence for a claim, so they have to be
+   * read. At a 347px phone board this lands near 9px against the game's 7.6. */
+  font-size: clamp(8px, 2.6cqw, 13px);
+  line-height: 1;
+  color: var(--sub);
+}
+/* A candidate the pattern kills, and a note you kept after it was impossible.
+ * Both are "this digit is gone", so both read the same way. */
+.rvM.killed, .rvM.stale {
+  color: var(--error);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+/* The digit the pattern is about. A filled chip rather than a colour swap,
+ * because coloured text on a tinted cell was the contrast failure that the
+ * in-game marks already had to be rescued from. */
+.rvM.lit {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 600;
+}
+
+/* The unit that is the evidence, drawn whole. Deliberately weak: it is context
+ * for the pattern, not the pattern. */
+.rvCell.inUnit { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+/* The cells that form the pattern. */
+.rvCell.inPattern {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+/* Somewhere a candidate died. */
+.rvCell.hasKill { background: color-mix(in srgb, var(--error) 12%, transparent); }
+/* The move that was available instead, so it can be found without hunting. */
+.rvCell.alt { box-shadow: inset 0 0 0 2px var(--t1); }
+.rvCell.now.inPattern, .rvCell.now { box-shadow: inset 0 0 0 3px var(--accent); }
+
+/* The row currently on the board above. */
+.moveItem.on { border-color: var(--line-strong); }
+.moveItem.on .moveJump { background: var(--panel2); }
+
+@media (max-width: 720px) {
+  /* Stacked: a 9x9 grid with candidates in it needs the full width to stay
+   * legible, and half a phone screen is not enough. */
+  .moveStage { grid-template-columns: minmax(0, 1fr); }
+}
+
+.stageAbout { font-size: 11.5px; color: var(--sub); margin: 0; line-height: 1.45; }
+/* The side column should not leave a tall empty gap next to a full board. */
+.moveStage .stageSide { align-self: stretch; }
+
+/* The move list lives beside the board on a wide screen, so choosing a move and
+ * seeing it are the same glance. It scrolls on its own rather than running the
+ * page to eighty rows before the board is out of view. */
+@media (min-width: 721px) {
+  .stageSide .moveList {
+    max-height: 46vh;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
 }
