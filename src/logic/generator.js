@@ -258,7 +258,9 @@ export function makePracticePuzzle(technique, { seed = randomSeed(), budgetMs = 
       if (Date.now() - t0 > budgetMs) break
       attempts++
       const tier = tierByName(tierName)
+      // generateFull gives up rather than hanging, so it can return null.
       const solution = generateFull(rng)
+      if (!solution) continue
       const { puzzle, grade } = shapeToBand(solution, tier, rng)
       if (!grade.solved) continue
       if (!grade.counts[technique]) continue

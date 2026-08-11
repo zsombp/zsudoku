@@ -262,7 +262,11 @@ describe('practice puzzles', () => {
   // scripts/practice.mjs, which has a real time budget; putting a Swordfish
   // search in the unit suite would make it take ten seconds.
   for (const key of ['hiddenSingle', 'pointing', 'nakedPair', 'xyWing']) {
-    it(`${key}: the puzzle actually requires it`, () => {
+    // The search is allowed fifteen seconds, so the test has to be allowed
+    // more than that. It passed locally on the default five only because the
+    // search happened to finish early, and failed the moment a slower machine
+    // ran it.
+    it(`${key}: the puzzle actually requires it`, { timeout: 40000 }, () => {
       const made = makePracticePuzzle(key, { seed: 777, budgetMs: 15000 })
       expect(made, `no ${key} puzzle found`).toBeTruthy()
       expect(made.practice).toBe(key)
@@ -278,7 +282,7 @@ describe('practice puzzles', () => {
     })
   }
 
-  it('is reproducible from a seed', () => {
+  it('is reproducible from a seed', { timeout: 40000 }, () => {
     const a = makePracticePuzzle('pointing', { seed: 31337, budgetMs: 15000 })
     const b = makePracticePuzzle('pointing', { seed: 31337, budgetMs: 15000 })
     expect(a.puzzle).toEqual(b.puzzle)

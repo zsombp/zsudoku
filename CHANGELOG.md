@@ -55,6 +55,18 @@ now, the same ordering the solver has always used, and gives up and reshuffles
 after a budget. That second part matters more than the first, because the search
 is heavy-tailed even when a solution certainly exists.
 
+### A test that was passing by luck
+
+The practice-puzzle tests allow the search fifteen seconds and ran under a five
+second timeout. They passed because the search usually finished early, and broke
+the moment a slower machine ran them: changing how the grid filler consumes its
+random source shifted which puzzle each seed produces, and one search that used
+to finish in two seconds no longer did.
+
+The timeout now exceeds the budget the test itself sets. A test whose own limit
+is larger than the harness allows is not a passing test, it is one waiting for a
+slow day.
+
 ### Smaller
 
 - Region borders are drawn from the same regions the rules are enforced from, so
