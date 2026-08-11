@@ -2,6 +2,39 @@
 
 Newest first.
 
+## v2.3.0 - 2026-08-11 - the game as prose
+
+Every game review opens with an account of what the game was like, above any of
+the numbers, because what a game was like is the thing anyone actually
+remembers a week later.
+
+    A Hard on an evening in 8:51.
+    The opening was steady.
+    One placement needed more than a scan, and it was pointing pair that got
+    you there: 2 into r1c4.
+    You finished it clean, with no wrong digits and no help.
+
+Nothing here is new information. The classifier already knew which placements
+were earned, the stall analysis already knew where the clock went, and belief
+archaeology already knew which notes went stale. None of them had ever been
+asked to say what happened.
+
+Written as an account rather than a verdict: it reports in the order things
+occurred and leaves the judging to the numbers underneath, because a report that
+opened with a grade would be read as a grade and nothing else. A game under a
+dozen placements gets no account at all, since three moves is not a story.
+
+### Two bugs it took to get there
+
+- The stall paragraph read `longest.ms` where the data says `gap`, so it could
+  never appear, and nothing anywhere failed to mention it. Found by planting a
+  ninety-five second stall in a fixture and noticing the sentence about it was
+  missing.
+- The account changed depending on which tab you were looking at, because the
+  belief data was only computed once the Notes tab had paid for it. It costs
+  twenty milliseconds on a full game, which is a great deal less than an account
+  of your game rewriting itself as you navigate.
+
 ## v2.2.0 - 2026-08-11 - the daily changes shape through the week
 
 The daily was classic every day and practice drilled on classic only, neither of

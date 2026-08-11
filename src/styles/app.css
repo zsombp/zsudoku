@@ -2097,3 +2097,25 @@ button.rvCell:focus-visible { outline: 2px solid var(--accent); outline-offset: 
   opacity: 0.7;
   margin-left: 3px;
 }
+
+/* The account of the game, before any of the numbers. Reads as prose, so it is
+ * set as prose: wider measure, softer colour, no chrome. */
+.story {
+  margin: 12px 0 4px;
+  padding-left: 11px;
+  border-left: 2px solid var(--accent);
+}
+.storyLead {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+.storyLine {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--sub);
+  margin: 0 0 6px;
+  max-width: 62ch;
+}
+.storyLine:last-child { margin-bottom: 0; }

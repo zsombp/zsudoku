@@ -7,6 +7,7 @@ import { workedExamples } from '../logic/explain.js'
 import { boardAt, stateAt, replaySteps, stallHeatmap, summarise, cellHistory } from '../stats/replay.js'
 import { analyseGame, verdict, timeShape, settledCands, CLASSES } from '../stats/analysis.js'
 import { falseBeliefs, beliefVerdict } from '../stats/beliefs.js'
+import { narrate, headline } from '../stats/narrate.js'
 import ReviewBoard from './ReviewBoard.jsx'
 import { Play, Pause } from './Icons.jsx'
 
@@ -44,10 +45,11 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
   // A full ladder pass per board-changing move, so about a tenth of a second
   // for a game. Waits until the tab is opened.
   const [beliefTab, setBeliefTab] = useState(0)
-  const beliefs = useMemo(
-    () => (mode === 'beliefs' ? falseBeliefs(game) : null),
-    [mode, game]
-  )
+  // Computed on open rather than when the Notes tab is reached. It costs about
+  // twenty milliseconds on a full game, and gating it made the account of the
+  // game change depending on which tab you happened to be looking at, which is
+  // worse than the cost by a wide margin.
+  const beliefs = useMemo(() => falseBeliefs(game), [game])
   const belief = beliefs?.stale[Math.min(beliefTab, beliefs.stale.length - 1)] || null
   // The position at the moment the note stopped being true.
   const beliefAt = useMemo(
@@ -55,6 +57,14 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
     [game, belief]
   )
   const beliefTruth = useMemo(() => (beliefAt ? settledCands(beliefAt.board) : null), [beliefAt])
+
+  // The account of the game, above the numbers. Declared after `beliefs`
+  // because a dependency array is evaluated the moment the hook is called, so
+  // naming it any earlier is a use-before-initialisation and a blank screen.
+  const story = useMemo(
+    () => narrate(game, analysis, beliefs, info),
+    [game, analysis, beliefs, info]
+  )
   const examples = useMemo(
     () => (mode === 'patterns' && game.puzzle ? workedExamples(game.puzzle) : []),
     [mode, game.puzzle]
@@ -176,6 +186,17 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
           {game.hardest && ` · needed ${TECHNIQUES[game.hardest]?.label || game.hardest}`}
         </div>
       </div>
+
+      {/* The account of the game, before any of the numbers, because what a
+          game was like is the thing anyone actually remembers. */}
+      {story.length > 0 && (
+        <div className="story">
+          <p className="storyLead">{headline(game)}</p>
+          {story.map((line, i) => (
+            <p className="storyLine" key={i}>{line}</p>
+          ))}
+        </div>
+      )}
 
       {noLog ? (
         <p className="dataNote">
