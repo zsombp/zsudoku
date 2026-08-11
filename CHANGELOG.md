@@ -2,6 +2,18 @@
 
 Newest first.
 
+## v1.7.3 - 2026-08-11 - delete one game
+
+The log offered exactly two options: keep everything, or delete everything. A
+game that was not really played is not a harmless extra row, because every
+statistic in the app is computed from this log: it moves medians, win rates,
+tier readiness and the coach's thresholds. Having to choose between a wrong
+median and no history at all is a poor choice to be offered.
+
+Two-step, in the game review, in the same shape as giving up. It says plainly
+that a copy already pushed to a backup stays there until that month is written
+again, because the merge is a union by id and deletes do not travel.
+
 ## v1.7.2 - 2026-08-11 - the backup checks rather than assumes
 
 A shard deleted on GitHub was skipped by every push afterwards. The fingerprint

@@ -710,3 +710,19 @@ well.
 
 The general form is worth remembering: **any optimisation that skips work based
 on local state is asserting something about remote state, and needs an expiry.**
+
+### Deleting one game, and what that does not do
+
+Added at v1.7.3. Until then the only delete was "everything", which meant a
+single test or misclicked game left a choice between a wrong median and no
+history.
+
+Two things stated rather than assumed:
+
+- **Deletes do not propagate to a backup.** The merge is a union by id, so a
+  game already pushed stays in that shard until the month is written again. The
+  notice says so instead of implying the record is gone everywhere.
+- **The repository is the safety net.** Every push is a commit, so a game
+  removed by mistake is recoverable from git history. That is worth knowing
+  before reaching for a delete, and is a real argument for having the backup on
+  before doing any tidying.

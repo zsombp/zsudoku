@@ -75,7 +75,18 @@ export default function StatsView({ onClose, onPractice }) {
   if (reviewing) {
     return (
       <div className="statsView">
-        <GameReview game={reviewing} onBack={() => setReviewing(null)} onPractice={onPractice} />
+        <GameReview
+          game={reviewing}
+          onBack={() => setReviewing(null)}
+          onPractice={onPractice}
+          onDelete={async g => {
+            await gameLog.removeGame(g.id)
+            setReviewing(null)
+            const rest = await gameLog.all()
+            setGames(rest.sort((a, b) => a.endedAt - b.endedAt))
+            setNotice('Game deleted. It stays in any backup already pushed until that month is written again.')
+          }}
+        />
       </div>
     )
   }

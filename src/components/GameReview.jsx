@@ -22,7 +22,7 @@ import { Play, Pause } from './Icons.jsx'
 const plural = (key, n) =>
   n === 1 || (key !== 'mistake' && key !== 'hint') ? CLASSES[key].label : CLASSES[key].label + 's'
 
-export default function GameReview({ game, onBack, onPractice }) {
+export default function GameReview({ game, onBack, onPractice, onDelete }) {
   const [mode, setMode] = useState('replay')
   const steps = useMemo(() => replaySteps(game), [game])
   const [pos, setPos] = useState(steps.length ? steps.length - 1 : 0)
@@ -81,6 +81,7 @@ export default function GameReview({ game, onBack, onPractice }) {
   const [layer, setLayer] = useState('cands')
   // A cell you clicked, to read its whole story instead of one move's worth.
   const [cellFocus, setCellFocus] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const history = useMemo(
     () => (cellFocus === null ? [] : cellHistory(game, cellFocus)),
     [game, cellFocus]
@@ -125,7 +126,23 @@ export default function GameReview({ game, onBack, onPractice }) {
     <div className="review">
       <header className="top">
         <div className="brand">GAME REVIEW</div>
-        <button className="newBtn" onClick={onBack}>Back</button>
+        <div className="topBtns">
+          {/* Two-step, like giving up. Every statistic is computed from this
+              log, so a game that was not really played is not a harmless extra
+              row: it moves medians, win rates and the coach's thresholds. */}
+          {onDelete && (
+            confirmDelete ? (
+              <span className="quitAsk">
+                Delete this game?
+                <button className="linkBtn danger" onClick={() => onDelete(game)}>yes</button>
+                <button className="linkBtn" onClick={() => setConfirmDelete(false)}>no</button>
+              </span>
+            ) : (
+              <button className="linkBtn" onClick={() => setConfirmDelete(true)}>Delete</button>
+            )
+          )}
+          <button className="newBtn" onClick={onBack}>Back</button>
+        </div>
       </header>
 
       <div className="reviewHead">

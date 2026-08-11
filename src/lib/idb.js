@@ -51,6 +51,7 @@ function tx(store, mode, fn) {
 
 export const put = record => tx(GAMES, 'readwrite', s => s.put(record)).catch(() => false)
 export const getAll = () => tx(GAMES, 'readonly', s => s.getAll()).catch(() => [])
+export const del = id => tx(GAMES, 'readwrite', s => s.delete(id)).catch(() => false)
 export const clear = () => tx(GAMES, 'readwrite', s => s.clear()).catch(() => false)
 export const count = () => tx(GAMES, 'readonly', s => s.count()).catch(() => 0)
 

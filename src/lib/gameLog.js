@@ -70,6 +70,19 @@ export async function record(state, opts) {
 export const all = () => idb.getAll()
 export const clearAll = () => idb.clear()
 
+/**
+ * Drop one game.
+ *
+ * Every statistic in the app is computed from this log, so a game that was not
+ * really played is not a harmless extra row: it moves medians, win rates and
+ * the coach's thresholds. There was no way to remove one short of deleting the
+ * lot, which is a poor choice to be offered.
+ *
+ * Note this does not remove it from a GitHub backup. The merge there is a union
+ * by id, so a copy already pushed stays pushed until that file is changed too.
+ */
+export const removeGame = id => idb.del(id)
+
 // ---- backup ----
 //
 // Browser storage gets evicted, and a few thousand games is worth more than the
