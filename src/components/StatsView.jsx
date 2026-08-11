@@ -5,6 +5,7 @@ import { insights, needed } from '../stats/coach.js'
 import { achievements } from '../stats/achievements.js'
 import { dailyStreak } from '../logic/daily.js'
 import GameReview from './GameReview.jsx'
+import Experiments from './Experiments.jsx'
 import * as gameLog from '../lib/gameLog.js'
 import { fmtMs } from '../lib/format.js'
 
@@ -239,6 +240,14 @@ export default function StatsView({ onClose, onPractice }) {
       <Section title="When you play">
         <HourBars hours={derived.hours} />
       </Section>
+
+      {backfill && (
+        <p className="dataNote notice">
+          Reading back your older games: {backfill.done} of {backfill.total}.
+        </p>
+      )}
+
+      <Experiments games={games} />
 
       <Section title="Data">
         <label className="toggle">

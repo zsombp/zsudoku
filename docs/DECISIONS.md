@@ -814,3 +814,44 @@ a person can check against their own memory of the game.
 
 Rules out: any measure of "wrongness" that counts what the app itself wrote, and
 any total that adds overlapping intervals.
+
+### A permutation test, and three guards against flattering it
+
+Resolved at v1.11.0. The test is a permutation test rather than a t-test because
+solve times are skewed and the samples are tiny, and rather than any table
+because the method explains itself: reshuffle which games were in which half ten
+thousand times and count how often the gap is this big. Someone can check what
+that means without trusting a formula.
+
+Validated before any interface was built, by simulating the null: at p<0.05 it
+fires 5.2% of the time and at p<0.01 it fires 1.3%, which is what a sound test
+does. A miscalibrated test here would produce confident nonsense indefinitely.
+
+The same simulation set the sample size. Twenty games catch a one-fifth
+difference only 27% of the time, so twenty was raised to thirty, and the
+remaining limit is stated in the interface rather than left for the player to
+discover. **A null result that does not declare its own power is the most common
+way an honest-looking experiment misleads**, and this app cannot afford that
+particular dishonesty.
+
+Three guards, all of them about not fooling yourself:
+
+- The deciding outcome is declared before the first game.
+- No verdict until the declared number of games is in, because optional stopping
+  manufactures significance.
+- The p-value is seeded from the game ids, so it cannot be re-rolled.
+
+Rules out: reporting whichever of several measures came out best, any verdict
+computed mid-run, and any claim of no effect without a statement of what size of
+effect could have been seen.
+
+### Wiring an experiment is how you find a setting that does nothing
+
+`autoPencilOnStart` sat in the defaults from Phase 6 to v1.11.0, read by no code
+and shown on no screen. Nothing failed, because nothing ever asked it anything.
+
+It was found only because an experiment was built to vary it, which would have
+spent thirty games measuring a disconnected switch and reported a null. Worth
+remembering as a class of bug: a setting with no reader is invisible to tests,
+to types and to review, and the thing that catches it is code that depends on it
+having an effect.

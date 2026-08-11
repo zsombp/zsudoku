@@ -2,6 +2,53 @@
 
 Newest first.
 
+## v1.11.0 - 2026-08-11 - experiments you run on yourself
+
+The defaults in this app are guesses. Auto-pencil off, mistake marking on, quick
+input off: all reasonable, none of them measured. Now one of them can be settled
+with evidence, for one particular player, which is honest difficulty pointed at
+the assists rather than at the puzzles.
+
+Pick a question, and the assist is switched on and off at random behind the
+scenes, half your games each way. After thirty games the difference is measured
+with a permutation test: the real gap between the two halves against the gaps
+you get by reshuffling which games were in which half, ten thousand times.
+Seeded, so the answer does not wobble when you look again.
+
+That test was chosen because the method is its own explanation. "I shuffled the
+labels ten thousand times and only 3% of shuffles looked this different" can be
+checked for meaning without trusting a formula, which a t-table cannot.
+
+### Three things arranged so it cannot flatter itself
+
+- **The deciding outcome is declared before any games are played.** Testing four
+  measures and believing whichever came out best is how noise becomes a finding.
+  The others are shown, and labelled as not deciding anything.
+- **Nothing is reported until all thirty games are in.** Checking as you go and
+  stopping when it looks convincing is the most reliable way to find an effect
+  that is not there.
+- **A null result states its own reach.** The power was simulated rather than
+  assumed: thirty games catch a difference of about a third nine times in ten,
+  and a difference of a fifth only four times in ten. So "no difference found"
+  is reported as ruling out a large effect and nothing smaller. A null that does
+  not admit its limits is the most common way an honest-looking experiment
+  misleads.
+
+It also cannot blind you, and says so. You can see whether your board came with
+notes in it.
+
+### A dead setting, found by building this
+
+`autoPencilOnStart` has been in the settings defaults since Phase 6, was read by
+nothing anywhere in the app, and was never even offered on the settings screen.
+Turning it on did nothing at all.
+
+It surfaced because the experiment that varies it would otherwise have spent
+thirty games measuring a switch connected to nothing, and then reported "no
+difference" with a straight face. It now genuinely fills in every candidate when
+a board opens, and appears in settings like any other assist. A game where the
+only thing that happened was auto-pencil no longer counts as a game played.
+
 ## v1.10.0 - 2026-08-11 - belief archaeology
 
 A fifth tab in the review, and the first thing this app does that nothing else

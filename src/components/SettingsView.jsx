@@ -140,6 +140,16 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
           />
         </Row>
         <Row
+          label="Start with notes filled in"
+          hint="Every board opens with all its candidates pencilled in, as if you had pressed Auto."
+        >
+          <Switch
+            label="Start with notes filled in"
+            checked={settings.autoPencilOnStart}
+            onChange={v => updateSettings({ autoPencilOnStart: v })}
+          />
+        </Row>
+        <Row
           label="Hints explain first"
           hint="The first press points at the pattern and fills nothing in. Press again for the digit. Always on in practice."
         >

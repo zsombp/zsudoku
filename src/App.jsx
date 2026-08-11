@@ -10,6 +10,7 @@ import StatsView from './components/StatsView.jsx'
 import GameReview from './components/GameReview.jsx'
 import * as gameLog from './lib/gameLog.js'
 import * as backup from './lib/backup.js'
+import * as experiments from './stats/experiments.js'
 import { gameReducer, initialState, remainingCounts, currentLabel, highlightDigit } from './state/gameReducer.js'
 import { candMaskAt } from './logic/topology.js'
 import { hasMark } from './logic/marks.js'
@@ -104,6 +105,27 @@ export default function App() {
     [state.board, state.status]
   )
 
+  /**
+   * Fill in every candidate the moment a board appears, if that is the setting.
+   *
+   * The setting has existed since Phase 6 and did nothing at all: it was in the
+   * defaults, was never read anywhere, and was never even offered on the
+   * settings screen. Found while wiring the experiment that varies it, which
+   * would otherwise have spent thirty games measuring a switch connected to
+   * nothing and reported "no difference" with a straight face.
+   */
+  const freshRef = useRef(null)
+  useEffect(() => {
+    if (state.status !== 'playing' || !state.board) return
+    if (freshRef.current === state.seed) return
+    freshRef.current = state.seed
+    // Only on a board with nothing on it yet: resuming a saved game must not
+    // overwrite the notes that were saved with it.
+    if (settings.autoPencilOnStart && state.moveLog.length === 0) {
+      dispatch({ type: 'autoPencil' })
+    }
+  }, [state.status, state.board, state.seed, state.moveLog.length, settings.autoPencilOnStart])
+
   // ---- persistence ----
 
   const persist = useCallback(() => {
@@ -118,6 +140,7 @@ export default function App() {
       graded: s.graded,
       mode: s.mode,
       practice: s.practice,
+      experiment: s.experiment,
       dayKey: s.dayKey,
       score: s.score,
       hardest: s.hardest,
@@ -204,6 +227,25 @@ export default function App() {
     }
   }, [pushBackup])
 
+  /**
+   * If an experiment is running, decide which half this game belongs to and set
+   * the assist accordingly before the board appears.
+   *
+   * Assigned per game rather than per session, and fixed for its duration: a
+   * setting changed halfway through would produce a game belonging to neither
+   * arm, which is worse than one belonging to the wrong one.
+   */
+  const enrolGame = useCallback(async () => {
+    const state = experiments.load()
+    const exp = state && experiments.EXPERIMENTS[state.id]
+    if (!exp) return null
+    const played = experiments.gamesFor(await gameLog.all(), exp.id)
+    if (played.length >= exp.games) return null
+    const arm = experiments.assignArm(played)
+    updateSettings({ [exp.setting]: arm === 'on' })
+    return { id: exp.id, arm }
+  }, [updateSettings])
+
   const startNew = useCallback(
     async tier => {
       setShowPicker(false)
@@ -213,14 +255,15 @@ export default function App() {
       updateSettings({ lastMode: 'casual' })
       dispatch({ type: 'generating', requested: tier })
       try {
+        const experiment = await enrolGame()
         const made = await generator.request(tier)
         timerRef.current.reset(0)
-        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual' })
+        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual', experiment })
       } catch (err) {
         setGenError(String(err.message || err))
       }
     },
-    [generator, recordAbandon, updateSettings]
+    [generator, recordAbandon, updateSettings, enrolGame]
   )
 
   /**

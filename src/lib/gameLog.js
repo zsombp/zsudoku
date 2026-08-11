@@ -57,6 +57,8 @@ function baseRecord(state, { completed, durationMs, endedAt }) {
     checks: state.checks || 0,
     hintLog: state.hintLog || [],
     autoCompleted: Boolean(state.autoCompleted),
+    // Which side of a running experiment this game was on, if any.
+    experiment: state.experiment || null,
     // Gave up, as opposed to walked away: both are incomplete, only one is a
     // decision, and the review says which.
     forfeited: Boolean(state.forfeited),
@@ -64,9 +66,15 @@ function baseRecord(state, { completed, durationMs, endedAt }) {
   }
 }
 
-/** A game with no moves in it is not a game. Switching difficulty is not a loss. */
+/**
+ * A game with no moves in it is not a game. Switching difficulty is not a loss.
+ *
+ * Auto-pencil does not count on its own. With `autoPencilOnStart` on, every
+ * board opens with a log entry already in it, so counting any entry would file
+ * a result for a puzzle nobody touched.
+ */
 export const worthRecording = state =>
-  Boolean(state?.board) && (state.moveLog?.length || 0) > 0
+  Boolean(state?.board) && (state.moveLog || []).some(m => m.kind !== 'autoPencil')
 
 export async function saveRecord(record) {
   try {

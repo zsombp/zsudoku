@@ -30,6 +30,10 @@ export const initialState = {
   // The technique this puzzle was generated to require, when it came from
   // practice mode rather than a tier.
   practice: null,
+  // { id, arm } when this game is one half of a running experiment. Fixed when
+  // the game starts: an assist changed halfway through would make the game
+  // belong to neither arm.
+  experiment: null,
   // The pattern currently being pointed at, when you asked the hint button why
   // rather than what. Cleared by the next move: an explanation of a position
   // you have left is worse than none.
@@ -274,6 +278,7 @@ function reduce(state, action) {
         // `mode`, which decides the save slot: a drill is still a casual game
         // as far as storage is concerned.
         practice: action.practice || null,
+        experiment: action.experiment || null,
         dayKey: action.dayKey || null,
         score: made.score,
         hardest: made.hardest,
@@ -300,6 +305,7 @@ function reduce(state, action) {
         graded: s.graded || LEGACY_LEVEL_NAME[s.level] || 'Medium',
         mode: s.mode || 'casual',
         practice: s.practice || null,
+        experiment: s.experiment || null,
         dayKey: s.dayKey || null,
         score: s.score ?? 0,
         hardest: s.hardest ?? null,
