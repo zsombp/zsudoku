@@ -1,12 +1,16 @@
 import { useState } from 'react'
+import { isPuzzleCode } from '../logic/share.js'
 import { TIERS, predictTime } from '../logic/difficulty.js'
 import { VARIANT_LIST, VARIANTS } from '../logic/variants.js'
 import { fmtMs } from '../lib/format.js'
 import { Calendar } from './Icons.jsx'
 
 export default function NewGameSheet({
-  records, canRestart, daily, variant = 'classic', games = [], onPick, onDaily, onRestart, onClose,
+  records, canRestart, daily, variant = 'classic', games = [], currentCode, onCode,
+  onPick, onDaily, onRestart, onClose,
 }) {
+  const [code, setCode] = useState('')
+  const [copied, setCopied] = useState(false)
   // Chosen before the difficulty, because it changes what the difficulty means
   // to play rather than how hard it is.
   const [pickedVariant, setPickedVariant] = useState(variant)
@@ -79,6 +83,46 @@ export default function NewGameSheet({
             </span>
           </button>
         ))}
+
+        {/* A puzzle is a seed, a tier and a board, so sharing one is sharing a
+            word. No server, no link to rot, and short enough to read aloud. */}
+        {onCode && (
+          <div className="shareRow">
+            <label className="field">
+              <span className="fieldLabel">Play someone's puzzle</span>
+              <div className="shareInput">
+                <input
+                  className="fieldInput"
+                  value={code}
+                  placeholder="CJ-4K7P"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  onChange={e => setCode(e.target.value)}
+                />
+                <button
+                  className="newBtn"
+                  disabled={!isPuzzleCode(code)}
+                  onClick={() => onCode(code)}
+                >
+                  Open
+                </button>
+              </div>
+            </label>
+            {currentCode && (
+              <button
+                className="linkBtn"
+                onClick={() => {
+                  navigator.clipboard?.writeText(currentCode).catch(() => {})
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 1600)
+                }}
+              >
+                {copied ? 'copied' : `share this one: ${currentCode}`}
+              </button>
+            )}
+          </div>
+        )}
 
         <button className="sheetBtn subtle" disabled={!canRestart} onClick={onRestart}>
           <b>Restart puzzle</b>

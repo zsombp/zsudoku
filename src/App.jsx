@@ -15,10 +15,11 @@ import * as experiments from './stats/experiments.js'
 import { gameReducer, initialState, remainingCounts, currentLabel, highlightDigit } from './state/gameReducer.js'
 import { candMaskAt } from './logic/topology.js'
 import { hasMark } from './logic/marks.js'
-import { techFor, tierForScore } from './logic/difficulty.js'
+import { techFor, tierForScore, TIERS } from './logic/difficulty.js'
 import { gradePuzzle, autoCompleteFills, hintPlacement } from './logic/grader.js'
 import { explainPlacement } from './logic/explain.js'
 import { topologyFromRecord } from './logic/variants.js'
+import { encodePuzzle, decodePuzzle } from './logic/share.js'
 import { GRADER_VERSION, TECHNIQUES } from './logic/techniques.js'
 import { useTimer } from './hooks/useTimer.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
@@ -453,6 +454,32 @@ export default function App() {
     gameLog.saveRecord(rec).then(pushBackup)
     setLastGame(rec)
   }, [pushBackup])
+
+  /** Open a puzzle someone sent, from its code. */
+  const startFromCode = useCallback(
+    async code => {
+      const p = decodePuzzle(code)
+      if (!p) {
+        setGenError('That does not look like a puzzle code.')
+        return false
+      }
+      setShowPicker(false)
+      setNewRecord(false)
+      recordAbandon()
+      dispatch({ type: 'generating', requested: p.tier, variant: p.variant })
+      setView('game')
+      try {
+        const made = await generator.request(p.tier, { seed: p.seed, variant: p.variant })
+        timerRef.current.reset(0)
+        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual' })
+        return true
+      } catch (err) {
+        setGenError(String(err.message || err))
+        return false
+      }
+    },
+    [generator, recordAbandon]
+  )
 
   const restart = useCallback(() => {
     setShowPicker(false)
@@ -990,6 +1017,17 @@ export default function App() {
       {showPicker && (
         <NewGameSheet
           records={records}
+          onCode={startFromCode}
+          // The code has to name what generation takes, which is the tier that
+          // was asked for, not the one the grader returned: regenerating from
+          // the graded tier produces a different puzzle. And a practice or
+          // tailored puzzle comes from a different search entirely, so a tier
+          // seed cannot rebuild it and no code is offered for one.
+          currentCode={
+            state.seed !== undefined && !state.practice && TIERS.some(t => t.name === state.requested)
+              ? encodePuzzle({ variant: state.variant, tier: state.requested, seed: state.seed })
+              : null
+          }
           variant={settings.variant}
           games={allGames}
           canRestart={Boolean(state.puzzle)}

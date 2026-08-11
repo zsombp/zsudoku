@@ -2,6 +2,31 @@
 
 Newest first.
 
+## v2.7.0 - 2026-08-11 - a puzzle is a word
+
+Every puzzle here has been reproducible from a seed, a tier and a board since
+Phase 6, because that is what the daily needs. So sharing one is sharing those
+three things, and it needs no server, no account and nothing to upload.
+
+    J4FA-D
+
+That code is a Medium jigsaw. Typing it in rebuilds the identical grid,
+irregular regions included, on any device. Base32 without the characters people
+mistype, grouped in fours, and it survives being typed in lower case with the
+dashes left out.
+
+### Two things it took to make the code honest
+
+The code has to name the tier that was **asked for**, not the one the grader
+returned. Generation takes a request, so a code built from the graded tier
+rebuilds a different puzzle: it round-tripped the board correctly and produced
+the wrong grid, which is worse than failing.
+
+And no code is offered for a practice or tailored puzzle at all. Those come from
+a different search, so a tier and a seed cannot rebuild them, and a code that
+silently produced something else would be a lie in a place that looks
+authoritative.
+
 ## v2.6.0 - 2026-08-11 - how it feels
 
 Sound and motion that mark the moments you earned, rather than reporting that
