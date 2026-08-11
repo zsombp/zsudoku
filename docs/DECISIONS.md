@@ -790,3 +790,27 @@ Two things that keep it honest:
 
 Rules out: computing classification on demand for anything that spans games, and
 any summary that outlives the definition it was computed under.
+
+### False beliefs are notes that went stale, not notes that are wrong
+
+Resolved at v1.10.0. The natural definition of a false belief is "a note the
+board had ruled out", and measuring killed it before a line of interface was
+written: auto-pencil writes peer-scan candidates and the ladder is stricter, so
+53 of 158 notes on a Hard grid are dead the moment the button is pressed. That
+definition blames the player for the app's own candidate set.
+
+The definition that means something is narrower. A note that **was** true and
+**became** false while it was kept. That is the belief that gets reasoned from,
+and the only one the player could have been expected to notice.
+
+Notes that were never possible even by a peer scan are kept separately and
+called misreads, because writing something impossible is a different error from
+failing to notice the world moved.
+
+The summary needed the same care. Adding the durations of overlapping beliefs
+reported two and a half hours inside a seven minute game. It reports the union
+instead, plus the worst number wrong at the same time, both of which are things
+a person can check against their own memory of the game.
+
+Rules out: any measure of "wrongness" that counts what the app itself wrote, and
+any total that adds overlapping intervals.

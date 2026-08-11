@@ -6,6 +6,7 @@ import { createState } from '../logic/grader.js'
 import { workedExamples } from '../logic/explain.js'
 import { boardAt, stateAt, replaySteps, stallHeatmap, summarise, cellHistory } from '../stats/replay.js'
 import { analyseGame, verdict, timeShape, settledCands, CLASSES } from '../stats/analysis.js'
+import { falseBeliefs, beliefVerdict } from '../stats/beliefs.js'
 import ReviewBoard from './ReviewBoard.jsx'
 import { Play, Pause } from './Icons.jsx'
 
@@ -39,6 +40,21 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
   // The patterns this grid actually required, drawn from this grid. Costs a
   // full ladder walk, so it waits until the tab is opened.
   const [patternTab, setPatternTab] = useState(0)
+
+  // A full ladder pass per board-changing move, so about a tenth of a second
+  // for a game. Waits until the tab is opened.
+  const [beliefTab, setBeliefTab] = useState(0)
+  const beliefs = useMemo(
+    () => (mode === 'beliefs' ? falseBeliefs(game) : null),
+    [mode, game]
+  )
+  const belief = beliefs?.stale[Math.min(beliefTab, beliefs.stale.length - 1)] || null
+  // The position at the moment the note stopped being true.
+  const beliefAt = useMemo(
+    () => (belief ? stateAt(game, belief.diedAtIndex) : null),
+    [game, belief]
+  )
+  const beliefTruth = useMemo(() => (beliefAt ? settledCands(beliefAt.board) : null), [beliefAt])
   const examples = useMemo(
     () => (mode === 'patterns' && game.puzzle ? workedExamples(game.puzzle) : []),
     [mode, game.puzzle]
@@ -186,7 +202,96 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
               className={'segTab' + (mode === 'patterns' ? ' on' : '')} onClick={() => setMode('patterns')}>
               Patterns
             </button>
+            <button role="tab" aria-selected={mode === 'beliefs'}
+              className={'segTab' + (mode === 'beliefs' ? ' on' : '')} onClick={() => setMode('beliefs')}>
+              Notes
+            </button>
           </div>
+
+          {mode === 'beliefs' && beliefs && (
+            <div className="moveReview">
+              <p className="verdict">{beliefVerdict(beliefs)}</p>
+              {!beliefs.stale.length ? (
+                <p className="dataNote">
+                  A note counts here only if it was genuinely possible and then stopped being so
+                  while you kept it. Notes that were never on, including the ones auto-pencil writes
+                  that a pattern had already ruled out, are not your belief and are not counted.
+                </p>
+              ) : (
+                <>
+                  <div className="patChips">
+                    {beliefs.stale.slice(0, 8).map((b, i) => (
+                      <button
+                        key={b.cell * 10 + b.digit}
+                        className={'clsPip patChip' + (i === beliefTab ? ' on' : '')}
+                        onClick={() => setBeliefTab(i)}
+                      >
+                        {b.digit} in {b.cellName}
+                        {b.mistakesHere > 0 && ' !'}
+                      </button>
+                    ))}
+                  </div>
+                  {belief && beliefAt && (
+                    <div className="moveStage">
+                      <ReviewBoard
+                        puzzle={game.puzzle}
+                        board={beliefAt.board}
+                        solution={game.solution}
+                        cands={beliefTruth}
+                        marks={beliefAt.marks}
+                        settled={beliefTruth}
+                        showing="marks"
+                        focus={belief.cell}
+                      />
+                      <div className="stageSide">
+                        <div className="stageHead">
+                          <span className="moveWhat">{belief.digit} in {belief.cellName}</span>
+                          <span className="moveGap">{fmtMs(belief.diedAt)}</span>
+                        </div>
+                        <p className="stageWhy">
+                          This is the moment it stopped being possible. You kept it for{' '}
+                          {belief.heldMs >= 60000
+                            ? `${(belief.heldMs / 60000).toFixed(1)} minutes`
+                            : `${Math.round(belief.heldMs / 1000)} seconds`}
+                          {belief.reason === 'kept'
+                            ? ', all the way to the end of the game.'
+                            : belief.reason === 'erased'
+                              ? ', then rubbed it out.'
+                              : ', then filled the cell in.'}
+                        </p>
+                        {belief.mistakesHere > 0 && (
+                          <p className="timeNote warn">
+                            {belief.mistakesHere === 1 ? 'A wrong digit' : `${belief.mistakesHere} wrong digits`} went
+                            into this cell while that note was still sitting in it. The app cannot know what you were
+                            thinking, only what was in front of you.
+                          </p>
+                        )}
+                        <p className="stageNote">
+                          Struck through on the board: every note that was impossible at this point. The
+                          board shows what you had written down, not what was true.
+                        </p>
+                        {beliefs.stale.length > 8 && (
+                          <p className="stageNote">
+                            Notes go out of date as the grid fills, and nothing rubs them out for you
+                            except placing a digit. Pressing Auto again rewrites every note from the
+                            board as it stands, which is the whole fix.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              {beliefs.misreads.length > 0 && (
+                <p className="timeNote warn">
+                  {beliefs.misreads.length} {beliefs.misreads.length === 1 ? 'note was' : 'notes were'} impossible
+                  the moment you wrote {beliefs.misreads.length === 1 ? 'it' : 'them'}, by a plain scan of the row,
+                  column and box. That is a misread rather than a belief going stale:{' '}
+                  {beliefs.misreads.slice(0, 4).map(m => `${m.digit} in ${m.cellName}`).join(', ')}.
+                </p>
+              )}
+            </div>
+          )}
 
           {mode === 'patterns' && (
             examples.length === 0 ? (

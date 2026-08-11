@@ -2,6 +2,46 @@
 
 Newest first.
 
+## v1.10.0 - 2026-08-11 - belief archaeology
+
+A fifth tab in the review, and the first thing this app does that nothing else
+can. It knows what you had written down at every moment, and what the board
+actually proved at every moment. The gap between those is a record of your
+false beliefs and how long you held them.
+
+Pick a note and the board goes back to the exact position where it stopped
+being true, showing your own notes with every impossible one struck through.
+
+### The obvious definition was wrong
+
+"A note the board had ruled out" sounds like the right test. It is not.
+Auto-pencil writes the plain peer-scan candidates, and the full ladder is
+stricter: on a Hard grid, 53 of the 158 candidates it writes are already dead to
+a pointing pair or a subset. That definition would have announced 53 false
+beliefs the instant you pressed a button the app itself offered, which is both
+noise and a lie about whose fault it was.
+
+So the test is narrower and means something: a note that **was** true and
+**became** false while you kept it. The board moved and you did not notice.
+Notes that were never possible are reported separately, because a misread at the
+moment of writing is a different mistake from a belief going stale.
+
+### And the obvious summary was wrong too
+
+The first version reported "160.3 minutes" of false belief inside a seven minute
+game, by adding up durations that overlap. It now reports the union, which is
+how much of the game had at least one wrong note on the board, and the worst
+number of notes wrong simultaneously. On a real solve: 97 notes went stale, at
+worst 61 wrong at once, and for 7.5 minutes of an 8.5 minute game the map being
+read was out of date somewhere.
+
+Which points at the fix, so the panel says it: pressing Auto again rewrites every
+note from the board as it stands. Nothing else rubs them out except placing a
+digit.
+
+Also new: `docs/VISION.md`, with the ideas worth building, and the ones ruled out
+with reasons so they are not proposed again.
+
 ## v1.9.0 - 2026-08-11 - the coach knows what the review knows
 
 Everything the move review works out was computed when you opened it and thrown
