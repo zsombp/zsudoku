@@ -2,6 +2,27 @@
 
 Newest first.
 
+## v1.7.1 - 2026-08-11 - new versions actually arrive
+
+The GitHub backup shipped in v1.6.0 and was not there. Not missing from the
+build: missing from the running app, which is worse, because everything looked
+fine from the outside.
+
+`registerType: 'autoUpdate'` installs a new service worker in the background and
+gives it control, but the page already open keeps the JavaScript it booted with.
+On a tab you reload constantly that is invisible. On an app installed to the home
+screen, which is the entire point of this one, it means running a build from
+weeks ago with nothing on screen saying so.
+
+Now a new worker taking over reloads the page, and the app asks for an update
+every time it comes back to the foreground, which on an installed app is the only
+moment it reliably gets to run. Safe to reload at any point because the position
+is written to storage on every change and every ten seconds besides.
+
+Also: the first write to a repository with no commits. An empty repository has no
+branches, so naming one in the contents API call comes back 404 and reads as
+"repository not found". Retries once without it, and only when creating a file.
+
 ## v1.7.0 - 2026-08-11 - hints that teach, and patterns from your own grid
 
 ### Hints can explain instead of answering

@@ -675,3 +675,23 @@ time well spent and worth saying so.
 Thresholds are relative to the game's own median rather than absolute. An
 absolute cutoff tells a fast player they stalled constantly and a slow player
 they never did.
+
+### A shipped feature that never reaches the device did not ship
+
+Resolved at v1.7.1, after the GitHub backup was reported missing from a build
+that demonstrably contained it. The bundle on GitHub Pages had it; the installed
+app did not, because `autoUpdate` gives a new service worker control without
+touching the page that is already running.
+
+Two lessons worth keeping:
+
+- **"Deployed" is not "delivered" for a PWA.** Verifying the live bundle
+  contains a string proves the deploy, not the delivery. An installed app is the
+  place to check, and it is the place that is hardest to check.
+- The app now reloads when a new worker takes control, and asks for an update on
+  every return to the foreground. Reloading is only acceptable because the game
+  persists its whole position on every change; in an app where it was not, this
+  would need a prompt instead.
+
+Rules out: any update strategy that depends on the user knowing to reload, and
+any assumption that a green deploy means the feature is in front of anyone.
