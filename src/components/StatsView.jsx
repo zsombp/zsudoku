@@ -217,6 +217,14 @@ export default function StatsView({ onClose, onPractice }) {
             </button>
           ))}
         </div>
+        {/* The glyphs were explained by hover, which is nothing at all on a
+            phone. A legend costs one line and works everywhere. */}
+        <p className="legend">
+          <span>✕ wrong digits</span>
+          <span>? hints used</span>
+          <span>clean: neither</span>
+          <span>tap a row for the full review</span>
+        </p>
       </Section>
 
       <Section title="Last 17 weeks">

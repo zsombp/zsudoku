@@ -13,9 +13,12 @@ export default function StatusBar({ graded, tech, requested, hardest, ms, paused
       <div className="chip">
         <b>{graded}</b>
         <span className="tech">{hardest ? TECHNIQUES[hardest].label : tech}</span>
+        {/* Spelled out rather than hinted at: on a phone the hover that used to
+            explain this did not exist, and the whole point of the label is that
+            the grader disagreed with the request. */}
         {mismatched && (
           <span className="asked" title={`You asked for ${requested}. This puzzle graded ${graded}.`}>
-            asked {requested}
+            you asked for {requested}
           </span>
         )}
       </div>

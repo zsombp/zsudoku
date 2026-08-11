@@ -425,6 +425,9 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
                       <span className="moveGap">{(move.gap / 1000).toFixed(1)}s</span>
                     </div>
                     <p className="stageWhy">{move.why}</p>
+                    {/* What the class means, as opposed to why this move earned
+                        it. Was a hover, so it did not exist on a phone. */}
+                    <p className="stageNote">{CLASSES[move.cls].label}: {CLASSES[move.cls].about.toLowerCase()}</p>
                     {move.alternative && (
                       <p className="moveAlt">
                         Easier was {move.alternative.digit} to r{Math.floor(move.alternative.cell / 9) + 1}

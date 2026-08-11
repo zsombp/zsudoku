@@ -922,3 +922,19 @@ regions are, so "Hard" means the same amount of thinking on a jigsaw as on a
 classic grid. Clue counts differ a lot and should: an anti-knight Medium needs
 twenty clues where classic needs twenty-nine, because the extra constraint is
 doing some of the work. Clue count was never the target.
+
+### A tooltip is not an explanation on a touch screen
+
+Fixed at v2.0.1. Thirteen `title` attributes had been written across the app,
+and every one of them was invisible on the iPhone, which is where most games are
+played. They were not bad explanations; they were unreachable ones, and nothing
+in a build or a test can notice that.
+
+Tools explain themselves on press and hold, matching the idiom the board already
+uses for tinting. Compact glyphs get a visible legend. Labels with room say the
+thing outright. `title` stays everywhere it was, as a bonus for a pointer, and
+is never the only route.
+
+The general rule, and the reason this is written down rather than just fixed:
+**an explanation reachable only by hovering does not exist on the device this
+app is for.** Any future help text has to be readable with a thumb.

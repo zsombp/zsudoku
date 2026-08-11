@@ -2,6 +2,28 @@
 
 Newest first.
 
+## v2.0.1 - 2026-08-11 - explanations that exist on a phone
+
+Thirteen explanations had been written as `title` attributes, which is the same
+as not writing them at all on the device this app is mostly played on. There is
+no hover on a touch screen, so every one of them was invisible on the iPhone.
+
+- **Press and hold any tool** for a line explaining what it does, dismissed by
+  tapping it. The same idiom the board already uses for tinting a cell. All ten
+  tools have one now, not just the four that had a tooltip, and the hold does
+  not fire the button: holding Hint explains it without spending a hint.
+- **A legend under the recent games list.** The compact glyphs were explained by
+  hover alone, so `3✕` and `2?` meant nothing on a phone. One line, always
+  visible.
+- **The status bar spells out the mismatch.** "you asked for Medium" rather than
+  "asked Medium" with the sentence hidden behind a hover, on the one label whose
+  entire job is admitting the grader disagreed with the request.
+- **The move review states what a class means**, not just why this move earned
+  it. "Mistake: this digit does not belong here." was a tooltip.
+
+The `title` attributes stay wherever they were, so a pointer still gets a hover.
+They are just no longer the only way to find out.
+
 ## v2.0.0 - 2026-08-11 - variants
 
 Four new ways to play, and a grader that did not need telling about any of them.
