@@ -4,7 +4,7 @@ import * as backup from '../lib/backup.js'
 import { fmtWhen } from '../lib/format.js'
 
 /**
- * Backup to a GitHub repository you own.
+ * Sync with a GitHub repository you own.
  *
  * The whole section is a deliberate exception to the rule that this app makes
  * no network requests, so it says so plainly rather than hiding behind a
@@ -38,35 +38,46 @@ export default function BackupSettings() {
       return
     }
     backup.saveToken(token)
-    setCfg(c => ({
-      ...c,
+    // Written straight to storage, not just to React state. The sync below
+    // reads the config back out of localStorage, and the effect that persists
+    // state has not run yet at this point: without this the first sync after
+    // connecting reads enabled:false and reports that backup is switched off.
+    const connected = {
+      ...cfg,
       enabled: true,
-      owner: c.owner.trim(),
-      repo: c.repo.trim(),
-      branch: res.branch || c.branch,
+      owner: cfg.owner.trim(),
+      repo: cfg.repo.trim(),
+      branch: res.branch || cfg.branch,
       lastError: null,
-    }))
+    }
+    backup.saveCfg(connected)
+    setCfg(connected)
     setNotice(
       res.private
-        ? 'Connected. Backups will run after each finished game.'
-        : 'Connected, but that repository is public, so anyone can read your game history. A private one is the better home for it.'
+        ? 'Connected. Syncing now…'
+        : 'Connected, but that repository is public, so anyone can read your game history. A private one is the better home for it. Syncing now…'
     )
+    // Straight into a full pass, so the other device's games arrive without
+    // anyone having to know to press anything.
+    await run({ full: true, quiet: true })
   }
 
-  async function pushNow() {
-    setBusy('push')
-    setNotice(null)
-    setProblem(null)
-    const games = await gameLog.all()
-    const res = await backup.backup(games, { cfg, token, force: true })
-    setCfg(res.cfg)
+  async function run({ full = true, force = false, quiet = false } = {}) {
+    setBusy('sync')
+    if (!quiet) { setNotice(null); setProblem(null) }
+    const res = await gameLog.syncNow({ full, force })
+    setCfg(backup.loadCfg())
     setBusy(null)
     if (res.ok) {
-      setNotice(
-        res.pushed
-          ? `Backed up ${games.length} ${games.length === 1 ? 'game' : 'games'} across ${res.pushed} ${res.pushed === 1 ? 'file' : 'files'}.`
-          : 'Already up to date.'
-      )
+      const bits = []
+      if (res.pulled) bits.push(`brought ${res.pulled} ${res.pulled === 1 ? 'game' : 'games'} from your other device`)
+      if (res.sent) bits.push(`sent ${res.sent} ${res.sent === 1 ? 'game' : 'games'} up`)
+      if (res.dropped) bits.push(`removed ${res.dropped} deleted elsewhere`)
+      // A pass that only published a deletion moves no games in either
+      // direction, and saying "already in sync" would be a small lie about
+      // work it just did.
+      if (!bits.length && res.pushed) bits.push('published your deletions')
+      setNotice(bits.length ? `Synced: ${bits.join(', ')}.` : 'Already in sync.')
     } else if (res.offline) {
       setProblem('No connection. This will go out next time you are online.')
     } else {
@@ -85,11 +96,13 @@ export default function BackupSettings() {
 
   return (
     <section className="statSection">
-      <h2 className="statHeading">Backup to GitHub</h2>
+      <h2 className="statHeading">Sync with GitHub</h2>
       <p className="dataNote">
         The one thing in this app that touches the network, and it stays off until you turn it on.
         It talks to github.com and nothing else, sends only your game history, and the app works
-        exactly the same offline with it running or not.
+        exactly the same offline with it running or not. Point every device at the same repository
+        and they share one history: statistics and the coach then see every game, wherever you
+        played it.
       </p>
 
       {!configured || !cfg.enabled ? (
@@ -151,15 +164,21 @@ export default function BackupSettings() {
       ) : (
         <>
           <p className="dataNote">
-            Backing up to <strong>{cfg.owner}/{cfg.repo}</strong>, one file per month under{' '}
+            Syncing with <strong>{cfg.owner}/{cfg.repo}</strong>, one file per month under{' '}
             <code>games/</code>.{' '}
-            {cfg.lastPushAt
-              ? `Last backup ${fmtWhen(cfg.lastPushAt)}.`
-              : 'Nothing has been sent yet.'}
+            {cfg.lastPushAt ? `Last synced ${fmtWhen(cfg.lastPushAt)}.` : 'Nothing has been sent yet.'}
+            {' '}It runs by itself after each finished game and whenever you come back to the app.
+          </p>
+          <p className="dataNote">
+            Deleting a game here deletes it on your other device too, the next time each of them
+            syncs. Everything else is a union, so nothing is ever lost by playing in two places.
           </p>
           <div className="dataRow">
-            <button className="newBtn" disabled={busy === 'push'} onClick={pushNow}>
-              {busy === 'push' ? 'Backing up…' : 'Back up now'}
+            {/* Full, but not forced: a full pass already ignores the cache, and
+                forcing would write a commit every press even with nothing to
+                say. */}
+            <button className="newBtn" disabled={busy === 'sync'} onClick={() => run({ full: true })}>
+              {busy === 'sync' ? 'Syncing…' : 'Sync now'}
             </button>
             <button className="newBtn" onClick={disconnect}>Disconnect</button>
           </div>

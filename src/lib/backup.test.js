@@ -138,3 +138,66 @@ describe('trusting the fingerprint cache', () => {
     }
   })
 })
+
+describe('deletes that have to travel', () => {
+  const stone = (id, at = Date.now()) => ({ id, at, shard: '2026-07' })
+
+  it('drops a game the other device deleted', () => {
+    const { merged, removeLocally } = mergeShard(
+      [game('a', 1), game('b', 2)],
+      [game('a', 1), game('b', 2)],
+      { remoteDeleted: [stone('b')] }
+    )
+    expect(merged.map(g => g.id)).toEqual(['a'])
+    // And says so, since the caller owns the local store.
+    expect(removeLocally).toEqual(['b'])
+  })
+
+  it('does not resurrect a game this device deleted', () => {
+    // The exact loop tombstones exist to break: remote still has it, we do not.
+    const { merged, remoteOnly } = mergeShard(
+      [game('a', 1), game('b', 2)],
+      [game('a', 1)],
+      { localDeleted: [stone('b')] }
+    )
+    expect(merged.map(g => g.id)).toEqual(['a'])
+    expect(remoteOnly).toEqual([])
+  })
+
+  it('carries both ends tombstones forward so a third device honours them', () => {
+    const { deleted } = mergeShard([game('a', 1)], [game('a', 1)], {
+      remoteDeleted: [stone('x')],
+      localDeleted: [stone('y')],
+    })
+    expect(deleted.map(t => t.id).sort()).toEqual(['x', 'y'])
+  })
+
+  it('keeps the later record when both ends tombstone the same game', () => {
+    const { deleted } = mergeShard([], [], {
+      remoteDeleted: [stone('x', 1000)],
+      localDeleted: [stone('x', 5000)],
+    })
+    expect(deleted).toHaveLength(1)
+    expect(deleted[0].at).toBe(5000)
+  })
+
+  it('forgets a tombstone older than a year, so the file stops growing', () => {
+    const now = Date.now()
+    const ancient = { id: 'old', at: now - 400 * 24 * 60 * 60 * 1000, shard: '2025-01' }
+    const { deleted, merged } = mergeShard([game('old', 1)], [], {
+      remoteDeleted: [ancient],
+      now,
+    })
+    expect(deleted).toEqual([])
+    // And the game is no longer suppressed, which is fine: every device forgot
+    // it long ago, so nothing is left to resurrect it.
+    expect(merged.map(g => g.id)).toEqual(['old'])
+  })
+
+  it('still pulls games the remote has that are not tombstoned', () => {
+    const { remoteOnly } = mergeShard([game('a', 1), game('b', 2)], [], {
+      remoteDeleted: [stone('a')],
+    })
+    expect(remoteOnly.map(g => g.id)).toEqual(['b'])
+  })
+})

@@ -80,11 +80,11 @@ export default function StatsView({ onClose, onPractice }) {
           onBack={() => setReviewing(null)}
           onPractice={onPractice}
           onDelete={async g => {
-            await gameLog.removeGame(g.id)
+            await gameLog.removeGame(g.id, g.endedAt)
             setReviewing(null)
             const rest = await gameLog.all()
             setGames(rest.sort((a, b) => a.endedAt - b.endedAt))
-            setNotice('Game deleted. It stays in any backup already pushed until that month is written again.')
+            setNotice('Game deleted. The next sync removes it from your other device too.')
           }}
         />
       </div>

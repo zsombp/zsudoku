@@ -2,6 +2,46 @@
 
 Newest first.
 
+## v1.8.0 - 2026-08-11 - the phone and the Mac share one history
+
+Point both devices at the same repository and they are one history. Statistics,
+records and the coach see every game wherever it was played, which they never
+could before: a Diabolical solved on the phone was invisible to the Mac, and
+each device thought its own half was the whole story.
+
+It runs by itself after each finished game and whenever the app comes back to
+the foreground. A full pass lists the repository first, so a month a device has
+never seen still arrives. That listing is the entire difference between a backup
+and a sync: without it, a Mac that has never opened August never thinks to look
+for August.
+
+### Deletes travel now, which they had to
+
+A union merge cannot say "this game is gone". Delete a game on the Mac and the
+next sync pulls it back from the phone, which pushes it back to the Mac, for
+ever. Two devices would have made deleting anything futile, which matters
+immediately: the app has had a delete button for about an hour.
+
+So a month's file carries the ids deleted from it, both ends honour that list,
+and a tombstone is dropped after a year, by which time every device has long
+since seen it. The tombstone lives in the file for the month the game belonged
+to, not copied into all of them.
+
+The integration test is two simulated devices sharing one fake repository:
+a game reaching the other side, a month never seen arriving, and a deletion
+staying deleted through repeated round trips in both directions.
+
+### Smaller
+
+- Connecting now syncs straight away, so the other device's games arrive
+  without anyone knowing to press anything. This took writing the config to
+  storage rather than only to React state, since the sync reads it back and the
+  effect that persists state had not run yet.
+- "Sync now" no longer forces a write. A full pass already ignores the cache,
+  and forcing meant a commit on every press with nothing to say.
+- A pass that only published a deletion used to report "already in sync", which
+  was a small lie about work it had just done.
+
 ## v1.7.3 - 2026-08-11 - delete one game
 
 The log offered exactly two options: keep everything, or delete everything. A

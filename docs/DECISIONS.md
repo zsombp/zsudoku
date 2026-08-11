@@ -726,3 +726,41 @@ Two things stated rather than assumed:
   removed by mistake is recoverable from git history. That is worth knowing
   before reaching for a delete, and is a real argument for having the backup on
   before doing any tidying.
+
+### Sync is a union, plus tombstones, because a union alone cannot delete
+
+Resolved at v1.8.0. Merging by game id is safe and needs no coordination: ids
+are `endedAt-seed`, two devices cannot mint the same one, and nothing is ever
+lost by playing in two places. That covers everything except removal.
+
+A union has no vocabulary for absence. A game deleted on one device is simply a
+game the other device still has, so the next sync restores it, and the one after
+that restores it again. With a delete button in the app this is not a corner
+case; it is the first thing anyone would try.
+
+So each month's file carries the ids deleted from it and both ends honour the
+list. Three details that matter:
+
+- **A tombstone lives in the month of the game it refers to**, not in every
+  file. The alternative bloats every shard with every deletion ever made.
+- **It expires after a year.** By then every device has read it many times, and
+  a tombstone outliving all memory of the game is just a file that grows.
+- **The local pending list is cleared only once the file that must carry it has
+  been written.** Clearing on any successful pass would drop a deletion that
+  never reached the repository.
+
+Rules out: last-write-wins on a whole-history file, which loses games the moment
+two devices exist, and any scheme where deleting requires touching both devices
+by hand.
+
+### The repository listing is what makes it sync rather than backup
+
+A device pushes the months it has. A device that has never played in August has
+no August shard and would never think to look for one, so the phone's August
+would never reach the Mac. A full pass lists `games/` first and pulls what it
+finds.
+
+That listing is the whole difference, and it is why the routine post-game path
+and the foreground path are not the same call: after a game only the current
+month is touched, which is one small file, while coming back to the app does the
+full pass.

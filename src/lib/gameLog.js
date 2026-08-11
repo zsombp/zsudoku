@@ -4,6 +4,7 @@
 // purpose: a win rate computed only from wins is not a win rate.
 
 import * as idb from './idb.js'
+import * as backup from './backup.js'
 import { GRADER_VERSION } from '../logic/techniques.js'
 
 export const SCHEMA_VERSION = 1
@@ -81,7 +82,33 @@ export const clearAll = () => idb.clear()
  * Note this does not remove it from a GitHub backup. The merge there is a union
  * by id, so a copy already pushed stays pushed until that file is changed too.
  */
-export const removeGame = id => idb.del(id)
+export async function removeGame(id, endedAt) {
+  // The tombstone goes down first. If the delete somehow fails, a tombstone for
+  // a game that is still here is harmless: the next sync removes it anyway.
+  backup.addTombstone(id, endedAt)
+  return idb.del(id)
+}
+
+/**
+ * Reconcile with the repository and apply whatever comes back.
+ *
+ * The sync module deliberately does not touch IndexedDB, so this is where the
+ * two halves meet: games the other device played are written in, games it
+ * deleted are removed here.
+ */
+export async function syncNow({ full = false, force = false } = {}) {
+  const cfg = backup.loadCfg()
+  if (!cfg.enabled) return { ok: false, error: 'Backup is not switched on.' }
+
+  const res = await backup.sync(await all(), { cfg, full, force })
+  if (res.cfg) backup.saveCfg(res.cfg)
+  if (!res.ok) return res
+
+  if (res.incoming?.length) await idb.putMany(res.incoming)
+  for (const id of res.removeLocally || []) await idb.del(id)
+
+  return { ...res, pulled: res.incoming?.length || 0, dropped: res.removeLocally?.length || 0 }
+}
 
 // ---- backup ----
 //

@@ -182,13 +182,8 @@ export default function App() {
    * animation. The error is stored, and the dashboard says so if it persists.
    */
   const pushBackup = useCallback(() => {
-    const cfg = backup.loadCfg()
-    if (!cfg.enabled) return
-    gameLog
-      .all()
-      .then(games => backup.backup(games, { cfg }))
-      .then(res => { if (res?.cfg) backup.saveCfg(res.cfg) })
-      .catch(() => {})
+    if (!backup.loadCfg().enabled) return
+    gameLog.syncNow().catch(() => {})
   }, [])
 
   /**
@@ -420,6 +415,20 @@ export default function App() {
       startNew(tier)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Reconcile with the other device whenever the app comes back. A full pass,
+  // so a month this device has never seen still arrives: that is the whole
+  // difference between a backup and a sync.
+  useEffect(() => {
+    const run = () => {
+      if (document.visibilityState !== 'visible') return
+      if (!backup.loadCfg().enabled) return
+      gameLog.syncNow({ full: true }).catch(() => {})
+    }
+    run()
+    document.addEventListener('visibilitychange', run)
+    return () => document.removeEventListener('visibilitychange', run)
   }, [])
 
   // ---- honest timing ----
