@@ -2,6 +2,15 @@
 
 Newest first.
 
+## v1.11.1 - 2026-08-11 - a p-value is never zero
+
+The finished experiment panel reported "a gap this big came up in only 0.0% of
+reshuffles", which claims the result could not have happened by chance. Ten
+thousand reshuffles cannot resolve below one in ten thousand, and the plus-one
+correction means the answer is never actually zero, so rounding it down undid
+the exact overclaim that correction exists to prevent. It now says "under 0.1%",
+and the table column says "<1%".
+
 ## v1.11.0 - 2026-08-11 - experiments you run on yourself
 
 The defaults in this app are guesses. Auto-pencil off, mistake marking on, quick

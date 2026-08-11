@@ -275,6 +275,19 @@ export function analyse(games, state) {
   return { ...base, results, primary: results.find(r => r.outcome === exp.primary) }
 }
 
+/**
+ * A p-value as a percentage, never rounded down to zero.
+ *
+ * Ten thousand reshuffles cannot resolve below one in ten thousand, and the
+ * plus-one correction means the answer is never actually zero. Printing "0.0%"
+ * would claim the result could not have happened by chance, which is precisely
+ * the overclaim the correction exists to prevent.
+ */
+export const pctChance = p => (p < 0.001 ? 'under 0.1%' : `${(p * 100).toFixed(1)}%`)
+
+/** The same for a narrow table column. */
+export const pctShort = p => (p < 0.005 ? '<1%' : `${(p * 100).toFixed(0)}%`)
+
 /** The finding, in the plainest terms the numbers support. */
 export function verdictFor(exp, result) {
   if (!result?.enough) return 'Not enough finished games in both halves to compare.'
@@ -284,11 +297,13 @@ export function verdictFor(exp, result) {
   if (result.p > 0.05) {
     return `No difference big enough to trust. ${o.label} came out ${size.toFixed(0)}% ${
       result.better === 'on' ? 'better' : 'worse'
-    } with it on, but a split at least this uneven turns up by chance ${(result.p * 100).toFixed(
-      0
-    )}% of the time, so it is indistinguishable from noise. ${NULL_CAVEAT}`
+    } with it on, but a split at least this uneven turns up by chance ${pctShort(
+      result.p
+    )} of the time, so it is indistinguishable from noise. ${NULL_CAVEAT}`
   }
   return `${o.label} was ${size.toFixed(0)}% ${
     result.better === 'on' ? 'better with it on' : 'better with it off'
-  }, and a gap this big came up in only ${(result.p * 100).toFixed(1)}% of reshuffles. That is a real effect for you, whatever it does for anyone else.`
+  }, and a gap this big came up in ${pctChance(
+    result.p
+  )} of reshuffles. That is a real effect for you, whatever it does for anyone else.`
 }

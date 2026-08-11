@@ -108,7 +108,7 @@ export default function Experiments({ games, onChange }) {
                       </td>
                       <td>{r.enough ? fmt(r.onMean, r.outcome) : '—'}</td>
                       <td>{r.enough ? fmt(r.offMean, r.outcome) : '—'}</td>
-                      <td>{r.enough ? `${(r.p * 100).toFixed(0)}%` : '—'}</td>
+                      <td>{r.enough ? ex.pctShort(r.p) : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
