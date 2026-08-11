@@ -10,14 +10,25 @@
 // is what makes "New game" feel instant despite the cost.
 
 import { makeVariantPuzzle, makeVariantPractice, makeVariantTailored } from '../logic/variants.js'
+import { buildDeck } from '../logic/flashcards.js'
 
 self.onmessage = event => {
-  const { id, tier, seed, practice, tailored, variant = 'classic' } = event.data
+  const { id, tier, seed, practice, tailored, cards, variant = 'classic' } = event.data
   try {
     // Rare techniques need a long leash. Measured with scripts/practice.mjs:
     // Swordfish took a median 9s and naked quad landed only 67% of the time at
     // 20s, so the budget here is deliberately generous. It runs in a worker, so
     // waiting costs the interface nothing.
+    if (cards) {
+      const deck = buildDeck(cards, { count: 8, budgetMs: 12000, ...(seed === undefined ? {} : { seed }) })
+      if (!deck.length) {
+        self.postMessage({ id, error: `could not deal any ${cards} positions. It is a rare pattern; try again.` })
+        return
+      }
+      self.postMessage({ id, made: { deck, technique: cards } })
+      return
+    }
+
     const made = practice
       ? makeVariantPractice(variant, practice, { budgetMs: 30000, ...(seed === undefined ? {} : { seed }) })
       : tailored

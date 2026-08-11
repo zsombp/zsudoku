@@ -36,11 +36,11 @@ export function useGenerator() {
   }, [])
 
   const generate = useCallback(
-    (tier, seed, practice, variant = 'classic', tailored = null) =>
+    (tier, seed, practice, variant = 'classic', tailored = null, cards = null) =>
       new Promise((resolve, reject) => {
         const id = nextIdRef.current++
         pendingRef.current.set(id, { resolve, reject })
-        ensureWorker().postMessage({ id, tier, seed, practice, variant, tailored })
+        ensureWorker().postMessage({ id, tier, seed, practice, variant, tailored, cards })
       }),
     [ensureWorker]
   )
@@ -51,6 +51,10 @@ export function useGenerator() {
     (technique, variant = 'classic') => generate(null, undefined, technique, variant),
     [generate]
   )
+
+  /** A deck of positions where one pattern is present. Slow enough to warrant
+   *  the worker: a rare rung can take ten seconds to find eight of. */
+  const deck = useCallback(technique => generate(null, undefined, null, 'classic', null, technique), [generate])
 
   /** A whole game built around what this player is worst at. Never cached. */
   const tailored = useCallback(
@@ -94,7 +98,7 @@ export function useGenerator() {
   // that lists the generator as a dependency re-run on every render, which in
   // App means startNew is rebuilt constantly and effects keyed on it loop.
   return useMemo(
-    () => ({ request, prefetch, practice, tailored }),
-    [request, prefetch, practice, tailored]
+    () => ({ request, prefetch, practice, tailored, deck }),
+    [request, prefetch, practice, tailored, deck]
   )
 }

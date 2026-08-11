@@ -2,6 +2,25 @@
 
 Newest first.
 
+## v2.9.0 - 2026-08-11 - flashcards
+
+Practice mode hands you a whole puzzle that needs a technique, which takes ten
+minutes and teaches the pattern once. A flashcard shows a position where the
+pattern is present and asks one question: where is it. Eight of those in three
+minutes builds recognition in a way one long solve does not.
+
+Every card is a real position. They come from generated puzzles walked forward
+to the exact move the technique fires, so nothing here is a diagram drawn to
+make a point, and a test re-asks the ladder in each position to confirm it still
+names the same pattern in the same cells.
+
+Tap the cells, check, and a wrong answer outlines the real one and explains it.
+Correct answers are timed, so the deck can tell you at the end whether the
+pattern is automatic yet or only reachable.
+
+Dealt in the worker, because a rare rung genuinely takes ten seconds to find
+eight positions for, and it says so rather than spinning if it cannot.
+
 ## v2.8.0 - 2026-08-11 - keyboard speedrunning
 
 - **hjkl** moves the selection, so a hand never leaves the home row.

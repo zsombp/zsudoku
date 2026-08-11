@@ -2181,3 +2181,39 @@ button.rvCell:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 .shareInput .fieldInput { flex: 1; min-width: 0; }
 .shareInput .newBtn { flex: 0 0 auto; }
 .shareRow .linkBtn { font-family: var(--mono); font-size: 11.5px; margin-top: 4px; }
+
+/* ---- flashcards ---- */
+
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.cardAsk { font-size: 15px; color: var(--ink); }
+.cardAsk strong { color: var(--accent); }
+.cardProgress { font-family: var(--mono); font-size: 11px; color: var(--sub); }
+
+/* A cell you have chosen, while you are still choosing. */
+.rvCell.picked {
+  background: color-mix(in srgb, var(--t2) 26%, transparent);
+  box-shadow: inset 0 0 0 2px var(--t2);
+}
+
+.cardResult { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+.cardResult.right { color: var(--t1); }
+.cardResult.wrong { color: var(--error); }
+
+.cardDone { text-align: center; padding: 24px 0; }
+.cardScore {
+  font-family: var(--mono);
+  font-size: 48px;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1;
+}
+.cardScore span { font-size: 22px; color: var(--sub); }
+.cardVerdict { font-size: 14px; color: var(--ink); margin: 10px auto 6px; max-width: 34ch; line-height: 1.5; }
+.cardDone .dataRow { justify-content: center; }

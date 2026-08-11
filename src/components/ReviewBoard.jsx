@@ -32,6 +32,8 @@ export default function ReviewBoard({
   heat = null,
   heatLevel = null,
   onCell = null,
+  picked = null,
+  cellAction = 'show history',
 }) {
   // A unit is drawn whole when it is the evidence: a hidden single means
   // nothing without the row it was hidden in.
@@ -76,6 +78,8 @@ export default function ReviewBoard({
         if (killed.has(i)) cls.push('hasKill')
         if (i === focus) cls.push('now')
         if (i === alternative) cls.push('alt')
+        // Cells the player has chosen, while they are still choosing.
+        if (picked?.includes(i)) cls.push('picked')
 
         // Only becomes a control when there is something to open, so a board
         // that is purely a picture keeps 81 cells out of the tab order.
@@ -85,7 +89,11 @@ export default function ReviewBoard({
             key={i}
             className={cls.join(' ')}
             {...(onCell
-              ? { onClick: () => onCell(i), 'aria-label': `row ${rowOf(i) + 1} column ${colOf(i) + 1}, show history` }
+              ? {
+                  onClick: () => onCell(i),
+                  'aria-label': `row ${rowOf(i) + 1} column ${colOf(i) + 1}, ${cellAction}`,
+                  'aria-pressed': picked ? picked.includes(i) : undefined,
+                }
               : {})}
           >
             {v !== 0 ? (

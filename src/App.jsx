@@ -33,6 +33,7 @@ import { Gear, Home } from './components/Icons.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import ThemeMenu from './components/ThemeMenu.jsx'
 import PracticeView from './components/PracticeView.jsx'
+import Flashcards from './components/Flashcards.jsx'
 import * as sound from './lib/sound.js'
 
 export default function App() {
@@ -269,6 +270,25 @@ export default function App() {
       }
     },
     [generator, recordAbandon, updateSettings, enrolGame]
+  )
+
+  /** A deck of positions to drill one pattern against the clock. */
+  const [cards, setCards] = useState(null)
+  const startCards = useCallback(
+    async technique => {
+      setPracticing('cards:' + technique)
+      setGenError(null)
+      try {
+        const made = await generator.deck(technique)
+        setCards(made)
+        setView('cards')
+      } catch (err) {
+        setGenError(String(err.message || err))
+      } finally {
+        setPracticing(null)
+      }
+    },
+    [generator]
   )
 
   /**
@@ -745,10 +765,24 @@ export default function App() {
     )
   }
 
+  if (view === 'cards' && cards) {
+    return (
+      <div className="app wide">
+        <Flashcards
+          technique={cards.technique}
+          deck={cards.deck}
+          onClose={() => setView('practice')}
+          onAgain={() => startCards(cards.technique)}
+        />
+      </div>
+    )
+  }
+
   if (view === 'practice') {
     return (
       <div className="app wide">
         <PracticeView
+          onCards={startCards}
           busyWith={practicing}
           error={genError}
           onPractice={startPractice}

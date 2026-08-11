@@ -15,7 +15,7 @@ import { VARIANT_LIST } from '../logic/variants.js'
  * means and how often you have needed help with it, which is the closest thing
  * to teaching the app does outside the post-game summary.
  */
-export default function PracticeView({ onPractice, onClose, busyWith, error }) {
+export default function PracticeView({ onPractice, onCards, onClose, busyWith, error }) {
   const [hints, setHints] = useState(null)
   const [open, setOpen] = useState(null)
   // Which board to drill on. Spotting a naked pair inside an irregular region
@@ -80,9 +80,22 @@ export default function PracticeView({ onPractice, onClose, busyWith, error }) {
               {isOpen && (
                 <div className="techBody">
                   <p className="techAbout">{t.about}</p>
-                  <button className="newBtn" disabled={Boolean(busyWith)} onClick={() => onPractice(key, variant)}>
-                    {busy ? 'Finding a puzzle…' : `Practise ${t.label}`}
-                  </button>
+                  <div className="dataRow">
+                    <button className="newBtn" disabled={Boolean(busyWith)} onClick={() => onPractice(key, variant)}>
+                      {busy ? 'Finding a puzzle…' : `Practise ${t.label}`}
+                    </button>
+                    {/* A whole puzzle teaches the pattern once in ten minutes.
+                        Cards ask the same question twenty times in three. */}
+                    {onCards && key !== 'nakedSingle' && (
+                      <button
+                        className="newBtn"
+                        disabled={Boolean(busyWith)}
+                        onClick={() => onCards(key)}
+                      >
+                        {busyWith === 'cards:' + key ? 'Dealing…' : 'Flashcards'}
+                      </button>
+                    )}
+                  </div>
                   {error && !busyWith && (
                     <p className="techError">{error}</p>
                   )}
