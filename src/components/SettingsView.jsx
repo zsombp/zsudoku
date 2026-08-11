@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as gameLog from '../lib/gameLog.js'
 import { dayKey } from '../logic/daily.js'
 import BackupSettings from './BackupSettings.jsx'
+import * as experiments from '../stats/experiments.js'
 
 export const THEMES = [
   { id: 'ink', name: 'Ink & Brass', desc: 'The original. Deep blue, warm brass.' },
@@ -12,28 +13,53 @@ export const THEMES = [
   { id: 'contrast', name: 'High Contrast', desc: 'Maximum legibility, black on white.' },
 ]
 
-function Row({ label, hint, children }) {
+function Row({ label, hint, note, children }) {
   return (
-    <div className="setRow">
+    <div className={'setRow' + (note ? ' locked' : '')}>
       <div className="setText">
         <div className="setLabel">{label}</div>
         {hint && <div className="setHint">{hint}</div>}
+        {/* Said out loud, so a switch changing by itself is explained rather
+            than mysterious. */}
+        {note && <div className="setLocked">{note}</div>}
       </div>
       <div className="setControl">{children}</div>
     </div>
   )
 }
 
-function Switch({ checked, onChange, label }) {
+function Switch({ checked, onChange, label, disabled }) {
   return (
-    <label className="switch">
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} aria-label={label} />
+    <label className={'switch' + (disabled ? ' off' : '')}>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={e => onChange(e.target.checked)}
+        aria-label={label}
+      />
       <span className="switchTrack" aria-hidden="true"><span className="switchThumb" /></span>
     </label>
   )
 }
 
 export default function SettingsView({ settings, updateSettings, onClose }) {
+  /**
+   * A running experiment drives one of these switches itself, flipping it at
+   * the start of every game. Two things follow, and both were missing.
+   *
+   * It has to say so, or the switch looks like it is changing on its own. And
+   * it has to be locked, because changing it by hand mid-game leaves that game
+   * playing one way while its record says the other, which quietly poisons the
+   * result the experiment was run to get.
+   */
+  const running = experiments.load()
+  const driven = running && experiments.EXPERIMENTS[running.id]
+  const lockedBy = setting =>
+    driven && driven.setting === setting
+      ? 'An experiment is setting this, one way or the other, at the start of each game. Stop it in Statistics to take the switch back.'
+      : null
+
   const [count, setCount] = useState(null)
   const [confirmClear, setConfirmClear] = useState(false)
   const [notice, setNotice] = useState(null)
@@ -112,40 +138,51 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
 
       <section className="statSection">
         <h2 className="statHeading">Playing</h2>
-        <Row label="Quick input" hint="Pick a number, then tap cells to fill them.">
+        <Row
+          label="Quick input"
+          hint="Pick a number, then tap cells to fill them."
+          note={lockedBy('quickInput')}
+        >
           <Switch
             label="Quick input"
             checked={settings.quickInput}
+            disabled={Boolean(lockedBy('quickInput'))}
             onChange={v => updateSettings({ quickInput: v })}
           />
         </Row>
         <Row
           label="Candidate hints"
           hint="Outlines every empty cell the highlighted number could still go in."
+          note={lockedBy('candidateHints')}
         >
           <Switch
             label="Candidate hints"
             checked={settings.candidateHints}
+            disabled={Boolean(lockedBy('candidateHints'))}
             onChange={v => updateSettings({ candidateHints: v })}
           />
         </Row>
         <Row
           label="Show mistakes"
           hint="Marks a digit red the moment it disagrees with the solution. Turn it off and a Check button appears instead, so you can ask when you want to."
+          note={lockedBy('checkErrors')}
         >
           <Switch
             label="Show mistakes"
             checked={settings.checkErrors}
+            disabled={Boolean(lockedBy('checkErrors'))}
             onChange={v => updateSettings({ checkErrors: v })}
           />
         </Row>
         <Row
           label="Start with notes filled in"
           hint="Every board opens with all its candidates pencilled in, as if you had pressed Auto."
+          note={lockedBy('autoPencilOnStart')}
         >
           <Switch
             label="Start with notes filled in"
             checked={settings.autoPencilOnStart}
+            disabled={Boolean(lockedBy('autoPencilOnStart'))}
             onChange={v => updateSettings({ autoPencilOnStart: v })}
           />
         </Row>

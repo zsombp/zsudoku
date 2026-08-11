@@ -2014,3 +2014,15 @@ button.rvCell:focus-visible { outline: 2px solid var(--accent); outline-offset: 
   margin-left: 6px;
   vertical-align: middle;
 }
+
+/* A setting an experiment is driving. Locked, and saying why: a switch that
+ * changes by itself every game is alarming without an explanation. */
+.setRow.locked { opacity: 0.85; }
+.setLocked {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--accent);
+  margin-top: 4px;
+}
+.switch.off { opacity: 0.4; cursor: not-allowed; }
+.switch.off input { cursor: not-allowed; }

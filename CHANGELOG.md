@@ -2,6 +2,19 @@
 
 Newest first.
 
+## v1.11.2 - 2026-08-11 - a switch an experiment is holding says so
+
+A running experiment sets one of the assists itself, at the start of every game.
+The settings screen had no idea, which left two problems.
+
+The switch appeared to change on its own, with nothing on screen to explain it.
+And it could still be flipped by hand, which leaves that game playing one way
+while its record says the other: a quiet corruption of the exact result the
+experiment was being run to get.
+
+The switch an experiment is driving is now locked and says why, and points at
+where to stop the run. The others stay yours.
+
 ## v1.11.1 - 2026-08-11 - a p-value is never zero
 
 The finished experiment panel reported "a gap this big came up in only 0.0% of

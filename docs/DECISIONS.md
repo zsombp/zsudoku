@@ -855,3 +855,18 @@ spent thirty games measuring a disconnected switch and reported a null. Worth
 remembering as a class of bug: a setting with no reader is invisible to tests,
 to types and to review, and the thing that catches it is code that depends on it
 having an effect.
+
+### Anything the app changes on your behalf has to admit it
+
+Added at v1.11.2. The experiment flips one assist at the start of each game, and
+the settings screen showed that switch as if the player owned it.
+
+Two failures, and the second is the serious one. A control that changes by
+itself with no explanation is alarming. A control that can be changed by hand
+while something else depends on its value is a data bug: the game plays one way,
+the record claims the other, and the experiment reports a result drawn from
+games that were not in the arm they say they were.
+
+So it is locked while a run is going, and it says who is holding it and where to
+take it back. The general rule for this app: if the app sets something for you,
+the screen that shows it must say so, and must not let you fight it silently.
