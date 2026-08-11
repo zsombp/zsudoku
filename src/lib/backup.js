@@ -455,3 +455,93 @@ export async function sync(games, { cfg = loadCfg(), token = loadToken(), force 
 
 /** The cheap path, after a game. Pushes, and picks up anything new this month. */
 export const backup = (games, opts = {}) => sync(games, opts)
+
+// ---- the game you are in the middle of ----
+//
+// Finished games merge by union, which is safe because they never change. A
+// position in progress is the opposite: it is one thing that both devices
+// rewrite, so a union is meaningless and last-write-wins would silently throw
+// away moves.
+//
+// The rule here is that the longer move log wins, and a tie goes to the more
+// recently touched. That is not a general conflict resolution scheme, it is the
+// one fact that matters: a position with more moves in it contains the one with
+// fewer, because both started from the same puzzle. Anything genuinely
+// divergent is reported rather than merged, and the player chooses.
+
+const LIVE_PATH = 'live/game.json'
+
+/** Which of two saves is further along, and whether they diverged. */
+export function compareSaves(mine, theirs) {
+  if (!theirs?.puzzle) return { take: 'mine', reason: 'nothing there' }
+  if (!mine?.puzzle) return { take: 'theirs', reason: 'nothing here' }
+
+  // Different puzzles entirely: not a conflict to merge, a choice to offer.
+  if (mine.seed !== theirs.seed || (mine.variant || 'classic') !== (theirs.variant || 'classic')) {
+    return { take: 'ask', reason: 'different puzzles' }
+  }
+
+  const mineMoves = mine.moveLog?.length || 0
+  const theirsMoves = theirs.moveLog?.length || 0
+  if (theirsMoves > mineMoves) return { take: 'theirs', reason: `${theirsMoves} moves against ${mineMoves}` }
+  if (mineMoves > theirsMoves) return { take: 'mine', reason: `${mineMoves} moves against ${theirsMoves}` }
+  return {
+    take: (theirs.savedAt || 0) > (mine.savedAt || 0) ? 'theirs' : 'mine',
+    reason: 'same length, newer wins',
+  }
+}
+
+/** Push the position in progress, so another device can pick it up. */
+export async function pushLive(save, { cfg = loadCfg(), token = loadToken() } = {}) {
+  if (!cfg.enabled || !token || !cfg.owner || !cfg.repo) return { ok: false }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return { ok: false, offline: true }
+  try {
+    const existing = await readLive(token, cfg)
+    const body = JSON.stringify({ app: 'zsudoku', kind: 'live', savedAt: Date.now(), save }, null, 1)
+    const { ok, status, body: res } = await call(
+      token,
+      `/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(LIVE_PATH)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          message: 'zsudoku: position in progress',
+          content: toBase64(body),
+          branch: cfg.branch,
+          ...(existing?.sha ? { sha: existing.sha } : {}),
+        }),
+      }
+    )
+    if (!ok) return { ok: false, error: describe(status, res) }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) }
+  }
+}
+
+async function readLive(token, cfg) {
+  const { ok, status, body } = await call(
+    token,
+    `/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(LIVE_PATH)}?ref=${encodeURIComponent(cfg.branch)}`
+  )
+  if (status === 404) return null
+  if (!ok) throw new Error(describe(status, body))
+  try {
+    const parsed = JSON.parse(fromBase64(body.content || ''))
+    return { ...parsed, sha: body.sha }
+  } catch {
+    return null
+  }
+}
+
+/** The position another device left, if there is one worth taking. */
+export async function pullLive({ cfg = loadCfg(), token = loadToken() } = {}) {
+  if (!cfg.enabled || !token || !cfg.owner || !cfg.repo) return null
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return null
+  try {
+    const remote = await readLive(token, cfg)
+    if (!remote?.save?.puzzle) return null
+    return { save: remote.save, savedAt: remote.savedAt }
+  } catch {
+    return null
+  }
+}

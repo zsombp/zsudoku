@@ -201,6 +201,54 @@ export default function App() {
     return () => clearInterval(id)
   }, [state.status, persist])
 
+  /**
+   * Hand the position in progress to the other device.
+   *
+   * Only on the way out of a game, not on every move: this writes a commit, and
+   * one per placement would be absurd. Leaving the app, going home and finishing
+   * a game are the moments the other device might pick it up.
+   */
+  const handOff = useCallback(() => {
+    const s = stateRef.current
+    if (!backup.loadCfg().enabled) return
+    if (!s.board || s.status !== 'playing') return
+    if (!(s.moveLog?.length > 0)) return
+    backup
+      .pushLive({
+        puzzle: s.puzzle,
+        solution: s.solution,
+        board: s.board,
+        marks: Array.from(s.marks),
+        seed: s.seed,
+        variant: s.variant,
+        regions: s.regions,
+        requested: s.requested,
+        graded: s.graded,
+        score: s.score,
+        hardest: s.hardest,
+        counts: s.counts,
+        clues: s.clues,
+        mode: s.mode,
+        dayKey: s.dayKey,
+        practice: s.practice,
+        moveLog: s.moveLog,
+        mistakes: s.mistakes,
+        hints: s.hints,
+        checks: s.checks,
+        startedAt: s.startedAt,
+        elapsedMs: timerRef.current.read(),
+        savedAt: Date.now(),
+      })
+      .catch(() => {})
+  }, [])
+
+  // Leaving the tab is the commonest way a game is put down.
+  useEffect(() => {
+    const onHide = () => document.hidden && handOff()
+    document.addEventListener('visibilitychange', onHide)
+    return () => document.removeEventListener('visibilitychange', onHide)
+  }, [handOff])
+
   // ---- generation ----
 
   /**
@@ -541,6 +589,36 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /**
+   * A position another device left, offered rather than applied.
+   *
+   * Never taken silently: the rule that the longer log wins is right nearly
+   * always, and "nearly always" is not good enough when being wrong means
+   * overwriting a game someone is in the middle of.
+   */
+  const [handoff, setHandoff] = useState(null)
+  useEffect(() => {
+    if (!backup.loadCfg().enabled) return
+    let alive = true
+    backup.pullLive().then(remote => {
+      if (!alive || !remote) return
+      const mine = getSync(slotFor('casual'))
+      const verdict = backup.compareSaves(mine, remote.save)
+      if (verdict.take === 'mine') return
+      setHandoff({ ...remote, verdict })
+    })
+    return () => { alive = false }
+  }, [])
+
+  const takeHandoff = useCallback(() => {
+    if (!handoff?.save) return
+    set(slotFor(handoff.save.mode || 'casual'), handoff.save)
+    dispatch({ type: 'hydrate', saved: handoff.save })
+    timerRef.current.reset(handoff.save.elapsedMs || 0)
+    setHandoff(null)
+    setView('game')
+  }, [handoff])
+
   // Reconcile with the other device whenever the app comes back. A full pass,
   // so a month this device has never seen still arrives: that is the whole
   // difference between a backup and a sync.
@@ -808,6 +886,19 @@ export default function App() {
     return (
       <div className="app wide">
         <Dashboard
+          handoff={
+            handoff
+              ? {
+                  graded: handoff.save.graded,
+                  variant: handoff.save.variant,
+                  moves: handoff.save.moveLog?.length || 0,
+                  elapsedMs: handoff.save.elapsedMs || 0,
+                  reason: handoff.verdict.reason,
+                  onTake: takeHandoff,
+                  onIgnore: () => setHandoff(null),
+                }
+              : null
+          }
           inProgress={
             state.board && (state.status === 'playing' || state.status === 'paused')
               ? {

@@ -2,6 +2,32 @@
 
 Newest first.
 
+## v2.10.0 - 2026-08-11 - start on the phone, finish on the Mac
+
+The position you are in the middle of now travels, not just the games you have
+finished. Put the phone down mid-puzzle and the Mac offers to pick it up.
+
+### Why it is not the same merge as everything else
+
+Finished games union safely because they never change again. A position in
+progress is the opposite: it is one thing both devices rewrite, so a union is
+meaningless and last-write-wins would silently discard moves. A phone left open
+in a pocket can write a newer save containing fewer moves.
+
+So the longer move log wins, and a tie goes to the more recently touched. That
+is not a general conflict-resolution scheme, it is the one fact that matters:
+both logs start from the same puzzle, so the longer one contains the shorter.
+Two genuinely different puzzles are not merged at all, they are offered as a
+choice.
+
+**And it is never applied on its own.** The rule is right nearly always, and
+nearly always is not good enough when being wrong means overwriting a game
+someone is in the middle of. The dashboard offers it, with how far along it is
+and how much clock is on it, and you decide.
+
+Pushed when you leave a game rather than on every move, since each write is a
+commit and one per placement would be absurd.
+
 ## v2.9.0 - 2026-08-11 - flashcards
 
 Practice mode hands you a whole puzzle that needs a technique, which takes ten

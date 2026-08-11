@@ -20,7 +20,7 @@ import ThemeMenu from './ThemeMenu.jsx'
  * the front door: what is in progress, what today's puzzle is, how you are
  * doing, and every way in.
  */
-export default function Dashboard({ inProgress, daily, records, theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice, onTailored }) {
+export default function Dashboard({ handoff, inProgress, daily, records, theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice, onTailored }) {
   const [summary, setSummary] = useState(null)
 
   useEffect(() => {
@@ -58,6 +58,25 @@ export default function Dashboard({ inProgress, daily, records, theme, onTheme, 
 
       <div className="dashGrid">
         <div className="dashCol">
+          {/* A game another device left. Offered, never applied: the rule that
+              the longer log wins is right nearly always, and nearly always is
+              not good enough when being wrong overwrites a game in progress. */}
+          {handoff && (
+            <div className="card cardHandoff">
+              <span className="cardKicker">On your other device</span>
+              <span className="cardTitle">
+                {handoff.graded}
+                {handoff.variant && handoff.variant !== 'classic' ? ` · ${VARIANTS[handoff.variant]?.name}` : ''}
+              </span>
+              <span className="cardMeta">
+                {handoff.moves} moves in, {fmtMs(handoff.elapsedMs)} on the clock
+              </span>
+              <span className="handoffBtns">
+                <button className="newBtn" onClick={handoff.onTake}>Pick it up</button>
+                <button className="linkBtn" onClick={handoff.onIgnore}>not now</button>
+              </span>
+            </div>
+          )}
           {inProgress ? (
             <button className="card cardPrimary" onClick={onResume}>
               <span className="cardKicker">Continue</span>
