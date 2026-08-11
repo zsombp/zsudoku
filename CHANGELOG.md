@@ -2,6 +2,36 @@
 
 Newest first.
 
+## v2.2.0 - 2026-08-11 - the daily changes shape through the week
+
+The daily was classic every day and practice drilled on classic only, neither of
+which was ever a decision.
+
+The board now rotates with the weekday, the same way the difficulty always has,
+and is derived from the date like everything else here so every device still
+gets the same puzzle with no server involved:
+
+    Sunday      Diabolical   classic
+    Monday      Gentle       classic
+    Tuesday     Easy         X-Sudoku
+    Wednesday   Medium       Jigsaw
+    Thursday    Medium       Windoku
+    Friday      Hard         Anti-knight
+    Saturday    Expert       classic
+
+Every variant gets a day and the two heaviest stay classic: a Diabolical is
+enough of a fight without also being an unfamiliar shape, and Saturday's Expert
+is the one you play against the clock. Measured before choosing, and the
+variants are actually faster to generate than classic at the hard end because
+the extra constraints help the digger converge.
+
+Both places the daily is offered now name the board, so an unfamiliar grid is
+never a surprise after you have already tapped it.
+
+Practice takes a board too. Spotting a naked pair inside an irregular region is
+a different skill from spotting one in a square box, so the same rung is worth
+drilling more than one way.
+
 ## v2.1.0 - 2026-08-11 - statistics know which board you played
 
 Variants shipped with records kept per variant and everything else pooled, so a

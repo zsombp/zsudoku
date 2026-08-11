@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { TECHNIQUES, LADDER } from '../logic/techniques.js'
 import * as gameLog from '../lib/gameLog.js'
 import { hintsByTechnique } from '../stats/compute.js'
+import { VARIANT_LIST } from '../logic/variants.js'
 
 /**
  * Practice, and the technique reference the app never had.
@@ -17,6 +18,10 @@ import { hintsByTechnique } from '../stats/compute.js'
 export default function PracticeView({ onPractice, onClose, busyWith, error }) {
   const [hints, setHints] = useState(null)
   const [open, setOpen] = useState(null)
+  // Which board to drill on. Spotting a naked pair inside an irregular region
+  // is a different skill from spotting one in a square box, so the same rung
+  // is worth practising more than one way.
+  const [variant, setVariant] = useState('classic')
 
   useEffect(() => {
     gameLog.all().then(games => setHints(hintsByTechnique(games)))
@@ -34,6 +39,20 @@ export default function PracticeView({ onPractice, onClose, busyWith, error }) {
         records what each puzzle needs, so this is a filter rather than a
         promise: if a technique is in the list, the puzzle will contain it.
       </p>
+
+      <div className="variantRow" role="tablist" aria-label="Which board">
+        {VARIANT_LIST.map(v => (
+          <button
+            key={v.id}
+            role="tab"
+            aria-selected={v.id === variant}
+            className={'variantChip' + (v.id === variant ? ' on' : '')}
+            onClick={() => setVariant(v.id)}
+          >
+            {v.name}
+          </button>
+        ))}
+      </div>
 
       <div className="techList">
         {LADDER.map(key => {
@@ -61,7 +80,7 @@ export default function PracticeView({ onPractice, onClose, busyWith, error }) {
               {isOpen && (
                 <div className="techBody">
                   <p className="techAbout">{t.about}</p>
-                  <button className="newBtn" disabled={Boolean(busyWith)} onClick={() => onPractice(key)}>
+                  <button className="newBtn" disabled={Boolean(busyWith)} onClick={() => onPractice(key, variant)}>
                     {busy ? 'Finding a puzzle…' : `Practise ${t.label}`}
                   </button>
                   {error && !busyWith && (

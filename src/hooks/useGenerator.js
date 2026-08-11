@@ -47,7 +47,10 @@ export function useGenerator() {
 
   /** A puzzle that requires a given technique. Never cached: it is a request
    *  for one specific property, not for "a Hard puzzle". */
-  const practice = useCallback(technique => generate(null, undefined, technique), [generate])
+  const practice = useCallback(
+    (technique, variant = 'classic') => generate(null, undefined, technique, variant),
+    [generate]
+  )
 
   /** Fills the cache for a tier if it is empty. Fire and forget. */
   const prefetch = useCallback(

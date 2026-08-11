@@ -20,6 +20,31 @@ const BY_WEEKDAY = [
   'Expert', // Saturday
 ]
 
+/**
+ * The board changes through the week as well as the difficulty.
+ *
+ * Every variant gets a day, and the two heaviest days stay classic: a
+ * Diabolical is enough of a fight without also being an unfamiliar shape, and
+ * Saturday's Expert is the one people play to a time. Measured before choosing:
+ * each of these generates in well under a second, and the variants are actually
+ * faster than classic at the hard end because the extra constraints help the
+ * digger converge.
+ *
+ * Derived from the weekday like everything else here, so every device still
+ * gets the same puzzle with no server involved.
+ */
+const BOARD_BY_WEEKDAY = [
+  'classic', // Sunday, Diabolical
+  'classic', // Monday, Gentle
+  'x', // Tuesday, Easy
+  'jigsaw', // Wednesday, Medium
+  'windoku', // Thursday, Medium
+  'antiknight', // Friday, Hard
+  'classic', // Saturday, Expert
+]
+
+export const dailyVariant = (date = new Date()) => BOARD_BY_WEEKDAY[date.getDay()]
+
 /** Local date, not UTC: "today's puzzle" is a local question. */
 export function dayKey(date = new Date()) {
   const m = String(date.getMonth() + 1).padStart(2, '0')
@@ -36,7 +61,13 @@ export const dailyTier = (date = new Date()) => BY_WEEKDAY[date.getDay()]
 export const dailySeed = (date = new Date()) => (seedFromDate(date) ^ 0x5bf03635) >>> 0
 
 export function dailyPlan(date = new Date()) {
-  return { key: dayKey(date), tier: dailyTier(date), seed: dailySeed(date), weekday: date.getDay() }
+  return {
+    key: dayKey(date),
+    tier: dailyTier(date),
+    variant: dailyVariant(date),
+    seed: dailySeed(date),
+    weekday: date.getDay(),
+  }
 }
 
 const WEEKDAY_NAME = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']

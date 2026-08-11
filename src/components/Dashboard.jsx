@@ -4,6 +4,9 @@ import { fmtMs } from '../lib/format.js'
 import * as gameLog from '../lib/gameLog.js'
 import * as compute from '../stats/compute.js'
 import { dailyStreak } from '../logic/daily.js'
+import { VARIANTS } from '../logic/variants.js'
+
+const boardName = id => (id && id !== 'classic' ? ` · ${VARIANTS[id]?.name}` : '')
 import { hintsByTechnique } from '../stats/compute.js'
 import { TECHNIQUES } from '../logic/techniques.js'
 import { Calendar, Chart, Gear, Play, Trophy } from './Icons.jsx'
@@ -84,11 +87,12 @@ export default function Dashboard({ inProgress, daily, records, theme, onTheme, 
             </span>
             <span className="cardTitle">{daily.weekday}</span>
             <span className="cardMeta">
+              {/* The board is named before you commit to it: the daily changes
+                  shape through the week, and finding that out after tapping
+                  would be a surprise rather than a feature. */}
               {daily.done
                 ? `Done in ${fmtMs(daily.durationMs)}`
-                : daily.inProgress
-                  ? `${daily.tier} · in progress`
-                  : `${daily.tier} · same for everyone`}
+                : `${daily.tier}${boardName(daily.variant)}${daily.inProgress ? ' · in progress' : ' · same for everyone'}`}
             </span>
             {daily.done && <span className="cardGo done"><Trophy size={16} /></span>}
           </button>

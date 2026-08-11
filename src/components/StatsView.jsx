@@ -194,7 +194,7 @@ export default function StatsView({ onClose, onPractice }) {
               <div className="insightBody">{c.body}</div>
               <div className="insightSample">based on {c.sample}</div>
               {c.practice && onPractice && (
-                <button className="newBtn insightAct" onClick={() => onPractice(c.practice)}>
+                <button className="newBtn insightAct" onClick={() => onPractice(c.practice, 'classic')}>
                   Practise this now
                 </button>
               )}

@@ -247,7 +247,7 @@ const TIERS_FOR = {
  * Returns null if the budget runs out. Some techniques are genuinely rare and
  * saying so is better than spinning.
  */
-export function makePracticePuzzle(technique, { seed = randomSeed(), budgetMs = 20000 } = {}) {
+export function makePracticePuzzle(technique, { seed = randomSeed(), budgetMs = 20000, topo = CLASSIC, solution: given = null } = {}) {
   const search = TIERS_FOR[technique] || TIERS.map(t => t.name)
   const rng = mulberry32(seed)
   const t0 = Date.now()
@@ -259,9 +259,9 @@ export function makePracticePuzzle(technique, { seed = randomSeed(), budgetMs = 
       attempts++
       const tier = tierByName(tierName)
       // generateFull gives up rather than hanging, so it can return null.
-      const solution = generateFull(rng)
+      const solution = attempts === 0 && given ? given : generateFull(rng, topo)
       if (!solution) continue
-      const { puzzle, grade } = shapeToBand(solution, tier, rng)
+      const { puzzle, grade } = shapeToBand(solution, tier, rng, { topo })
       if (!grade.solved) continue
       if (!grade.counts[technique]) continue
 
@@ -276,6 +276,7 @@ export function makePracticePuzzle(technique, { seed = randomSeed(), budgetMs = 
         hardest: grade.hardest,
         counts: grade.counts,
         clues: clueCount(puzzle),
+        variant: topo.id,
         practice: technique,
         attempts,
       }

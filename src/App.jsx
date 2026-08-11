@@ -278,14 +278,14 @@ export default function App() {
    * than pretending to be instant.
    */
   const startPractice = useCallback(
-    async technique => {
+    async (technique, variant = 'classic') => {
       setPracticing(technique)
       setGenError(null)
       setNewRecord(false)
       recordAbandon()
       updateSettings({ lastMode: 'casual' })
       try {
-        const made = await generator.practice(technique)
+        const made = await generator.practice(technique, variant)
         timerRef.current.reset(0)
         dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual', practice: technique })
         setView('game')
@@ -321,7 +321,7 @@ export default function App() {
 
       dispatch({ type: 'generating', requested: plan.tier })
       try {
-        const made = await generator.request(plan.tier, { seed: plan.seed })
+        const made = await generator.request(plan.tier, { seed: plan.seed, variant: plan.variant })
         timerRef.current.reset(0)
         dispatch({ type: 'ready', made, now: Date.now(), mode: 'daily', dayKey: plan.key })
       } catch (err) {
@@ -498,7 +498,7 @@ export default function App() {
 
   const [dailyInfo, setDailyInfo] = useState(() => {
     const p = dailyPlan()
-    return { weekday: weekdayName(), tier: p.tier, done: false, inProgress: false, streak: 0, durationMs: 0 }
+    return { weekday: weekdayName(), tier: p.tier, variant: p.variant, done: false, inProgress: false, streak: 0, durationMs: 0 }
   })
 
   useEffect(() => {
@@ -513,6 +513,9 @@ export default function App() {
       setDailyInfo({
         weekday: weekdayName(),
         tier: p.tier,
+        // Which board today is, so the card can say so rather than surprising
+        // you with an unfamiliar grid after you have tapped it.
+        variant: p.variant,
         done: Boolean(todays),
         inProgress: Boolean(saved?.board && saved.dayKey === p.key && !todays),
         streak: streak.current,

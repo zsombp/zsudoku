@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { TIERS } from '../logic/difficulty.js'
-import { VARIANT_LIST } from '../logic/variants.js'
+import { VARIANT_LIST, VARIANTS } from '../logic/variants.js'
 import { fmtMs } from '../lib/format.js'
 import { Calendar } from './Icons.jsx'
 
@@ -34,6 +34,9 @@ export default function NewGameSheet({
           </span>
           <span className="tierMeta">
             {daily.tier}
+            {daily.variant && daily.variant !== 'classic' && (
+              <em>{VARIANTS[daily.variant]?.name}</em>
+            )}
             {daily.streak > 0 && <em>{daily.streak} day streak</em>}
           </span>
         </button>

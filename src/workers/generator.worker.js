@@ -9,8 +9,7 @@
 // The worker also fills the pre-generation cache while nobody is waiting, which
 // is what makes "New game" feel instant despite the cost.
 
-import { makePracticePuzzle } from '../logic/generator.js'
-import { makeVariantPuzzle } from '../logic/variants.js'
+import { makeVariantPuzzle, makeVariantPractice } from '../logic/variants.js'
 
 self.onmessage = event => {
   const { id, tier, seed, practice, variant = 'classic' } = event.data
@@ -20,7 +19,7 @@ self.onmessage = event => {
     // 20s, so the budget here is deliberately generous. It runs in a worker, so
     // waiting costs the interface nothing.
     const made = practice
-      ? makePracticePuzzle(practice, { budgetMs: 30000, ...(seed === undefined ? {} : { seed }) })
+      ? makeVariantPractice(variant, practice, { budgetMs: 30000, ...(seed === undefined ? {} : { seed }) })
       : makeVariantPuzzle(variant, tier, seed === undefined ? {} : { seed })
     if (!made) {
       self.postMessage({
