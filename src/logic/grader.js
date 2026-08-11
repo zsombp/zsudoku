@@ -12,21 +12,27 @@
 // not just the hardest one used. Three X-Wings really are harder than one, and
 // a single number captures that where "hardest technique" cannot.
 
-import { PEERS, candMaskAt } from './topology.js'
+import { CLASSIC } from './topology.js'
 import { removeMark, countMarks, marksToList } from './marks.js'
 import { TECHNIQUES, LADDER } from './techniques.js'
 
-export function createState(puzzle) {
+/**
+ * The solving state for a board, carrying the topology it belongs to.
+ *
+ * Every technique reads `state.topo`, so a jigsaw grid and a classic grid go
+ * through exactly the same ladder and differ only in what counts as a unit.
+ */
+export function createState(puzzle, topo = CLASSIC) {
   const board = puzzle.slice()
   const cands = new Int16Array(81)
-  for (let i = 0; i < 81; i++) cands[i] = board[i] ? 0 : candMaskAt(board, i)
-  return { board, cands }
+  for (let i = 0; i < 81; i++) cands[i] = board[i] ? 0 : topo.candMaskAt(board, i)
+  return { board, cands, topo }
 }
 
 function place(state, i, v) {
   state.board[i] = v
   state.cands[i] = 0
-  for (const p of PEERS[i]) state.cands[p] = removeMark(state.cands[p], v)
+  for (const p of state.topo.peers[i]) state.cands[p] = removeMark(state.cands[p], v)
 }
 
 export function applyStep(state, step) {
@@ -69,8 +75,8 @@ export function nextStep(state, { upTo = LADDER.length } = {}) {
  *   counts    how many times each technique fired
  *   steps     the full solve path, kept only when `keepSteps` is set
  */
-export function gradePuzzle(puzzle, { keepSteps = false, upTo } = {}) {
-  const state = createState(puzzle)
+export function gradePuzzle(puzzle, { keepSteps = false, upTo, topo = CLASSIC } = {}) {
+  const state = createState(puzzle, topo)
   const counts = {}
   const steps = []
   let score = 0
@@ -111,8 +117,8 @@ export function gradePuzzle(puzzle, { keepSteps = false, upTo } = {}) {
  *
  * Returns the placements in order, or null if real deduction is still needed.
  */
-export function trivialTail(board) {
-  const state = createState(board)
+export function trivialTail(board, topo = CLASSIC) {
+  const state = createState(board, topo)
   const placements = []
   const nakedOnly = { upTo: 1 }
 
@@ -144,8 +150,8 @@ export function trivialTail(board) {
  * A contradiction on the board (a cell with no candidates left) fails the
  * single-candidate check, so a wrecked board never offers the button.
  */
-export function forcedFills(board) {
-  const state = createState(board)
+export function forcedFills(board, topo = CLASSIC) {
+  const state = createState(board, topo)
   const fills = []
   for (let i = 0; i < 81; i++) {
     if (state.board[i] !== 0) continue
@@ -174,8 +180,8 @@ export const allCellsForced = board => forcedFills(board) !== null
  * post-game summary can say what you kept needing help with, which is where
  * the teaching belongs: during a game it interrupts, afterwards it informs.
  */
-export function hintPlacement(board, solution) {
-  const state = createState(board)
+export function hintPlacement(board, solution, topo = CLASSIC) {
+  const state = createState(board, topo)
 
   for (let n = 0; n < 300; n++) {
     if (broken(state)) break
@@ -200,7 +206,7 @@ export function hintPlacement(board, solution) {
   // empty cell: still the most useful one, just not provably the easiest.
   let best = -1
   let bestCount = 10
-  const fresh = createState(board)
+  const fresh = createState(board, topo)
   for (let i = 0; i < 81; i++) {
     if (board[i] !== 0) continue
     const n = countMarks(fresh.cands[i]) || 10
@@ -232,9 +238,9 @@ export const AUTO_COMPLETE_MAX = 12
  * real work. Strict is a strict subset: if every cell is forced at once, the
  * tail is trivially all lone candidates.
  */
-export function autoCompleteFills(board, { maxCells = AUTO_COMPLETE_MAX } = {}) {
+export function autoCompleteFills(board, { maxCells = AUTO_COMPLETE_MAX, topo = CLASSIC } = {}) {
   let empty = 0
   for (let i = 0; i < 81; i++) if (board[i] === 0) empty++
   if (empty === 0 || empty > maxCells) return null
-  return trivialTail(board)
+  return trivialTail(board, topo)
 }

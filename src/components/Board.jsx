@@ -1,10 +1,14 @@
-import { useEffect, useRef } from 'react'
-import { rowOf, colOf, boxOf, range, UNITS, UNIT_META } from '../logic/topology.js'
+import { useEffect, useMemo, useRef } from 'react'
+import { CLASSIC, rowOf, colOf, range, UNITS, UNIT_META, regionEdges } from '../logic/topology.js'
 import { hasMark } from '../logic/marks.js'
 import { isWrong, highlightDigit } from '../state/gameReducer.js'
 
 export default function Board({ state, checkErrors, canGo, revealWrong, onCellTap, onCellTint, blurred, reveal }) {
   const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status, tints, solution, explain } = state
+  const topo = state.topo || CLASSIC
+  // Drawn from the same regions the rules are enforced from, so the outline
+  // can never disagree with the puzzle.
+  const edges = useMemo(() => regionEdges(topo), [topo])
   const flashSet = flash?.length ? new Set(flash) : null
   const ready = Boolean(board)
   const litDigit = ready ? highlightDigit(state) : 0
@@ -69,15 +73,17 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
 
   function cellClass(i) {
     const cls = ['cell']
-    if (colOf(i) % 3 === 2 && colOf(i) !== 8) cls.push('bR')
-    if (rowOf(i) % 3 === 2 && rowOf(i) !== 8) cls.push('bB')
+    const e = edges[i]
+    if (e.right && colOf(i) !== 8) cls.push('bR')
+    if (e.bottom && rowOf(i) !== 8) cls.push('bB')
+    if (e.left && colOf(i) !== 0) cls.push('bL')
+    if (e.top && rowOf(i) !== 0) cls.push('bT')
     if (!ready) return cls.join(' ')
 
     if (selected === i) cls.push('sel')
-    else if (
-      selected >= 0 &&
-      (rowOf(i) === rowOf(selected) || colOf(i) === colOf(selected) || boxOf(i) === boxOf(selected))
-    ) cls.push('peer')
+    // Peers come from the topology, so a jigsaw highlights its own region and
+    // anti-knight highlights the squares a knight could reach.
+    else if (selected >= 0 && topo.peers[selected].includes(i)) cls.push('peer')
 
     // With a digit armed, every cell holding it lights up, including the
     // selected one. Without one, keep the old rule of not double-marking the
@@ -96,6 +102,9 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
     // the app's digits rather than yours.
     if (reveal && board[i] === 0) cls.push('revealed')
     if (tints?.[i]) cls.push('tint' + tints[i])
+    // Windoku's extra regions are shaded rather than outlined, the way they are
+    // always drawn: an outline would fight the boxes underneath.
+    if (topo.overlaid?.has(i)) cls.push('overlaid')
     if (patternUnit?.has(i)) cls.push('inUnit')
     if (patternCells?.has(i)) cls.push('inPattern')
     if (explain && i === explain.cell) cls.push('explained')

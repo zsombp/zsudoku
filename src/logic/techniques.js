@@ -13,11 +13,11 @@
 //     eliminations: [{cell, digit}],// candidates this rules out
 //     cells,                        // the cells forming the pattern
 //     digits,                       // the digits involved
-//     unit,                         // UNIT_META entry, or null
+//     unit,                         // topo.unitMeta entry, or null
 //     detail,                       // human sentence, for hints
 //   }
 
-import { ROWS, COLS, BOXES, UNITS, UNIT_META, PEERS, rowOf, colOf, boxOf, unitName } from './topology.js'
+import { CLASSIC, rowOf, colOf, unitName } from './topology.js'
 import { hasMark, marksToList, countMarks } from './marks.js'
 
 const step = s => ({ placements: [], eliminations: [], cells: [], digits: [], unit: null, ...s })
@@ -25,7 +25,8 @@ const step = s => ({ placements: [], eliminations: [], cells: [], digits: [], un
 // ---- rung 1: naked single ----
 // One cell, one candidate left. Nothing else it could be.
 
-function nakedSingle({ board, cands }) {
+function nakedSingle(state) {
+  const { board, cands, topo = CLASSIC } = state
   for (let i = 0; i < 81; i++) {
     if (board[i] === 0 && countMarks(cands[i]) === 1) {
       const digit = marksToList(cands[i])[0]
@@ -44,9 +45,10 @@ function nakedSingle({ board, cands }) {
 // ---- rung 2: hidden single ----
 // A digit has only one home left in its row, column or box.
 
-function hiddenSingle({ board, cands }) {
-  for (let u = 0; u < UNITS.length; u++) {
-    const unit = UNITS[u]
+function hiddenSingle(state) {
+  const { board, cands, topo = CLASSIC } = state
+  for (let u = 0; u < topo.units.length; u++) {
+    const unit = topo.units[u]
     for (let digit = 1; digit <= 9; digit++) {
       let spot = -1
       let n = 0
@@ -63,8 +65,8 @@ function hiddenSingle({ board, cands }) {
           placements: [{ cell: spot, digit }],
           cells: [spot],
           digits: [digit],
-          unit: UNIT_META[u],
-          detail: `${digit} has only one place left in ${unitName(UNIT_META[u])}`,
+          unit: topo.unitMeta[u],
+          detail: `${digit} has only one place left in ${unitName(topo.unitMeta[u])}`,
         })
       }
     }
@@ -93,9 +95,11 @@ function eliminationsIn(cells, exclude, board, cands, digit) {
   return out
 }
 
-function pointing({ board, cands }) {
-  for (let b = 0; b < 9; b++) {
-    const box = BOXES[b]
+function pointing(state) {
+  const { board, cands, topo = CLASSIC } = state
+  // Every region, not nine: Windoku has thirteen.
+  for (let b = 0; b < topo.regions.length; b++) {
+    const box = topo.regions[b]
     for (let digit = 1; digit <= 9; digit++) {
       const cells = collect(box, board, cands, digit)
       if (cells.length < 2) continue
@@ -103,15 +107,15 @@ function pointing({ board, cands }) {
       const rows = new Set(cells.map(rowOf))
       if (rows.size === 1) {
         const r = [...rows][0]
-        const elim = eliminationsIn(ROWS[r], cells, board, cands, digit)
+        const elim = eliminationsIn(topo.rows[r], cells, board, cands, digit)
         if (elim.length) {
           return step({
             technique: 'pointing',
             eliminations: elim,
             cells,
             digits: [digit],
-            unit: UNIT_META[18 + b],
-            detail: `in ${unitName(UNIT_META[18 + b])}, ${digit} is confined to row ${r + 1}`,
+            unit: topo.unitMeta[topo.regionStart + b],
+            detail: `in ${unitName(topo.unitMeta[topo.regionStart + b])}, ${digit} is confined to row ${r + 1}`,
           })
         }
       }
@@ -119,15 +123,15 @@ function pointing({ board, cands }) {
       const cols = new Set(cells.map(colOf))
       if (cols.size === 1) {
         const c = [...cols][0]
-        const elim = eliminationsIn(COLS[c], cells, board, cands, digit)
+        const elim = eliminationsIn(topo.cols[c], cells, board, cands, digit)
         if (elim.length) {
           return step({
             technique: 'pointing',
             eliminations: elim,
             cells,
             digits: [digit],
-            unit: UNIT_META[18 + b],
-            detail: `in ${unitName(UNIT_META[18 + b])}, ${digit} is confined to column ${c + 1}`,
+            unit: topo.unitMeta[topo.regionStart + b],
+            detail: `in ${unitName(topo.unitMeta[topo.regionStart + b])}, ${digit} is confined to column ${c + 1}`,
           })
         }
       }
@@ -136,24 +140,27 @@ function pointing({ board, cands }) {
   return null
 }
 
-function claiming({ board, cands }) {
-  for (let u = 0; u < 18; u++) {
-    const line = UNITS[u]
+function claiming(state) {
+  const { board, cands, topo = CLASSIC } = state
+  // Rows and columns only. A region claiming inside a region is not this
+  // technique, and the regions always begin at `regionStart`.
+  for (let u = 0; u < topo.regionStart; u++) {
+    const line = topo.units[u]
     for (let digit = 1; digit <= 9; digit++) {
       const cells = collect(line, board, cands, digit)
       if (cells.length < 2) continue
-      const boxes = new Set(cells.map(boxOf))
+      const boxes = new Set(cells.map(c => topo.regionOf[c]))
       if (boxes.size !== 1) continue
       const b = [...boxes][0]
-      const elim = eliminationsIn(BOXES[b], cells, board, cands, digit)
+      const elim = eliminationsIn(topo.regions[b], cells, board, cands, digit)
       if (elim.length) {
         return step({
           technique: 'claiming',
           eliminations: elim,
           cells,
           digits: [digit],
-          unit: UNIT_META[u],
-          detail: `in ${unitName(UNIT_META[u])}, ${digit} only fits inside ${unitName(UNIT_META[18 + b])}`,
+          unit: topo.unitMeta[u],
+          detail: `in ${unitName(topo.unitMeta[u])}, ${digit} only fits inside ${unitName(topo.unitMeta[topo.regionStart + b])}`,
         })
       }
     }
@@ -182,9 +189,10 @@ function combinations(arr, k) {
 const NAKED_NAME = { 2: 'nakedPair', 3: 'nakedTriple', 4: 'nakedQuad' }
 
 function nakedSubset(k) {
-  return ({ board, cands }) => {
-    for (let u = 0; u < UNITS.length; u++) {
-      const unit = UNITS[u]
+  return state => {
+    const { board, cands, topo = CLASSIC } = state
+    for (let u = 0; u < topo.units.length; u++) {
+      const unit = topo.units[u]
       const open = unit.filter(i => board[i] === 0 && countMarks(cands[i]) >= 2 && countMarks(cands[i]) <= k)
       if (open.length <= k) continue
 
@@ -206,8 +214,8 @@ function nakedSubset(k) {
           eliminations: elim,
           cells: combo,
           digits,
-          unit: UNIT_META[u],
-          detail: `${digits.join(', ')} fill those ${k} cells in ${unitName(UNIT_META[u])}, so they cannot go anywhere else in it`,
+          unit: topo.unitMeta[u],
+          detail: `${digits.join(', ')} fill those ${k} cells in ${unitName(topo.unitMeta[u])}, so they cannot go anywhere else in it`,
         })
       }
     }
@@ -222,9 +230,10 @@ function nakedSubset(k) {
 const HIDDEN_NAME = { 2: 'hiddenPair', 3: 'hiddenTriple' }
 
 function hiddenSubset(k) {
-  return ({ board, cands }) => {
-    for (let u = 0; u < UNITS.length; u++) {
-      const unit = UNITS[u]
+  return state => {
+    const { board, cands, topo = CLASSIC } = state
+    for (let u = 0; u < topo.units.length; u++) {
+      const unit = topo.units[u]
       const open = unit.filter(i => board[i] === 0)
       if (open.length <= k) continue
 
@@ -256,8 +265,8 @@ function hiddenSubset(k) {
           eliminations: elim,
           cells: [...cellSet],
           digits: combo,
-          unit: UNIT_META[u],
-          detail: `${combo.join(', ')} only fit in those ${k} cells of ${unitName(UNIT_META[u])}, so nothing else can`,
+          unit: topo.unitMeta[u],
+          detail: `${combo.join(', ')} only fit in those ${k} cells of ${unitName(topo.unitMeta[u])}, so nothing else can`,
         })
       }
     }
@@ -271,10 +280,11 @@ function hiddenSubset(k) {
 // same argument with rows and columns swapped.
 
 function fish(size, technique) {
-  return ({ board, cands }) => {
+  return state => {
+    const { board, cands, topo = CLASSIC } = state
     for (const orientation of ['row', 'col']) {
-      const lines = orientation === 'row' ? ROWS : COLS
-      const cross = orientation === 'row' ? COLS : ROWS
+      const lines = orientation === 'row' ? topo.rows : topo.cols
+      const cross = orientation === 'row' ? topo.cols : topo.rows
       const posOf = orientation === 'row' ? colOf : rowOf
 
       for (let digit = 1; digit <= 9; digit++) {
@@ -320,13 +330,14 @@ function fish(size, technique) {
 // Whichever way the pivot resolves, one pincer becomes z, so any cell seeing
 // both pincers cannot be z.
 
-function xyWing({ board, cands }) {
+function xyWing(state) {
+  const { board, cands, topo = CLASSIC } = state
   const twos = []
   for (let i = 0; i < 81; i++) if (board[i] === 0 && countMarks(cands[i]) === 2) twos.push(i)
 
   for (const pivot of twos) {
     const [x, y] = marksToList(cands[pivot])
-    const wings = twos.filter(i => i !== pivot && PEERS[pivot].includes(i))
+    const wings = twos.filter(i => i !== pivot && topo.peers[pivot].includes(i))
 
     for (const a of wings) {
       const da = marksToList(cands[a])
@@ -341,7 +352,7 @@ function xyWing({ board, cands }) {
         const elim = []
         for (let i = 0; i < 81; i++) {
           if (i === a || i === b || i === pivot || board[i] !== 0) continue
-          if (!PEERS[a].includes(i) || !PEERS[b].includes(i)) continue
+          if (!topo.peers[a].includes(i) || !topo.peers[b].includes(i)) continue
           if (hasMark(cands[i], z)) elim.push({ cell: i, digit: z })
         }
         if (!elim.length) continue

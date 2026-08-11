@@ -36,11 +36,11 @@ export function useGenerator() {
   }, [])
 
   const generate = useCallback(
-    (tier, seed, practice) =>
+    (tier, seed, practice, variant = 'classic') =>
       new Promise((resolve, reject) => {
         const id = nextIdRef.current++
         pendingRef.current.set(id, { resolve, reject })
-        ensureWorker().postMessage({ id, tier, seed, practice })
+        ensureWorker().postMessage({ id, tier, seed, practice, variant })
       }),
     [ensureWorker]
   )
@@ -51,29 +51,31 @@ export function useGenerator() {
 
   /** Fills the cache for a tier if it is empty. Fire and forget. */
   const prefetch = useCallback(
-    tier => {
-      if (cache.has(tier)) return
-      generate(tier)
-        .then(made => cache.put(tier, made))
+    (tier, variant = 'classic') => {
+      const key = variant === 'classic' ? tier : `${variant}:${tier}`
+      if (cache.has(key)) return
+      generate(tier, undefined, undefined, variant)
+        .then(made => cache.put(key, made))
         .catch(() => {})
     },
     [generate]
   )
 
   const request = useCallback(
-    async (tier, { seed } = {}) => {
+    async (tier, { seed, variant = 'classic' } = {}) => {
       // A seeded request wants one specific puzzle (the daily), so the cache of
       // randomly seeded ones is no help and must not be consumed.
-      if (seed !== undefined) return generate(tier, seed)
+      if (seed !== undefined) return generate(tier, seed, undefined, variant)
 
-      const ready = cache.take(tier)
+      const key = variant === 'classic' ? tier : `${variant}:${tier}`
+      const ready = cache.take(key)
       if (ready) {
         // Refill straight away, while the player starts on this one.
-        setTimeout(() => prefetch(tier), 0)
+        setTimeout(() => prefetch(tier, variant), 0)
         return ready
       }
-      const made = await generate(tier)
-      setTimeout(() => prefetch(tier), 0)
+      const made = await generate(tier, undefined, undefined, variant)
+      setTimeout(() => prefetch(tier, variant), 0)
       return made
     },
     [generate, prefetch]

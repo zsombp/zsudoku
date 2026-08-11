@@ -80,7 +80,10 @@ describe('reporting it honestly', () => {
     // would report far more time than the game contains.
     const naiveSum = out.stale.reduce((a, b) => a + b.heldMs, 0)
     expect(out.coverageMs).toBeLessThanOrEqual(naiveSum)
-    expect(out.coverageMs).toBeLessThanOrEqual(out.stale[0].droppedAt)
+    // Bounded by the game, not by the first row: the list is ranked by what
+    // each note cost rather than by how long it lasted.
+    const lastMoment = Math.max(...out.stale.map(b => b.droppedAt))
+    expect(out.coverageMs).toBeLessThanOrEqual(lastMoment)
   })
 
   it('reports the worst simultaneous count, not just a total', () => {

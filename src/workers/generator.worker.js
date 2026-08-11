@@ -9,10 +9,11 @@
 // The worker also fills the pre-generation cache while nobody is waiting, which
 // is what makes "New game" feel instant despite the cost.
 
-import { makePuzzle, makePracticePuzzle } from '../logic/generator.js'
+import { makePracticePuzzle } from '../logic/generator.js'
+import { makeVariantPuzzle } from '../logic/variants.js'
 
 self.onmessage = event => {
-  const { id, tier, seed, practice } = event.data
+  const { id, tier, seed, practice, variant = 'classic' } = event.data
   try {
     // Rare techniques need a long leash. Measured with scripts/practice.mjs:
     // Swordfish took a median 9s and naked quad landed only 67% of the time at
@@ -20,7 +21,7 @@ self.onmessage = event => {
     // waiting costs the interface nothing.
     const made = practice
       ? makePracticePuzzle(practice, { budgetMs: 30000, ...(seed === undefined ? {} : { seed }) })
-      : makePuzzle(tier, seed === undefined ? {} : { seed })
+      : makeVariantPuzzle(variant, tier, seed === undefined ? {} : { seed })
     if (!made) {
       self.postMessage({
         id,

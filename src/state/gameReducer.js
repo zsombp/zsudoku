@@ -5,7 +5,8 @@
 // move log is a single hook rather than instrumentation sprinkled across a
 // dozen handlers.
 
-import { PEERS, UNITS, candMaskAt, colOf, range } from '../logic/topology.js'
+import { CLASSIC, colOf, range } from '../logic/topology.js'
+import { topologyFromRecord } from '../logic/variants.js'
 import { hasMark, toggleMark, removeMark, addMark, emptyMarks } from '../logic/marks.js'
 import { LEGACY_LEVEL_NAME } from '../logic/difficulty.js'
 
@@ -27,6 +28,12 @@ export const initialState = {
   stripped: {},
   // How many times the board was checked. An assist, so it is counted.
   checks: 0,
+  // Which variant this board is, and the pieces it needs to describe itself.
+  // `topo` is derived rather than stored: it holds functions, so it never goes
+  // near the save file, and it is rebuilt whenever a board arrives.
+  variant: 'classic',
+  regions: null,
+  topo: CLASSIC,
   // The technique this puzzle was generated to require, when it came from
   // practice mode rather than a tier.
   practice: null,
@@ -107,9 +114,9 @@ const isSolved = (board, solution) =>
  * Purely for the flash: finishing a unit is the small satisfaction the game
  * runs on, and until now nothing acknowledged it.
  */
-function completedUnitCells(board, i) {
+function completedUnitCells(board, i, topo = CLASSIC) {
   const out = new Set()
-  for (const u of UNITS) {
+  for (const u of topo.units) {
     if (!u.includes(i)) continue
     if (u.every(c => board[c] !== 0)) for (const c of u) out.add(c)
   }
@@ -208,7 +215,7 @@ function placeDigit(state, i, v, t) {
     // Strip this digit from every peer's marks, remembering exactly which peers
     // so the removal can be undone precisely when the digit leaves.
     const taken = []
-    for (const p of PEERS[i]) {
+    for (const p of state.topo.peers[i]) {
       if (hasMark(marks[p], v)) {
         marks[p] = removeMark(marks[p], v)
         taken.push([p, v])
@@ -217,7 +224,7 @@ function placeDigit(state, i, v, t) {
     stripped = taken.length || own ? { ...stripped, [i]: { own, peers: taken } } : stripped
     const correct = v === state.solution[i]
     if (!correct) mistakes++
-    else flash = completedUnitCells(board, i)
+    else flash = completedUnitCells(board, i, state.topo)
     entry = { kind: 'place', cell: i, value: v, correct }
   }
 
@@ -260,7 +267,13 @@ export function gameReducer(state, action) {
 function reduce(state, action) {
   switch (action.type) {
     case 'generating':
-      return { ...state, status: 'generating', requested: action.requested ?? state.requested }
+      return {
+        ...state,
+        status: 'generating',
+        requested: action.requested ?? state.requested,
+        // Shown on the veil while it works, so the wait says what it is for.
+        variant: action.variant ?? state.variant,
+      }
 
     case 'ready': {
       const made = action.made
@@ -279,6 +292,13 @@ function reduce(state, action) {
         // as far as storage is concerned.
         practice: action.practice || null,
         experiment: action.experiment || null,
+        variant: action.made.variant || 'classic',
+        regions: action.made.regions || null,
+        topo: topologyFromRecord({
+          variant: action.made.variant,
+          regions: action.made.regions,
+          seed: action.made.seed,
+        }),
         dayKey: action.dayKey || null,
         score: made.score,
         hardest: made.hardest,
@@ -306,6 +326,9 @@ function reduce(state, action) {
         mode: s.mode || 'casual',
         practice: s.practice || null,
         experiment: s.experiment || null,
+        variant: s.variant || 'classic',
+        regions: s.regions || null,
+        topo: topologyFromRecord({ variant: s.variant, regions: s.regions, seed: s.seed }),
         dayKey: s.dayKey || null,
         score: s.score ?? 0,
         hardest: s.hardest ?? null,
@@ -612,7 +635,7 @@ function reduce(state, action) {
     case 'autoPencil': {
       if (!state.board || state.status !== 'playing') return state
       const marks = emptyMarks()
-      for (const i of range(81)) if (state.board[i] === 0) marks[i] = candMaskAt(state.board, i)
+      for (const i of range(81)) if (state.board[i] === 0) marks[i] = state.topo.candMaskAt(state.board, i)
       return {
         ...state,
         marks,

@@ -49,6 +49,10 @@ function baseRecord(state, { completed, durationMs, endedAt }) {
     techniques: state.counts || {},
     clues: state.clues,
     seed: state.seed,
+    variant: state.variant || 'classic',
+    // Jigsaw shapes travel with the game: they cannot be re-derived if the
+    // layout builder ever changes.
+    regions: state.regions || null,
     puzzle: state.puzzle,
     solution: state.solution,
 

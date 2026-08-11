@@ -2,6 +2,72 @@
 
 Newest first.
 
+## v2.0.0 - 2026-08-11 - variants
+
+Four new ways to play, and a grader that did not need telling about any of them.
+
+- **Jigsaw** irregular regions instead of square boxes
+- **X-Sudoku** both long diagonals must also hold one to nine
+- **Windoku** four extra shaded regions, overlapping the boxes
+- **Anti-knight** no digit repeats a knight's move away
+
+Every one of them is graded honestly, hinted, explained, reviewed, classified
+move by move and checked for stale notes, because none of that code ever knew
+what a box was. It reasons about units and peers, so a variant is a different
+answer to "which cells constrain which" and nothing above that line changes.
+
+The difficulty scale carried across untouched. Every variant at every tier lands
+in the band it was asked for, uniquely solvable and finishable by pure logic,
+because the grader measures deduction rather than geometry. Clue counts differ
+and should: an anti-knight Medium needs only twenty clues where classic needs
+twenty-nine, since the extra constraint does some of the work. Clue count was
+never the target.
+
+### The jigsaw generator took three attempts, and the first two failed silently
+
+Both early versions fell back to square boxes when they gave up, which would
+have shipped a "Jigsaw" that was ordinary sudoku under a different name.
+
+1. **Growing regions from seeds** stranded cells every single time. Sixty seeds,
+   sixty failures, one to twenty-two cells sealed into pockets no region could
+   reach.
+2. **Trading adjacent cells across a border** disconnects a region every time,
+   because the cell it gains touches nothing but the cell it gave away. Two
+   hundred seeds, two hundred rejections.
+3. **Moving two cells** fixes the shapes, and then a quarter of the layouts turn
+   out to admit no valid filling at all. Searching for one is heavy-tailed: good
+   layouts fill in about two hundred steps and bad ones burn forty thousand
+   proving nothing, and eleven of forty still never filled even with restarts.
+
+What works is building the shapes and the digits together. Start from square
+regions and a completed grid, and only accept a move when both regions still
+hold nine different digits. The layout arrives with the grid that satisfies it,
+so there is no search and no way to fail. Holding one grid fixed leaves the
+result five-sixths square, so it works in rounds: mutate, redraw the grid for
+the shapes as they now stand, repeat.
+
+### The filler needed restarts regardless
+
+Reading-order backtracking is fine for square boxes and hopeless once the board
+is constrained: a jigsaw region can span six rows, so a contradiction planted in
+row one is not found until row seven. It fills the most constrained cell first
+now, the same ordering the solver has always used, and gives up and reshuffles
+after a budget. That second part matters more than the first, because the search
+is heavy-tailed even when a solution certainly exists.
+
+### Smaller
+
+- Region borders are drawn from the same regions the rules are enforced from, so
+  the outline cannot disagree with the puzzle. Jigsaw needs all four sides;
+  square boxes only ever needed two.
+- A Windoku cell belongs to a box and a window, and the box wins when the grid
+  is drawn or when `claiming` argues about a region. Windows are shaded instead.
+- Personal bests are kept per variant. A Hard jigsaw and a Hard classic are not
+  the same achievement.
+- Jigsaw shapes travel with the saved game and the synced record. They cannot be
+  re-derived if the layout builder ever changes, and a board that silently
+  reshaped itself would be worse than one that failed to load.
+
 ## v1.11.2 - 2026-08-11 - a switch an experiment is holding says so
 
 A running experiment sets one of the assists itself, at the start of every game.

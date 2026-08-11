@@ -27,6 +27,8 @@ const DEFAULTS = {
   explainHints: false,
   // Which save slot to reopen on launch.
   lastMode: 'casual',
+  // The variant a new game uses unless one is picked explicitly.
+  variant: 'classic',
 }
 
 export function useSettings() {

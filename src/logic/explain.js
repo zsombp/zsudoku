@@ -9,7 +9,7 @@
 
 import { createState, nextStep } from './grader.js'
 import { TECHNIQUES, LADDER } from './techniques.js'
-import { UNITS, UNIT_META, PEERS, unitName, rowOf, colOf } from './topology.js'
+import { CLASSIC, unitName, rowOf, colOf } from './topology.js'
 import { hasMark, marksToList, countMarks, removeMark } from './marks.js'
 
 export const cellName = i => `r${rowOf(i) + 1}c${colOf(i) + 1}`
@@ -33,21 +33,21 @@ export function justification(state, cell, digit) {
   }
 
   // Hidden single: the digit has one home in some unit containing the cell.
-  for (let u = 0; u < UNITS.length; u++) {
-    const unit = UNITS[u]
+  for (let u = 0; u < state.topo.units.length; u++) {
+    const unit = state.topo.units[u]
     if (!unit.includes(cell)) continue
     let homes = 0
     for (const i of unit) if (state.board[i] === 0 && hasMark(state.cands[i], digit)) homes++
     if (homes === 1) {
       return {
         kind: 'solid',
-        why: `${digit} had only one place left in ${unitName(UNIT_META[u])}.`,
+        why: `${digit} had only one place left in ${unitName(state.topo.unitMeta[u])}.`,
         // The whole unit is the evidence, so the whole unit gets drawn.
         pattern: {
           technique: 'hiddenSingle',
           cells: [cell],
           digits: [digit],
-          unit: UNIT_META[u],
+          unit: state.topo.unitMeta[u],
           unitCells: unit,
           eliminations: [],
         },
@@ -89,7 +89,7 @@ export function justification(state, cell, digit) {
  * asked.
  */
 function provenBy(state, cell, digit) {
-  const work = { board: state.board.slice(), cands: state.cands.slice() }
+  const work = { board: state.board.slice(), cands: state.cands.slice(), topo: state.topo }
   for (let pass = 0; pass < 12; pass++) {
     let changed = false
     for (const key of LADDER) {
@@ -129,8 +129,8 @@ function provenBy(state, cell, digit) {
  * you keep trusting them. Comparing your notes against the naive set finds
  * almost nothing; comparing against this finds the ones worth knowing about.
  */
-export function settledCands(board) {
-  const work = createState(board)
+export function settledCands(board, topo = CLASSIC) {
+  const work = createState(board, topo)
   for (let pass = 0; pass < 12; pass++) {
     let changed = false
     for (const key of LADDER) {
@@ -152,8 +152,8 @@ function directJustification(state, cell, digit) {
   const cands = state.cands[cell]
   if (!hasMark(cands, digit)) return false
   if (countMarks(cands) === 1) return true
-  for (let u = 0; u < UNITS.length; u++) {
-    const unit = UNITS[u]
+  for (let u = 0; u < state.topo.units.length; u++) {
+    const unit = state.topo.units[u]
     if (!unit.includes(cell)) continue
     let homes = 0
     for (const i of unit) if (state.board[i] === 0 && hasMark(state.cands[i], digit)) homes++
@@ -170,8 +170,8 @@ function directJustification(state, cell, digit) {
  * pointed at instead of recited. Returns null when nothing proves it, which
  * happens when a wrong digit has poisoned the position.
  */
-export function explainPlacement(board, cell, digit) {
-  const state = createState(board)
+export function explainPlacement(board, cell, digit, topo = CLASSIC) {
+  const state = createState(board, topo)
   const j = justification(state, cell, digit)
   if (!j) return null
   return { kind: j.kind, why: j.why, pattern: j.pattern, technique: j.pattern?.technique || null }
@@ -190,8 +190,8 @@ export function explainPlacement(board, cell, digit) {
  * the board and the candidates it was true in. Singles are skipped: a worked
  * example of "this cell had one candidate left" teaches nobody anything.
  */
-export function workedExamples(puzzle, { skip = ['nakedSingle', 'hiddenSingle'] } = {}) {
-  const state = createState(puzzle)
+export function workedExamples(puzzle, { skip = ['nakedSingle', 'hiddenSingle'], topo = CLASSIC } = {}) {
+  const state = createState(puzzle, topo)
   const seen = new Set(skip)
   const out = []
 
@@ -213,7 +213,7 @@ export function workedExamples(puzzle, { skip = ['nakedSingle', 'hiddenSingle'] 
     for (const p of step.placements) {
       state.board[p.cell] = p.digit
       state.cands[p.cell] = 0
-      for (const q of PEERS[p.cell]) state.cands[q] = removeMark(state.cands[q], p.digit)
+      for (const q of state.topo.peers[p.cell]) state.cands[q] = removeMark(state.cands[q], p.digit)
     }
   }
   return out

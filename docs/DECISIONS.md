@@ -870,3 +870,55 @@ games that were not in the arm they say they were.
 So it is locked while a run is going, and it says who is holding it and where to
 take it back. The general rule for this app: if the app sets something for you,
 the screen that shows it must say so, and must not let you fight it silently.
+
+### A variant is a topology, and that is the whole design
+
+Resolved at v2.0.0. The question was whether variants meant forking the engine.
+They did not, because of a property the code already had: the twelve techniques
+reason about "units" and "peers" and never about arithmetic on three. One line
+assumed square boxes, `claiming` asking `boxOf(cell)`, and it was the only one.
+
+So units and peers became data. Everything above that line, the grader, the hint
+engine, the explanations, the move classifier, belief archaeology, works on any
+of them without knowing which it got.
+
+The line this draws is worth keeping. **A variant expressible as different units
+and peers is nearly free. A variant needing arithmetic is a project.** Killer
+cages and thermometer orderings are not sets of nine cells holding nine digits,
+so they need new constraint types and new techniques, and they are deliberately
+still not built.
+
+Rules out: any per-variant copy of a technique, and any rendering that decides
+where the heavy rules go by its own arithmetic rather than by asking the
+topology.
+
+### Build the shapes and the solution together, not one then the other
+
+The jigsaw generator failed twice before this, and both failures were silent
+fallbacks to square boxes, which is the worst possible way to fail: the variant
+would have shipped as classic sudoku with a different name.
+
+The lesson underneath is about ordering. Generating a constraint structure and
+then searching for something that satisfies it invites a structure nothing
+satisfies, and proving that is far more expensive than finding a solution when
+one exists. Generating both together, by only accepting mutations that preserve
+validity, makes the search unnecessary and failure impossible.
+
+Also worth keeping: **this search is heavy-tailed.** A run either succeeds in a
+couple of hundred steps or thrashes for tens of thousands, and that is true even
+when a solution certainly exists and only the random ordering was unlucky.
+Abandoning a slow run and reshuffling beats letting it grind, which is why the
+grid filler has a step budget and restarts rather than just better ordering.
+
+### Difficulty bands did not need recalibrating per variant
+
+Measured rather than assumed, and the result was better than expected: every
+variant at every tier lands in the band requested, uniquely solvable and
+solvable by pure logic, on the bands calibrated for classic.
+
+That falls out of scoring deduction rather than board size, the decision made
+back in Phase 2. The techniques a puzzle needs cost the same whatever shape the
+regions are, so "Hard" means the same amount of thinking on a jigsaw as on a
+classic grid. Clue counts differ a lot and should: an anti-knight Medium needs
+twenty clues where classic needs twenty-nine, because the extra constraint is
+doing some of the work. Clue count was never the target.

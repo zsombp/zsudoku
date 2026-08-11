@@ -4,6 +4,7 @@ import NumberPad from './components/NumberPad.jsx'
 import Toolbar from './components/Toolbar.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import NewGameSheet from './components/NewGameSheet.jsx'
+import { recordKey } from './components/NewGameSheet.jsx'
 import HintSummary from './components/HintSummary.jsx'
 import { Moon, Sun, Play, Plus, Trophy, Sparkles, Chart } from './components/Icons.jsx'
 import StatsView from './components/StatsView.jsx'
@@ -17,6 +18,7 @@ import { hasMark } from './logic/marks.js'
 import { techFor, tierForScore } from './logic/difficulty.js'
 import { gradePuzzle, autoCompleteFills, hintPlacement } from './logic/grader.js'
 import { explainPlacement } from './logic/explain.js'
+import { topologyFromRecord } from './logic/variants.js'
 import { GRADER_VERSION, TECHNIQUES } from './logic/techniques.js'
 import { useTimer } from './hooks/useTimer.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
@@ -101,7 +103,7 @@ export default function App() {
   }, [state.board, state.marks, state.status, state.activeDigit, state.selected, settings.candidateHints])
 
   const autoFills = useMemo(
-    () => (state.status === 'playing' && state.board ? autoCompleteFills(state.board) : null),
+    () => (state.status === 'playing' && state.board ? autoCompleteFills(state.board, { topo: state.topo }) : null),
     [state.board, state.status]
   )
 
@@ -139,6 +141,8 @@ export default function App() {
       requested: s.requested,
       graded: s.graded,
       mode: s.mode,
+      variant: s.variant,
+      regions: s.regions,
       practice: s.practice,
       experiment: s.experiment,
       dayKey: s.dayKey,
@@ -247,16 +251,16 @@ export default function App() {
   }, [updateSettings])
 
   const startNew = useCallback(
-    async tier => {
+    async (tier, variant = settingsRef.current.variant || 'classic') => {
       setShowPicker(false)
       setNewRecord(false)
       setConfirmQuit(false)
       recordAbandon()
-      updateSettings({ lastMode: 'casual' })
-      dispatch({ type: 'generating', requested: tier })
+      updateSettings({ lastMode: 'casual', variant })
+      dispatch({ type: 'generating', requested: tier, variant })
       try {
         const experiment = await enrolGame()
-        const made = await generator.request(tier)
+        const made = await generator.request(tier, { variant })
         timerRef.current.reset(0)
         dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual', experiment })
       } catch (err) {
@@ -368,12 +372,12 @@ export default function App() {
   const onHint = useCallback(() => {
     const s = stateRef.current
     if (!s.board || s.status !== 'playing') return
-    const hint = hintPlacement(s.board, s.solution)
+    const hint = hintPlacement(s.board, s.solution, s.topo)
     if (!hint) return
 
     const teaching = settingsRef.current.explainHints || Boolean(s.practice)
     if (teaching && !s.explain) {
-      const ex = explainPlacement(s.board, hint.cell, hint.digit)
+      const ex = explainPlacement(s.board, hint.cell, hint.digit, s.topo)
       // Nothing proves it, which in practice means a wrong digit is poisoning
       // the position. There is nothing honest to point at, so just place it.
       if (ex) {
@@ -443,7 +447,9 @@ export default function App() {
     // scoring system that no longer exists. Regrade it rather than showing a
     // label nothing can reproduce.
     if (saved?.puzzle && saved.graderVersion !== GRADER_VERSION) {
-      const re = gradePuzzle(saved.puzzle)
+      const re = gradePuzzle(saved.puzzle, {
+        topo: topologyFromRecord({ variant: saved.variant, regions: saved.regions, seed: saved.seed }),
+      })
       saved.score = re.score
       saved.hardest = re.hardest
       saved.counts = re.counts
@@ -560,9 +566,10 @@ export default function App() {
     gameLog.saveRecord(rec).then(pushBackup)
     setLastGame(rec)
 
-    const prev = records[label]
+    const key = recordKey(stateRef.current.variant || 'classic', label)
+    const prev = records[key]
     if (prev === undefined || ms < prev) {
-      const next = { ...records, [label]: ms }
+      const next = { ...records, [key]: ms }
       setRecords(next)
       set(KEYS.records, next)
       setNewRecord(true)
@@ -697,7 +704,7 @@ export default function App() {
           theme={settings.theme}
           onTheme={th => updateSettings({ theme: th })}
           onResume={() => setView('game')}
-          onPick={t => { startNew(t); setView('game') }}
+          onPick={(t, v) => { startNew(t, v); setView('game') }}
           onDaily={() => { startDaily(); setView('game') }}
           onStats={() => setView('stats')}
           onPractice={() => setView('practice')}
@@ -801,8 +808,8 @@ export default function App() {
               {label} · {tech}
               {newRecord
                 ? ' · new best!'
-                : records[label] !== undefined
-                  ? ` · best ${fmtMs(records[label])}`
+                : records[recordKey(state.variant || 'classic', label)] !== undefined
+                  ? ` · best ${fmtMs(records[recordKey(state.variant || 'classic', label)])}`
                   : ''}
             </div>
             <HintSummary hintLog={state.hintLog} mistakes={state.mistakes} />
@@ -832,7 +839,7 @@ export default function App() {
               className="newBtn"
               onClick={() => {
                 const s = stateRef.current
-                dispatch({ type: 'hint', hint: hintPlacement(s.board, s.solution) })
+                dispatch({ type: 'hint', hint: hintPlacement(s.board, s.solution, s.topo) })
               }}
             >
               Fill it in
@@ -930,6 +937,7 @@ export default function App() {
       {showPicker && (
         <NewGameSheet
           records={records}
+          variant={settings.variant}
           canRestart={Boolean(state.puzzle)}
           daily={dailyInfo}
           onPick={startNew}

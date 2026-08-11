@@ -4,13 +4,13 @@
 // Not to be confused with the grader, which solves the way a person does and is
 // what decides difficulty.
 
-import { PEERS, candsAt } from './topology.js'
+import { CLASSIC, candsAt } from './topology.js'
 
 /**
  * Counts solutions up to `limit`. Passing limit 2 answers "unique?" without
  * exploring the whole space. Minimum-remaining-values ordering keeps it fast.
  */
-export function countSolutions(bd, limit = 2) {
+export function countSolutions(bd, limit = 2, topo = CLASSIC) {
   const b = bd.slice()
   let count = 0
   const step = () => {
@@ -18,7 +18,7 @@ export function countSolutions(bd, limit = 2) {
     let bestC = null
     for (let i = 0; i < 81; i++) {
       if (b[i] === 0) {
-        const c = candsAt(b, i)
+        const c = candsAt(b, i, topo)
         if (c.length === 0) return
         if (!bestC || c.length < bestC.length) {
           best = i
@@ -39,17 +39,17 @@ export function countSolutions(bd, limit = 2) {
   return count
 }
 
-export const hasUniqueSolution = bd => countSolutions(bd, 2) === 1
+export const hasUniqueSolution = (bd, topo = CLASSIC) => countSolutions(bd, 2, topo) === 1
 
 /** First solution found, or null. Used to answer "is this placement right". */
-export function solve(bd) {
+export function solve(bd, topo = CLASSIC) {
   const b = bd.slice()
   const step = () => {
     let best = -1
     let bestC = null
     for (let i = 0; i < 81; i++) {
       if (b[i] === 0) {
-        const c = candsAt(b, i)
+        const c = candsAt(b, i, topo)
         if (c.length === 0) return false
         if (!bestC || c.length < bestC.length) {
           best = i
@@ -70,9 +70,9 @@ export function solve(bd) {
 }
 
 /** True if `b` breaks a sudoku rule: the same digit twice in one unit. */
-export function hasConflict(b, i) {
+export function hasConflict(b, i, topo = CLASSIC) {
   const v = b[i]
   if (!v) return false
-  for (const p of PEERS[i]) if (b[p] === v) return true
+  for (const p of topo.peers[i]) if (b[p] === v) return true
   return false
 }

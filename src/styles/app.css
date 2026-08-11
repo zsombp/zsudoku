@@ -2026,3 +2026,33 @@ button.rvCell:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 }
 .switch.off { opacity: 0.4; cursor: not-allowed; }
 .switch.off input { cursor: not-allowed; }
+
+/* Region outlines on an irregular board. The 3x3 rules only ever needed right
+ * and bottom edges because square boxes tile predictably; a jigsaw needs all
+ * four, since a region can be bounded on any side. */
+.cell.bL { border-left: 2px solid var(--line-strong); }
+.cell.bT { border-top: 2px solid var(--line-strong); }
+.rvCell.bL { border-left: 2px solid var(--line-strong); }
+.rvCell.bT { border-top: 2px solid var(--line-strong); }
+
+/* Windoku's overlapping regions. Shaded, not outlined: they sit on top of the
+ * ordinary boxes and an outline would fight the grid underneath. */
+.cell.overlaid { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.cell.overlaid.sel { background: var(--sel); }
+
+/* ---- variant picker ---- */
+
+.variantRow { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 6px; }
+.variantChip {
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 9px;
+  border-radius: 20px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--sub);
+  cursor: pointer;
+}
+.variantChip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.variantBlurb { font-size: 11.5px; color: var(--sub); line-height: 1.45; margin: 0 0 10px; }

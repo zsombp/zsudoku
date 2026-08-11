@@ -12,7 +12,7 @@
 //    finish a puzzle, it is discarded whatever tier was asked for. "Expert"
 //    means hard, not unfair.
 
-import { PEERS, range } from './topology.js'
+import { CLASSIC, range } from './topology.js'
 import { countSolutions } from './solver.js'
 import { gradePuzzle } from './grader.js'
 import { TIERS, tierByName, tierForScore } from './difficulty.js'
@@ -20,24 +20,75 @@ import { mulberry32, randomSeed, shuffle } from '../lib/prng.js'
 
 const TIER_INDEX = Object.fromEntries(TIERS.map((t, i) => [t.name, i]))
 
-/** A random completed grid. Backtracking cell by cell over shuffled digits. */
-export function generateFull(rng) {
+/**
+ * A random completed grid.
+ *
+ * Fills the most constrained cell first rather than walking in reading order.
+ * Reading order is fine for square boxes, where it happens to complete one box
+ * before starting the next, and is hopeless the moment the regions are
+ * irregular or there are extra constraints: a jigsaw region can span six rows,
+ * so a contradiction planted in row one is not discovered until row seven and
+ * the search thrashes. Anti-knight never finished a single grid that way.
+ *
+ * Choosing the cell with fewest candidates finds those contradictions
+ * immediately. It is the same ordering the solver has always used, for the same
+ * reason.
+ *
+ * It also gives up and starts over, which matters more than the ordering does.
+ * This search is heavy-tailed: on a constrained topology a run either finishes
+ * in a couple of hundred steps or thrashes for tens of thousands and proves
+ * nothing, and that is true even when a solution certainly exists and only the
+ * random ordering was unlucky. Abandoning a slow run and reshuffling beats
+ * letting it grind, by a wide margin.
+ *
+ * Returns null if every restart is exhausted, so a caller can pick a different
+ * layout rather than hang.
+ */
+export function generateFull(rng, topo = CLASSIC, { budget = 4000, restarts = 60 } = {}) {
+  for (let attempt = 0; attempt < restarts; attempt++) {
+    const grid = attemptFill(rng, topo, budget)
+    if (grid) return grid
+  }
+  return null
+}
+
+function attemptFill(rng, topo, budget) {
   const b = new Array(81).fill(0)
-  const fill = i => {
-    if (i === 81) return true
-    for (const v of shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], rng)) {
-      let ok = true
-      for (const p of PEERS[i]) if (b[p] === v) { ok = false; break }
-      if (ok) {
-        b[i] = v
-        if (fill(i + 1)) return true
-        b[i] = 0
+  let steps = 0
+
+  const fill = () => {
+    if (++steps > budget) return null
+    let best = -1
+    let bestCands = null
+    for (let i = 0; i < 81; i++) {
+      if (b[i] !== 0) continue
+      const options = []
+      for (let v = 1; v <= 9; v++) {
+        let ok = true
+        for (const p of topo.peers[i]) if (b[p] === v) { ok = false; break }
+        if (ok) options.push(v)
       }
+      // A cell with nowhere to go means this branch is already dead.
+      if (options.length === 0) return false
+      if (!bestCands || options.length < bestCands.length) {
+        best = i
+        bestCands = options
+        if (options.length === 1) break
+      }
+    }
+    if (best === -1) return true
+
+    for (const v of shuffle(bestCands, rng)) {
+      b[best] = v
+      const done = fill()
+      if (done === null) return null
+      if (done) return true
+      b[best] = 0
     }
     return false
   }
-  fill(0)
-  return b
+
+  return fill() === true ? b : null
 }
 
 /**
@@ -47,7 +98,7 @@ export function generateFull(rng) {
  * finished grid its symmetry. The hardest tiers need asymmetry to reach their
  * scores, so `symmetric` is a per-tier switch rather than a rule.
  */
-export function dig(full, targetClues, rng, { symmetric = true } = {}) {
+export function dig(full, targetClues, rng, { symmetric = true, topo = CLASSIC } = {}) {
   const b = full.slice()
   let clues = 81
 
@@ -60,7 +111,7 @@ export function dig(full, targetClues, rng, { symmetric = true } = {}) {
       const k2 = b[j]
       b[i] = 0
       if (j !== i) b[j] = 0
-      if (countSolutions(b, 2) !== 1) {
+      if (countSolutions(b, 2, topo) !== 1) {
         b[i] = k1
         if (j !== i) b[j] = k2
       } else {
@@ -75,7 +126,7 @@ export function dig(full, targetClues, rng, { symmetric = true } = {}) {
       if (b[i] === 0) continue
       const k = b[i]
       b[i] = 0
-      if (countSolutions(b, 2) !== 1) b[i] = k
+      if (countSolutions(b, 2, topo) !== 1) b[i] = k
       else clues--
     }
   }
@@ -86,12 +137,12 @@ export function dig(full, targetClues, rng, { symmetric = true } = {}) {
 const clueCount = p => p.reduce((n, v) => n + (v ? 1 : 0), 0)
 
 /** One more clue out, keeping uniqueness. Raises difficulty. Null if stuck. */
-function digOneMore(puzzle, rng) {
+function digOneMore(puzzle, rng, topo = CLASSIC) {
   for (const i of shuffle(range(81), rng)) {
     if (puzzle[i] === 0) continue
     const next = puzzle.slice()
     next[i] = 0
-    if (countSolutions(next, 2) === 1) return next
+    if (countSolutions(next, 2, topo) === 1) return next
   }
   return null
 }
@@ -111,9 +162,9 @@ function restoreOne(puzzle, solution, rng) {
  * The adjustment loop is what lifts the hit rate: without it, a fixed clue
  * count scatters across two or three tiers.
  */
-function shapeToBand(solution, tier, rng, { maxAdjust = 30 } = {}) {
-  let puzzle = dig(solution, tier.clues, rng, { symmetric: tier.symmetric !== false })
-  let grade = gradePuzzle(puzzle)
+function shapeToBand(solution, tier, rng, { maxAdjust = 30, topo = CLASSIC } = {}) {
+  let puzzle = dig(solution, tier.clues, rng, { symmetric: tier.symmetric !== false, topo })
+  let grade = gradePuzzle(puzzle, { topo })
 
   for (let n = 0; n < maxAdjust; n++) {
     // Unsolvable by the ladder means we dug past the point of fairness. Put a
@@ -122,20 +173,20 @@ function shapeToBand(solution, tier, rng, { maxAdjust = 30 } = {}) {
       const back = restoreOne(puzzle, solution, rng)
       if (!back) break
       puzzle = back
-      grade = gradePuzzle(puzzle)
+      grade = gradePuzzle(puzzle, { topo })
       continue
     }
     if (grade.score >= tier.min && grade.score < tier.max) break
 
     if (grade.score < tier.min) {
-      const harder = digOneMore(puzzle, rng)
+      const harder = digOneMore(puzzle, rng, topo)
       if (!harder) break
-      const nextGrade = gradePuzzle(harder)
+      const nextGrade = gradePuzzle(harder, { topo })
       // Refuse a step that lands somewhere unfair.
       if (!nextGrade.solved) {
-        const alt = digOneMore(puzzle, rng)
+        const alt = digOneMore(puzzle, rng, topo)
         if (!alt) break
-        const altGrade = gradePuzzle(alt)
+        const altGrade = gradePuzzle(alt, { topo })
         if (!altGrade.solved) break
         puzzle = alt
         grade = altGrade
@@ -147,7 +198,7 @@ function shapeToBand(solution, tier, rng, { maxAdjust = 30 } = {}) {
       const easier = restoreOne(puzzle, solution, rng)
       if (!easier) break
       puzzle = easier
-      grade = gradePuzzle(easier)
+      grade = gradePuzzle(easier, { topo })
     }
   }
 
@@ -234,6 +285,7 @@ export function makePracticePuzzle(technique, { seed = randomSeed(), budgetMs = 
 export function makePuzzle(wanted, opts = {}) {
   const tier = tierByName(wanted)
   const seed = opts.seed ?? randomSeed()
+  const topo = opts.topo ?? CLASSIC
   const attempts = opts.attempts ?? tier.attempts ?? 24
   const budgetMs = opts.budgetMs ?? tier.budgetMs ?? 6000
   const rng = mulberry32(seed)
@@ -241,8 +293,11 @@ export function makePuzzle(wanted, opts = {}) {
   let best = null
 
   for (let attempt = 0; attempt < attempts; attempt++) {
-    const solution = generateFull(rng)
-    const { puzzle, grade } = shapeToBand(solution, tier, rng)
+    // A variant may arrive with a grid already in hand, because for jigsaw the
+    // shapes and a grid that fills them are built together.
+    const solution = attempt === 0 && opts.solution ? opts.solution : generateFull(rng, topo)
+    if (!solution) continue
+    const { puzzle, grade } = shapeToBand(solution, tier, rng, { topo })
 
     // Never ship a puzzle the ladder cannot finish, at any tier.
     if (!grade.solved) continue
@@ -254,6 +309,7 @@ export function makePuzzle(wanted, opts = {}) {
       seed,
       requested: wanted,
       graded: graded.name,
+      variant: topo.id,
       score: grade.score,
       hardest: grade.hardest,
       counts: grade.counts,
