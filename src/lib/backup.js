@@ -122,7 +122,7 @@ const fingerprint = ids => {
 const describe = (status, body) => {
   if (status === 401) return 'GitHub rejected the token. It may have expired or been revoked.'
   if (status === 403) return 'GitHub refused the request. Check the token has Contents write access to this repository.'
-  if (status === 404) return 'Repository not found, or the token cannot see it. Check the owner and name, and that the token grants access to this repository.'
+  if (status === 404) return 'Repository or branch not found, or the token cannot see it. Check the owner and name, and that the token grants access to this repository.'
   if (status === 409) return 'The file changed on GitHub while this push was in flight.'
   if (status === 422) return `GitHub could not accept the file. ${body?.message || ''}`.trim()
   return `GitHub returned ${status}. ${body?.message || ''}`.trim()
@@ -213,21 +213,26 @@ async function writeShard(token, { owner, repo, branch }, shard, games, sha) {
     null,
     1
   )
-  const { ok, status, body } = await call(
-    token,
-    `/repos/${owner}/${repo}/contents/${encodeURIComponent(pathFor(shard))}`,
-    {
+  const path = `/repos/${owner}/${repo}/contents/${encodeURIComponent(pathFor(shard))}`
+  const send = withBranch =>
+    call(token, path, {
       method: 'PUT',
       body: JSON.stringify({
         message: `zsudoku: ${games.length} game${games.length === 1 ? '' : 's'} through ${shard}`,
         content: toBase64(content),
-        branch,
+        ...(withBranch ? { branch } : {}),
         ...(sha ? { sha } : {}),
       }),
-    }
-  )
-  if (!ok) throw new Error(describe(status, body))
-  return body.content?.sha || null
+    })
+
+  let res = await send(true)
+  // A repository with no commits has no branches either, so naming one that
+  // does not exist yet comes back 404 and reads as "repo not found". Retrying
+  // without it lets GitHub create the default branch with this first file.
+  if (!res.ok && res.status === 404 && !sha) res = await send(false)
+
+  if (!res.ok) throw new Error(describe(res.status, res.body))
+  return res.body.content?.sha || null
 }
 
 /**
