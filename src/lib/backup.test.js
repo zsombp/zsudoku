@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { mergeShard, shardFor, pathFor } from './backup.js'
+import { mergeShard, shardFor, pathFor, backup, DEFAULT_CFG } from './backup.js'
+
+/** Mirrors the FNV-1a in backup.js, so a fixture can pretend it pushed. */
+const fingerprintOf = ids => {
+  let h = 0x811c9dc5
+  for (const s of [...ids].sort()) {
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i)
+      h = Math.imul(h, 0x01000193)
+    }
+  }
+  return (h >>> 0).toString(16)
+}
 
 const game = (id, endedAt, over = {}) => ({ id, endedAt, completed: true, ...over })
 
@@ -64,5 +76,65 @@ describe('merging a shard', () => {
     expect(merged).toHaveLength(2)
     expect(added).toHaveLength(2)
     expect(remoteOnly).toEqual([])
+  })
+})
+
+describe('trusting the fingerprint cache', () => {
+  // The cache answers "has this month changed here", and the failure it hides
+  // is a change at the other end: a shard deleted on GitHub would otherwise be
+  // skipped forever by a backup that believes it is complete.
+  it('re-checks every shard once the cache is a day old', async () => {
+    const calls = []
+    const fetchSpy = async (url, opts) => {
+      calls.push({ url: String(url), method: opts?.method || 'GET' })
+      // The remote has nothing: the shard was deleted.
+      if (!opts?.method || opts.method === 'GET') {
+        return { ok: false, status: 404, json: async () => ({}) }
+      }
+      return { ok: true, status: 201, json: async () => ({ content: { sha: 'new' } }) }
+    }
+    const realFetch = globalThis.fetch
+    globalThis.fetch = fetchSpy
+    try {
+      const games = [game('a', new Date(2026, 6, 4, 12).getTime())]
+      const cfg = {
+        ...DEFAULT_CFG,
+        owner: 'o', repo: 'r', branch: 'main', enabled: true,
+        // Matches what is there now, so the cache would skip it.
+        shards: { '2026-07': { sha: 'old', fingerprint: fingerprintOf(['a']) } },
+        lastCheckAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+      }
+      const res = await backup(games, { cfg, token: 't' })
+      expect(res.ok).toBe(true)
+      // It read the shard, found it gone, and wrote it back.
+      expect(calls.some(c => c.method === 'PUT')).toBe(true)
+      expect(res.cfg.lastCheckAt).toBeGreaterThan(cfg.lastCheckAt)
+    } finally {
+      globalThis.fetch = realFetch
+    }
+  })
+
+  it('skips an unchanged shard while the cache is fresh', async () => {
+    const calls = []
+    const realFetch = globalThis.fetch
+    globalThis.fetch = async (url, opts) => {
+      calls.push(String(url))
+      return { ok: true, status: 200, json: async () => ({ content: { sha: 'x' } }) }
+    }
+    try {
+      const games = [game('a', new Date(2026, 6, 4, 12).getTime())]
+      const cfg = {
+        ...DEFAULT_CFG,
+        owner: 'o', repo: 'r', branch: 'main', enabled: true,
+        shards: { '2026-07': { sha: 'old', fingerprint: fingerprintOf(['a']) } },
+        lastCheckAt: Date.now(),
+      }
+      const res = await backup(games, { cfg, token: 't' })
+      expect(res.ok).toBe(true)
+      expect(calls).toHaveLength(0)
+      expect(res.pushed).toBe(0)
+    } finally {
+      globalThis.fetch = realFetch
+    }
   })
 })

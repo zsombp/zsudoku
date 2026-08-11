@@ -2,6 +2,19 @@
 
 Newest first.
 
+## v1.7.2 - 2026-08-11 - the backup checks rather than assumes
+
+A shard deleted on GitHub was skipped by every push afterwards. The fingerprint
+cache answers "has this month changed on this device", and the push treated that
+as the whole question, so it assumed the other end had not changed either. The
+result is the failure this whole feature exists to prevent: a backup that
+believes it is complete and is not.
+
+Once a day, every shard is checked against the remote instead of trusted. It
+costs one read per month of history and writes nothing when all is well, because
+a shard the remote already holds in full is skipped after the read. "Back up now"
+forces the same check immediately.
+
 ## v1.7.1 - 2026-08-11 - new versions actually arrive
 
 The GitHub backup shipped in v1.6.0 and was not there. Not missing from the

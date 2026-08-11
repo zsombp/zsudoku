@@ -695,3 +695,18 @@ Two lessons worth keeping:
 
 Rules out: any update strategy that depends on the user knowing to reload, and
 any assumption that a green deploy means the feature is in front of anyone.
+
+### A cache of what was sent is not a record of what is there
+
+Found at v1.7.2, when a shard deleted on GitHub was skipped by every subsequent
+push. The per-shard fingerprint answers "has this month changed on this device",
+and the push was reading it as "is this month already backed up". Those differ
+the moment anything touches the other end.
+
+The fix is not to abandon the cache, which is what keeps a push after an evening
+of play down to one small file. It is to stop trusting it indefinitely: once a
+day every shard is checked against the remote, which writes nothing when all is
+well.
+
+The general form is worth remembering: **any optimisation that skips work based
+on local state is asserting something about remote state, and needs an expiry.**

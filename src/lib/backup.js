@@ -37,6 +37,9 @@ export const DEFAULT_CFG = {
   branch: 'main',
   lastPushAt: null,
   lastError: null,
+  // When every shard was last checked against the remote rather than assumed
+  // unchanged. See `backup`.
+  lastCheckAt: null,
   // Per-shard bookkeeping: the file sha GitHub last gave us, and a fingerprint
   // of what we pushed, so an unchanged shard is not pushed again.
   shards: {},
@@ -242,6 +245,9 @@ async function writeShard(token, { owner, repo, branch }, shard, games, sha) {
  * never be something the game notices. The caller stores the updated config and
  * shows the error somewhere calm.
  */
+/** How long the fingerprint cache is trusted before every shard is re-checked. */
+const RECHECK_MS = 24 * 60 * 60 * 1000
+
 export async function backup(games, { cfg = loadCfg(), token = loadToken(), force = false } = {}) {
   if (!token || !cfg.owner || !cfg.repo) {
     return { ok: false, error: 'Backup is not configured.', cfg }
@@ -263,11 +269,22 @@ export async function backup(games, { cfg = loadCfg(), token = loadToken(), forc
   let pushed = 0
   let sent = 0
 
+  // The fingerprint cache says "this month has not changed here since the last
+  // push", which is only half the question: it assumes the remote has not
+  // changed either. Delete a file on GitHub and every future push skips that
+  // month forever, leaving a backup that believes it is complete and is not.
+  //
+  // So once a day, check every shard rather than trusting the cache. It costs
+  // one read per month of history and writes nothing when all is well, because
+  // a shard the remote already holds in full is skipped after the read.
+  const stale = Date.now() - (cfg.lastCheckAt || 0) > RECHECK_MS
+  const trustCache = !force && !stale
+
   for (const [shard, local] of buckets) {
     const mark = fingerprint(local.map(g => g.id))
     const known = next.shards[shard]
     // Nothing new in this month since the last successful push.
-    if (!force && known?.fingerprint === mark) continue
+    if (trustCache && known?.fingerprint === mark) continue
 
     try {
       const remote = await readShard(token, next, shard)
@@ -289,6 +306,7 @@ export async function backup(games, { cfg = loadCfg(), token = loadToken(), forc
   }
 
   next.lastPushAt = Date.now()
+  if (force || stale) next.lastCheckAt = Date.now()
   next.lastError = null
   return { ok: true, cfg: next, pushed, sent }
 }
