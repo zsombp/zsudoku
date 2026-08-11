@@ -2,6 +2,24 @@
 
 Newest first.
 
+## v2.4.0 - 2026-08-11 - four things the coach can now tell you
+
+- **Tilt.** Whether a mistake makes the next five minutes worse, measured for
+  you rather than assumed. It compares placements in the shadow of a wrong digit
+  against the rest of the same game, so someone who is simply error-prone does
+  not read as tilting. When it finds nothing it says so, because "stop after a
+  mistake" is advice that does not apply to everyone.
+- **Am I actually improving.** Compared within each tier, so drifting toward
+  easier puzzles cannot masquerade as progress. Twenty finished games before it
+  will claim anything.
+- **Fatigue within a sitting.** Games within three quarters of an hour of each
+  other count as one session; if the fourth game of a session is measurably
+  worse than the first, that is your limit before it stops being practice.
+- **The nemesis.** Distinct from the existing hint weakness, which names
+  whatever is worst today. This one only speaks when the same rung has been the
+  worst across both halves of your recent history, so it is a standing problem
+  rather than a bad week, and it says whether it is easing or not.
+
 ## v2.3.0 - 2026-08-11 - the game as prose
 
 Every game review opens with an account of what the game was like, above any of

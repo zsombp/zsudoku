@@ -271,3 +271,139 @@ export function judgment(games) {
 
   return { sample: withSummary.length, total, counts, sharpBy, byTier }
 }
+
+/**
+ * Does accuracy fall apart in the minutes after a mistake?
+ *
+ * Compares placements made within `windowMs` of a wrong digit against every
+ * other placement in the same game, so a player who is simply error-prone does
+ * not read as tilting. The comparison is within a game and then pooled, because
+ * a bad game and a good game have different baselines.
+ */
+export function tilt(games, { windowMs = 300000 } = {}) {
+  let afterTotal = 0
+  let afterWrong = 0
+  let restTotal = 0
+  let restWrong = 0
+  let sample = 0
+
+  for (const g of games) {
+    const log = (g.moveLog || []).filter(m => m.kind === 'place')
+    if (log.length < 20) continue
+    const wrongTimes = log.filter(m => m.correct === false).map(m => m.t)
+    if (!wrongTimes.length) continue
+    sample++
+
+    for (const m of log) {
+      // A placement inside the shadow of an earlier mistake.
+      const shadowed = wrongTimes.some(t => m.t > t && m.t - t <= windowMs)
+      if (shadowed) {
+        afterTotal++
+        if (m.correct === false) afterWrong++
+      } else {
+        restTotal++
+        if (m.correct === false) restWrong++
+      }
+    }
+  }
+
+  if (afterTotal < 30 || restTotal < 30) return null
+  return {
+    sample,
+    afterRate: afterWrong / afterTotal,
+    restRate: restWrong / restTotal,
+    afterTotal,
+    restTotal,
+  }
+}
+
+/**
+ * Is this player actually getting better, or just playing easier puzzles?
+ *
+ * Compares the first half of their history against the second, within each
+ * tier, so a drift toward Gentle cannot read as improvement. Only tiers with
+ * enough games on both sides are counted.
+ */
+export function improvement(games) {
+  const done = games.filter(g => g.completed).sort((a, b) => a.endedAt - b.endedAt)
+  if (done.length < 20) return null
+
+  const byTierName = {}
+  for (const g of done) (byTierName[g.graded] ||= []).push(g)
+
+  const moved = []
+  for (const [tier, list] of Object.entries(byTierName)) {
+    if (list.length < 8) continue
+    const half = Math.floor(list.length / 2)
+    const early = median(list.slice(0, half).map(g => g.durationMs))
+    const late = median(list.slice(half).map(g => g.durationMs))
+    if (!early || !late) continue
+    moved.push({ tier, early, late, change: (late - early) / early, games: list.length })
+  }
+  if (!moved.length) return null
+
+  // Weighted by how many games each tier contributed.
+  const total = moved.reduce((a, m) => a + m.games, 0)
+  const overall = moved.reduce((a, m) => a + m.change * m.games, 0) / total
+  return { tiers: moved.sort((a, b) => a.change - b.change), overall, sample: total }
+}
+
+/** How performance moves across the hours of the day, for the fatigue read. */
+export function byPartOfDay(games) {
+  const bands = [
+    { name: 'morning', from: 5, to: 12 },
+    { name: 'afternoon', from: 12, to: 18 },
+    { name: 'evening', from: 18, to: 23 },
+    { name: 'late night', from: 23, to: 5 },
+  ]
+  const done = games.filter(g => g.completed)
+  return bands
+    .map(b => {
+      const inBand = done.filter(g => {
+        const h = new Date(g.endedAt).getHours()
+        return b.from < b.to ? h >= b.from && h < b.to : h >= b.from || h < b.to
+      })
+      return {
+        ...b,
+        games: inBand.length,
+        mistakes: inBand.length ? inBand.reduce((a, g) => a + g.mistakes, 0) / inBand.length : 0,
+        medianMs: inBand.length ? median(inBand.map(g => g.durationMs)) : 0,
+      }
+    })
+    .filter(b => b.games > 0)
+}
+
+/**
+ * How long a session had been running when each game was played, and whether
+ * accuracy holds up across it. Games within `gapMs` of each other are one
+ * sitting.
+ */
+export function sessionFatigue(games, { gapMs = 45 * 60 * 1000 } = {}) {
+  const done = games.filter(g => g.completed).sort((a, b) => a.endedAt - b.endedAt)
+  if (done.length < 12) return null
+
+  const buckets = [
+    { name: 'first', games: [] },
+    { name: 'second or third', games: [] },
+    { name: 'fourth onward', games: [] },
+  ]
+  let position = 0
+  let prevEnd = 0
+
+  for (const g of done) {
+    const startedNew = g.endedAt - prevEnd > gapMs
+    position = startedNew ? 0 : position + 1
+    prevEnd = g.endedAt
+    const bucket = position === 0 ? 0 : position <= 2 ? 1 : 2
+    buckets[bucket].games.push(g)
+  }
+
+  const filled = buckets
+    .filter(b => b.games.length >= 4)
+    .map(b => ({
+      name: b.name,
+      count: b.games.length,
+      mistakes: b.games.reduce((a, g) => a + g.mistakes, 0) / b.games.length,
+    }))
+  return filled.length >= 2 ? filled : null
+}

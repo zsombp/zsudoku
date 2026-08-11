@@ -13,7 +13,17 @@
 import { TIERS } from '../logic/difficulty.js'
 import { TECHNIQUES } from '../logic/techniques.js'
 import { fmtMs } from '../lib/format.js'
-import { byTier, hintsByTechnique, mistakeBoxes, pace, median, judgment } from './compute.js'
+import {
+  byTier,
+  hintsByTechnique,
+  mistakeBoxes,
+  pace,
+  median,
+  judgment,
+  tilt,
+  improvement,
+  sessionFatigue,
+} from './compute.js'
 
 const pctOf = (a, b) => (b ? Math.round((a / b) * 100) : 0)
 
@@ -223,9 +233,15 @@ function boxBias(games) {
 }
 
 const BUILDERS = [
-  // The judgment insights lead: they are the only ones that speak to whether a
+  // The nemesis leads when it fires at all: a pattern that has beaten you for
+  // weeks outranks anything measured this session.
+  nemesis,
+  // Then the judgment insights: they are the only ones that speak to whether a
   // move was earned, which every other statistic here is blind to.
   guessRate,
+  tiltInsight,
+  improving,
+  fatigue,
   scanningStalls,
   patternStrength,
   missedEasy,
@@ -363,5 +379,122 @@ function missedEasy(games) {
     title: `An easier move was available ${share}% of the time`,
     body: `In ${j.total.missed} of ${j.total.placements} placements, the board was offering something simpler somewhere else. Working the whole grid rather than the corner you are looking at is usually faster than solving the corner.`,
     sample: `${j.sample} games`,
+  }
+}
+
+/** Does a mistake make the next few minutes worse, for this person? */
+function tiltInsight(games) {
+  const t = tilt(games)
+  if (!t) return null
+  const after = t.afterRate * 100
+  const rest = t.restRate * 100
+  const ratio = t.restRate ? t.afterRate / t.restRate : 0
+
+  if (ratio < 1.4) {
+    return {
+      id: 'tilt-steady',
+      title: 'A mistake does not rattle you',
+      body: `In the five minutes after a wrong digit you are wrong ${after.toFixed(1)}% of the time, against ${rest.toFixed(1)}% otherwise. That is the same within noise, which is worth knowing: the usual advice to stop after an error does not apply to you.`,
+      sample: `${t.sample} games with mistakes in them`,
+    }
+  }
+  return {
+    id: 'tilt',
+    title: 'Mistakes come in clusters for you',
+    body: `In the five minutes after a wrong digit you are wrong ${after.toFixed(1)}% of the time, against ${rest.toFixed(1)}% otherwise, which is ${ratio.toFixed(1)} times worse. The first error is ordinary; the ones that follow it are the ones to stop and avoid. Pausing after a mistake is worth more to you than to most people.`,
+    sample: `${t.sample} games with mistakes in them`,
+  }
+}
+
+/** Getting better, or drifting toward easier puzzles? */
+function improving(games) {
+  const imp = improvement(games)
+  if (!imp) return null
+  const pct = Math.abs(imp.overall * 100)
+  if (pct < 8) {
+    return {
+      id: 'improving-flat',
+      title: 'Your times have levelled off',
+      body: `Comparing the first half of your games against the second, within each tier so a drift toward easier puzzles cannot flatter the answer, you are within ${pct.toFixed(0)}% of where you started. Levelling off is what happens when the assists are doing the work that used to be practice.`,
+      sample: `${imp.sample} finished games`,
+    }
+  }
+  const better = imp.overall < 0
+  const best = imp.tiers[0]
+  return {
+    id: 'improving',
+    title: better ? `You are ${pct.toFixed(0)}% faster than you were` : `You are ${pct.toFixed(0)}% slower than you were`,
+    body: `Measured within each tier, so playing easier puzzles cannot masquerade as progress. ${
+      better
+        ? `The biggest gain is at ${best.tier}, from ${fmtMs(best.early)} to ${fmtMs(best.late)}.`
+        : `That is usually harder puzzles rather than worse play, but the comparison already controls for tier, so it is worth a look at whether you are playing tired.`
+    }`,
+    sample: `${imp.sample} finished games`,
+  }
+}
+
+/** Does a long sitting cost accuracy? */
+function fatigue(games) {
+  const f = sessionFatigue(games)
+  if (!f) return null
+  const first = f[0]
+  const last = f[f.length - 1]
+  const rise = last.mistakes - first.mistakes
+  if (rise < 0.5) return null
+
+  return {
+    id: 'fatigue',
+    title: 'Your accuracy falls off within a sitting',
+    body: `The ${first.name} game of a session averages ${first.mistakes.toFixed(1)} mistakes, the ${last.name} averages ${last.mistakes.toFixed(1)}. Games within three quarters of an hour of each other count as one sitting. Two or three is apparently your limit before it stops being practice.`,
+    sample: `${f.reduce((a, b) => a + b.count, 0)} games across sessions`,
+  }
+}
+
+/**
+ * The one pattern that keeps winning, tracked over time rather than reported
+ * fresh each visit.
+ *
+ * The difference from `hintWeakness` is memory. That one names whatever is
+ * worst today; this one only speaks when the same rung has been the worst for
+ * long enough to be a standing problem rather than a bad week, and it escalates
+ * rather than repeating itself.
+ */
+function nemesis(games) {
+  const MIN = 10
+  const recent = games.filter(g => g.hintLog?.length).slice(-40)
+  if (recent.length < 6) return null
+
+  const half = Math.floor(recent.length / 2)
+  const countIn = list => {
+    const counts = {}
+    for (const g of list) for (const h of g.hintLog || []) {
+      if (h.technique && TECHNIQUES[h.technique]) counts[h.technique] = (counts[h.technique] || 0) + 1
+    }
+    return counts
+  }
+  const early = countIn(recent.slice(0, half))
+  const late = countIn(recent.slice(half))
+  const total = countIn(recent)
+
+  const ranked = Object.entries(total).sort((a, b) => b[1] - a[1])
+  if (!ranked.length || ranked[0][1] < MIN) return null
+  const [key, n] = ranked[0]
+
+  // Standing, not passing: worst in both halves of the recent history.
+  const worstEarly = Object.entries(early).sort((a, b) => b[1] - a[1])[0]?.[0]
+  const worstLate = Object.entries(late).sort((a, b) => b[1] - a[1])[0]?.[0]
+  if (worstEarly !== key || worstLate !== key) return null
+
+  const gettingWorse = (late[key] || 0) >= (early[key] || 0)
+  return {
+    id: 'nemesis',
+    practice: key,
+    title: `${sentence(TECHNIQUES[key].label)} has beaten you ${n} times now`,
+    body: `It has been your worst pattern across both halves of your recent games, ${early[key] || 0} hints then and ${late[key] || 0} since. ${
+      gettingWorse
+        ? 'It is not getting better on its own, and it will not: the hint fills the cell and moves on without ever making you find one.'
+        : 'It is easing, but it is still the one that costs you most.'
+    } Drill it deliberately rather than meeting it by accident.`,
+    sample: `${recent.length} recent games with hints`,
   }
 }
