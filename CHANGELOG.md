@@ -2,6 +2,45 @@
 
 Newest first.
 
+## v1.9.0 - 2026-08-11 - the coach knows what the review knows
+
+Everything the move review works out was computed when you opened it and thrown
+away when you closed it. So the app could tell you that eleven placements in one
+game went in before the board proved them, and had no idea whether that was
+normal for you.
+
+Now every game carries its own classification, and the coach reasons across all
+of them:
+
+- **How much of your play is actually justified.** A guess that happens to be
+  right looks exactly like a deduction in every other statistic here, and only
+  one of them keeps working as the grids get harder. Broken down by tier,
+  because guessing at Medium and guessing at Diabolical are different habits.
+- **Patterns you find unaided, against the ones you spend hints on.** The
+  interesting case is a pattern you can clearly find and still reach for the
+  bulb on, which is impatience rather than a gap in what you know.
+- **Long pauses that ended in a move which had been available the whole time.**
+- **How often something easier was sitting elsewhere on the board.**
+
+### Why it is stored rather than computed
+
+Classifying one game costs about four milliseconds. Across a thousand games that
+is three and a half seconds of frozen interface, every time the statistics screen
+opens. Measured before designing, which is what decided this: the summary is
+computed once when the game ends, and is about 190 bytes on a record that already
+runs to seven kilobytes. Aggregating a thousand of them is then arithmetic.
+
+Games recorded before this are caught up the next time you open statistics,
+ten at a time with the screen left usable in between, and it says so while it
+runs. A summary is tied to both its own version and the grader's, so changing
+how the app classifies invalidates them rather than quietly averaging old
+verdicts with new ones.
+
+### Smaller
+
+- "a X-Wing" is now "an X-Wing". X is the only letter in the ladder spelled with
+  a consonant and said with a vowel.
+
 ## v1.8.0 - 2026-08-11 - the phone and the Mac share one history
 
 Point both devices at the same repository and they are one history. Statistics,

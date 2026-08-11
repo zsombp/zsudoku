@@ -236,3 +236,38 @@ export function hintsByTechnique(games) {
   }
   return { counts, total }
 }
+
+/**
+ * The stored move classifications, added up.
+ *
+ * Every game carries its own summary since v1.9.0, so this is arithmetic rather
+ * than analysis: the expensive part happened once, when the game ended.
+ */
+export function judgment(games) {
+  const withSummary = games.filter(g => g.summary?.placements)
+  const total = { placements: 0, missed: 0, slowEasy: 0, fastGuess: 0, earned: 0 }
+  const counts = {}
+  const sharpBy = {}
+  const byTier = {}
+
+  for (const g of withSummary) {
+    const s = g.summary
+    total.placements += s.placements
+    total.missed += s.missed || 0
+    total.slowEasy += s.slowEasy || 0
+    total.fastGuess += s.fastGuess || 0
+    total.earned += s.earned || 0
+    for (const [k, n] of Object.entries(s.counts || {})) counts[k] = (counts[k] || 0) + n
+    for (const [k, n] of Object.entries(s.sharpBy || {})) sharpBy[k] = (sharpBy[k] || 0) + n
+
+    const tier = g.graded || 'Unknown'
+    const t = (byTier[tier] ||= { games: 0, placements: 0, lucky: 0, sharp: 0, mistake: 0 })
+    t.games++
+    t.placements += s.placements
+    t.lucky += s.counts?.lucky || 0
+    t.sharp += s.counts?.sharp || 0
+    t.mistake += s.counts?.mistake || 0
+  }
+
+  return { sample: withSummary.length, total, counts, sharpBy, byTier }
+}

@@ -764,3 +764,29 @@ That listing is the whole difference, and it is why the routine post-game path
 and the foreground path are not the same call: after a game only the current
 month is touched, which is one small file, while coming back to the app does the
 full pass.
+
+### The classification is stored, because measuring said it had to be
+
+Resolved at v1.9.0. The obvious implementation is to classify on demand: the
+move log is on every record and `analyseGame` is pure. Measuring first killed
+that. Aggregate statistics and the coach run in single-digit milliseconds even
+at a thousand games, but classifying every move of every game costs 3.7 seconds,
+and it would be paid on every visit to the statistics screen.
+
+So each record carries its own summary, written when the game ends. About 190
+bytes against a record that is already seven kilobytes, and aggregating them is
+then addition.
+
+Two things that keep it honest:
+
+- **The summary is versioned twice**, by its own version and the grader's.
+  Change how the app classifies, or change the ladder, and old summaries are
+  recomputed rather than averaged in alongside new ones. Silently mixing two
+  definitions of "lucky" would be exactly the kind of dishonest statistic this
+  app exists to avoid.
+- **It stores aggregates only, never per-move detail.** The move log is already
+  on the record and the review recomputes from it. Storing both would be storing
+  the same thing twice and inviting them to disagree.
+
+Rules out: computing classification on demand for anything that spans games, and
+any summary that outlives the definition it was computed under.

@@ -13,12 +13,18 @@
 import { TIERS } from '../logic/difficulty.js'
 import { TECHNIQUES } from '../logic/techniques.js'
 import { fmtMs } from '../lib/format.js'
-import { byTier, hintsByTechnique, mistakeBoxes, pace, median } from './compute.js'
+import { byTier, hintsByTechnique, mistakeBoxes, pace, median, judgment } from './compute.js'
 
 const pctOf = (a, b) => (b ? Math.round((a / b) * 100) : 0)
 
 /** Technique labels are lower case by design; titles are not. */
 const sentence = s => s.charAt(0).toUpperCase() + s.slice(1)
+
+/**
+ * "an X-Wing", not "a X-Wing". X is the only letter in the ladder that is
+ * spelled with a consonant and said with a vowel.
+ */
+const an = word => (/^[aeiou]/i.test(word) || /^x/i.test(word) ? 'an' : 'a')
 
 /** Hints cluster on one technique: that is the pattern you are not spotting. */
 function hintWeakness(games) {
@@ -46,7 +52,7 @@ function hintWeakness(games) {
     // The whole point of naming it is being able to act on it.
     practice: key,
     title: `${sentence(TECHNIQUES[key].label)} is your weak spot`,
-    body: `${share}% of your hints (${n} of ${total}) were on a ${TECHNIQUES[key].label}. That is the pattern to learn next: when you get stuck, look for it before reaching for the bulb.`,
+    body: `${share}% of your hints (${n} of ${total}) were on ${an(TECHNIQUES[key].label)} ${TECHNIQUES[key].label}. That is the pattern to learn next: when you get stuck, look for it before reaching for the bulb.`,
     sample: `${total} hints`,
   }
 }
@@ -216,7 +222,21 @@ function boxBias(games) {
   }
 }
 
-const BUILDERS = [hintWeakness, mistakeShape, paceShape, pencilDiscipline, tierReadiness, timeOfDay, boxBias]
+const BUILDERS = [
+  // The judgment insights lead: they are the only ones that speak to whether a
+  // move was earned, which every other statistic here is blind to.
+  guessRate,
+  scanningStalls,
+  patternStrength,
+  missedEasy,
+  hintWeakness,
+  mistakeShape,
+  paceShape,
+  pencilDiscipline,
+  tierReadiness,
+  timeOfDay,
+  boxBias,
+]
 
 /**
  * All insights that currently have enough behind them.
@@ -242,4 +262,106 @@ export function needed(games) {
   if (done < 5) return `Finish ${5 - done} more ${5 - done === 1 ? 'game' : 'games'} and the coach starts having something to say.`
   if (done < 12) return `${12 - done} more finished games unlocks the time-of-day and pencil analysis.`
   return 'Keep playing: the remaining insights need more mistakes and hints to look at than you have made.'
+}
+
+/**
+ * How much of your play is actually justified by the board.
+ *
+ * The single most useful number the review produces, and until now it evaporated
+ * when you closed the review. A guess that happens to be right looks exactly
+ * like a deduction in every other statistic in this app.
+ */
+function guessRate(games) {
+  const MIN = 8
+  const j = judgment(games)
+  if (j.sample < MIN || j.total.placements < 200) return null
+
+  const lucky = j.counts.lucky || 0
+  const share = pctOf(lucky, j.total.placements)
+  if (share < 6) {
+    return {
+      id: 'justified',
+      title: 'You place digits you can prove',
+      body: `Only ${share}% of your placements went in before the board proved them, across ${j.total.placements} moves. That is the habit that stops a hard grid falling apart in the endgame.`,
+      sample: `${j.sample} games`,
+    }
+  }
+
+  // Where it happens matters more than that it happens.
+  const tiers = Object.entries(j.byTier)
+    .filter(([, t]) => t.placements >= 60)
+    .map(([name, t]) => ({ name, share: pctOf(t.lucky, t.placements) }))
+    .sort((a, b) => b.share - a.share)
+  const worst = tiers[0]
+
+  return {
+    id: 'guess-rate',
+    title: `${share}% of your placements are guesses that worked`,
+    body: `${lucky} of ${j.total.placements} moves went in before anything on the board proved them.${
+      worst && tiers.length > 1 ? ` It is worst at ${worst.name}, at ${worst.share}%.` : ''
+    } They are not mistakes, but a guess and a deduction look identical in every other statistic here, and only one of them keeps working as the grids get harder.`,
+    sample: `${j.sample} games`,
+  }
+}
+
+/** Patterns you find unaided, against the ones you spend hints on. */
+function patternStrength(games) {
+  const j = judgment(games)
+  const { counts: hintCounts, total: hintTotal } = hintsByTechnique(games)
+  const found = Object.entries(j.sharpBy).sort((a, b) => b[1] - a[1])
+  if (j.sample < 8 || !found.length || hintTotal < 5) return null
+
+  const [bestKey, bestN] = found[0]
+  const hintedOn = hintCounts[bestKey] || 0
+
+  // The interesting case: a pattern you can clearly find, that you still reach
+  // for the bulb on.
+  if (hintedOn >= 3 && bestN >= 3) {
+    return {
+      id: 'pattern-impatience',
+      practice: bestKey,
+      title: `You can find ${an(TECHNIQUES[bestKey].label)} ${TECHNIQUES[bestKey].label}, when you look`,
+      body: `You spotted ${bestN} unaided, and took ${hintedOn} hints on the same pattern. That is not a gap in what you know, it is reaching for the bulb before finishing the scan.`,
+      sample: `${j.sample} games`,
+    }
+  }
+
+  return {
+    id: 'pattern-strength',
+    title: `${sentence(TECHNIQUES[bestKey].label)} is your strongest pattern`,
+    body: `You have found it unaided ${bestN} ${bestN === 1 ? 'time' : 'times'}${
+      found.length > 1 ? `, more than any other pattern you spot` : ''
+    }. Worth knowing which tools you actually reach for when a grid stops being obvious.`,
+    sample: `${j.sample} games`,
+  }
+}
+
+/** Long pauses that ended in a move which had been available all along. */
+function scanningStalls(games) {
+  const j = judgment(games)
+  if (j.sample < 8 || j.total.placements < 200) return null
+  const per = j.total.slowEasy / j.sample
+  if (per < 1) return null
+
+  return {
+    id: 'scanning-stalls',
+    title: 'Your long pauses usually end in an easy move',
+    body: `${j.total.slowEasy} times across ${j.sample} games, about ${per.toFixed(1)} a game, you thought for a long stretch and then played something that was a lone candidate or the only home for its digit the whole time. That is a scanning habit rather than a hard puzzle, and auto notes are the cheapest fix for it.`,
+    sample: `${j.sample} games`,
+  }
+}
+
+/** How often something easier was sitting there while you did something else. */
+function missedEasy(games) {
+  const j = judgment(games)
+  if (j.sample < 8 || j.total.placements < 200) return null
+  const share = pctOf(j.total.missed, j.total.placements)
+  if (share < 12) return null
+
+  return {
+    id: 'missed-easy',
+    title: `An easier move was available ${share}% of the time`,
+    body: `In ${j.total.missed} of ${j.total.placements} placements, the board was offering something simpler somewhere else. Working the whole grid rather than the corner you are looking at is usually faster than solving the corner.`,
+    sample: `${j.sample} games`,
+  }
 }

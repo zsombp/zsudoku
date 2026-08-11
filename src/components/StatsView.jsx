@@ -23,8 +23,28 @@ export default function StatsView({ onClose, onPractice }) {
   const [reviewing, setReviewing] = useState(null)
   const fileRef = useRef(null)
 
+  const [backfill, setBackfill] = useState(null)
+
   useEffect(() => {
-    gameLog.all().then(g => setGames(g.sort((a, b) => a.endedAt - b.endedAt)))
+    let alive = true
+    ;(async () => {
+      const first = await gameLog.all()
+      if (!alive) return
+      setGames(first.sort((a, b) => a.endedAt - b.endedAt))
+      // Games recorded before classification was stored, or under an older
+      // grader, are caught up here rather than on every open. Chunked, so the
+      // screen stays usable while it runs.
+      const res = await gameLog.backfillSummaries({
+        onProgress: (done, total) => alive && setBackfill({ done, total }),
+      })
+      if (!alive) return
+      setBackfill(null)
+      if (res.done) {
+        const again = await gameLog.all()
+        if (alive) setGames(again.sort((a, b) => a.endedAt - b.endedAt))
+      }
+    })()
+    return () => { alive = false }
   }, [])
 
   const derived = useMemo(() => {

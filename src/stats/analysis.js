@@ -11,7 +11,7 @@
 // know this", not "how clever was it".
 
 import { createState, nextStep } from '../logic/grader.js'
-import { TECHNIQUES } from '../logic/techniques.js'
+import { TECHNIQUES, GRADER_VERSION } from '../logic/techniques.js'
 import { PEERS, rowOf, colOf } from '../logic/topology.js'
 import { marksToList } from '../logic/marks.js'
 import { justification, cellName } from '../logic/explain.js'
@@ -220,3 +220,60 @@ export function timeShape({ moves }) {
 
   return out
 }
+
+/**
+ * Bump when anything about classification changes, so summaries computed by an
+ * older version are recomputed rather than quietly averaged with new ones.
+ */
+export const ANALYSIS_VERSION = 1
+
+/**
+ * A game's classification, small enough to keep on the record.
+ *
+ * Classifying every move of a game costs about four milliseconds, which is
+ * nothing once and three and a half seconds across a thousand games. So the
+ * long-run analytics cannot recompute on demand: the answer is stored when the
+ * game ends, and this is what gets stored. About fifty bytes against a record
+ * that already runs to seven kilobytes.
+ *
+ * Only aggregates, never per-move detail. The move log is already on the record
+ * and the review recomputes from it, so storing both would be storing the same
+ * thing twice and inviting them to disagree.
+ */
+export function summariseAnalysis(record) {
+  const analysis = analyseGame(record)
+  const { moves, counts, missed } = analysis
+  if (!moves.length) return null
+
+  // Which patterns you actually spot unaided, as opposed to need help with.
+  // The interesting comparison is against the hints you spent on each.
+  const sharpBy = {}
+  for (const m of moves) {
+    if (m.cls !== 'sharp' || !m.pattern?.technique) continue
+    sharpBy[m.pattern.technique] = (sharpBy[m.pattern.technique] || 0) + 1
+  }
+
+  // The same relative thresholds the per-game notes use, so a claim in the
+  // coach and a claim in the review cannot contradict each other.
+  const timed = moves.filter(m => m.gap > 0)
+  const sorted = timed.map(m => m.gap).sort((a, b) => a - b)
+  const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0
+  const long = Math.max(median * 3, 12000)
+  const quick = Math.min(median / 2, 3000)
+
+  return {
+    v: ANALYSIS_VERSION,
+    placements: moves.length,
+    counts,
+    missed,
+    sharpBy,
+    medianGap: Math.round(median),
+    slowEasy: timed.filter(m => m.gap > long && (m.cls === 'routine' || m.cls === 'solid')).length,
+    fastGuess: timed.filter(m => m.gap < quick && m.cls === 'lucky').length,
+    earned: timed.filter(m => m.gap > long && m.cls === 'sharp').length,
+  }
+}
+
+/** Whether a stored summary still reflects how the app classifies today. */
+export const summaryIsCurrent = game =>
+  game?.summary?.v === ANALYSIS_VERSION && game.graderVersion === GRADER_VERSION

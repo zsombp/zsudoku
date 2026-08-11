@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { analyseGame, verdict, timeShape, CLASSES } from './analysis.js'
+import {
+  analyseGame,
+  verdict,
+  timeShape,
+  summariseAnalysis,
+  summaryIsCurrent,
+  ANALYSIS_VERSION,
+  CLASSES,
+} from './analysis.js'
 import { makePuzzle } from '../logic/generator.js'
 
 // A real solved grid, so a "correct" placement in these fixtures is genuinely
@@ -198,5 +206,62 @@ describe('what the clock says about the judgment', () => {
     const slow = [...Array(10)].map(() => mv('routine', 15000))
     slow.push(mv('routine', 20000))
     expect(timeShape(game(slow)).find(o => o.id === 'stall-on-easy')).toBeFalsy()
+  })
+})
+
+describe('the stored summary', () => {
+  const played = (cells, over = {}) => ({
+    puzzle: gridMissing(...cells),
+    solution: SOLUTION,
+    graderVersion: 2,
+    moveLog: cells.map((c, i) => ({
+      t: (i + 1) * 3000,
+      kind: 'place',
+      cell: c,
+      value: SOLUTION[c],
+      correct: true,
+    })),
+    ...over,
+  })
+
+  it('counts the same classes the review shows', () => {
+    const r = played([40, 41, 42, 43])
+    const s = summariseAnalysis(r)
+    const live = analyseGame(r)
+    expect(s.placements).toBe(live.moves.length)
+    expect(s.counts).toEqual(live.counts)
+    expect(s.missed).toBe(live.missed)
+  })
+
+  it('returns nothing for a game with no moves, rather than an empty shell', () => {
+    expect(summariseAnalysis({ puzzle: SOLUTION, solution: SOLUTION, moveLog: [] })).toBeNull()
+  })
+
+  it('stays small enough to keep on every record', () => {
+    const s = summariseAnalysis(played([0, 9, 18, 27, 36, 45, 54, 63, 72]))
+    expect(JSON.stringify(s).length).toBeLessThan(400)
+  })
+
+  it('is treated as stale when the grader moved underneath it', () => {
+    const g = { summary: { v: ANALYSIS_VERSION }, graderVersion: 999 }
+    expect(summaryIsCurrent(g)).toBe(false)
+    // And when the classifier itself changed.
+    expect(summaryIsCurrent({ summary: { v: 0 }, graderVersion: 2 })).toBe(false)
+  })
+
+  it('records which patterns were found unaided', () => {
+    // A grid solved in reading order will need more than a scan somewhere.
+    const made = makePuzzle('Expert', { seed: 8 })
+    const log = []
+    let t = 0
+    for (let i = 0; i < 81; i++) {
+      if (made.puzzle[i] !== 0) continue
+      t += 3000
+      log.push({ t, kind: 'place', cell: i, value: made.solution[i], correct: true })
+    }
+    const s = summariseAnalysis({ puzzle: made.puzzle, solution: made.solution, moveLog: log, graderVersion: 2 })
+    // Every key must be a real technique, never a stray label.
+    for (const k of Object.keys(s.sharpBy)) expect(CLASSES[k]).toBeUndefined()
+    expect(s.counts.routine).toBeGreaterThan(0)
   })
 })

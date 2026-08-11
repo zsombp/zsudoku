@@ -5,6 +5,7 @@
 
 import * as idb from './idb.js'
 import * as backup from './backup.js'
+import { summariseAnalysis, summaryIsCurrent } from '../stats/analysis.js'
 import { GRADER_VERSION } from '../logic/techniques.js'
 
 export const SCHEMA_VERSION = 1
@@ -15,7 +16,20 @@ export const SCHEMA_VERSION = 1
  * 350 bytes. That buys any future analysis that needs to know what the board
  * actually looked like at a given move.
  */
-export function buildRecord(state, { completed, durationMs, endedAt }) {
+export function buildRecord(state, opts) {
+  const record = baseRecord(state, opts)
+  // Classified once, here, because doing it on demand costs three and a half
+  // seconds across a thousand games. Cheap at four milliseconds once.
+  try {
+    record.summary = summariseAnalysis(record)
+  } catch {
+    // A summary is an optimisation. A game that cannot be classified is still
+    // a game, and losing the record over it would be absurd.
+  }
+  return record
+}
+
+function baseRecord(state, { completed, durationMs, endedAt }) {
   return {
     id: `${endedAt}-${state.seed}`,
     schema: SCHEMA_VERSION,
@@ -66,6 +80,40 @@ export async function saveRecord(record) {
 export async function record(state, opts) {
   if (!worthRecording(state)) return false
   return saveRecord(buildRecord(state, opts))
+}
+
+/**
+ * Classify any game recorded before summaries existed, or by an older grader.
+ *
+ * Runs in chunks with a yield between them: at four milliseconds a game, a few
+ * hundred games would otherwise lock the interface for a second or more, and
+ * this happens while someone is looking at the statistics screen.
+ */
+export async function backfillSummaries({ onProgress } = {}) {
+  const games = await idb.getAll()
+  const stale = games.filter(g => g.moveLog?.length && !summaryIsCurrent(g))
+  if (!stale.length) return { done: 0, total: games.length }
+
+  let done = 0
+  for (let i = 0; i < stale.length; i += 10) {
+    const batch = stale.slice(i, i + 10)
+    for (const g of batch) {
+      try {
+        g.summary = summariseAnalysis(g)
+        // The summary describes what this grader thinks, so it is only valid
+        // while that stays true.
+        g.graderVersion = GRADER_VERSION
+      } catch {
+        g.summary = null
+      }
+      done++
+    }
+    await idb.putMany(batch)
+    onProgress?.(done, stale.length)
+    // Let the interface breathe between batches.
+    await new Promise(r => setTimeout(r, 0))
+  }
+  return { done, total: games.length }
 }
 
 export const all = () => idb.getAll()
