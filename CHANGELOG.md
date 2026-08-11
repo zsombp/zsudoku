@@ -2,6 +2,23 @@
 
 Newest first.
 
+## v2.8.0 - 2026-08-11 - keyboard speedrunning
+
+- **hjkl** moves the selection, so a hand never leaves the home row.
+- **Shift with any of them** jumps to that edge of the grid.
+- **Tab** goes to the next empty cell, which is what you actually want between
+  placements: arrow keys walk into filled cells you have no use for, and on a
+  nearly-solved grid that is most of them. Shift-Tab goes back.
+
+Two things this took. **Hint moved from `h` to `?`**, because movement is the
+entire point of those four keys and `h` was already taken; pressing it used to
+spend a hint, and the new binding was unreachable dead code sitting after it in
+the chain.
+
+And **the selection could only ever move one cell**. Jump-to-edge silently did
+nothing rather than failing, which is the kind of bug that ships. It handles any
+distance now, clamped to the grid, since the clamp is the same work either way.
+
 ## v2.7.0 - 2026-08-11 - a puzzle is a word
 
 Every puzzle here has been reproducible from a seed, a tier and a board since

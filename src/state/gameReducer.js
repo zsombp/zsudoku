@@ -386,16 +386,40 @@ function reduce(state, action) {
     case 'select':
       return { ...state, selected: action.index }
 
+    /**
+     * The next empty cell in reading order, wrapping.
+     *
+     * What you actually want between placements: arrow keys walk into filled
+     * cells you have no use for, and on a nearly-solved grid that is most of
+     * them.
+     */
+    case 'nextEmpty': {
+      if (!state.board) return state
+      const from = state.selected < 0 ? -1 : state.selected
+      for (let step = 1; step <= 81; step++) {
+        const i = action.back
+          ? (from - step + 81 * 2) % 81
+          : (from + step) % 81
+        if (state.board[i] === 0) return { ...state, selected: i }
+      }
+      return state
+    }
+
+    /**
+     * Move the selection by any distance, clamped to the grid.
+     *
+     * It handled exactly one step in each direction before, so a jump-to-edge
+     * silently did nothing rather than failing: worth generalising rather than
+     * special-casing, since the clamp is the same either way.
+     */
     case 'moveSelection': {
       if (!state.board) return state
       if (state.selected < 0) return { ...state, selected: 40 }
-      let i = state.selected
-      const { dx, dy } = action
-      if (dy === -1 && i - 9 >= 0) i -= 9
-      if (dy === 1 && i + 9 < 81) i += 9
-      if (dx === -1 && colOf(i) > 0) i -= 1
-      if (dx === 1 && colOf(i) < 8) i += 1
-      return { ...state, selected: i }
+      const i = state.selected
+      const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n))
+      const row = clamp(Math.floor(i / 9) + (action.dy || 0), 0, 8)
+      const col = clamp(colOf(i) + (action.dx || 0), 0, 8)
+      return { ...state, selected: row * 9 + col }
     }
 
     case 'toggleNotes':

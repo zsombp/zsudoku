@@ -698,11 +698,26 @@ export default function App() {
     else if (k.toLowerCase() === 'p') dispatch({ type: 'togglePause' })
     else if (k.toLowerCase() === 'c' && autoFills) dispatch({ type: 'autoComplete', fills: autoFills })
     else if (k.toLowerCase() === 'q') toggleQuick()
-    else if (k.toLowerCase() === 'h') onHint()
+    // Hint moved off 'h' when hjkl arrived: movement is the whole point of
+    // those four keys, and a hint is occasional. '?' is what asks for help
+    // nearly everywhere else.
+    else if (k === '?' || k === '/') onHint()
     else if (k.toLowerCase() === 'b') {
       dispatch({ type: e.shiftKey ? 'clearBookmark' : state.bookmark ? 'returnToBookmark' : 'bookmark' })
     }
     else if (k === 'Escape') dispatch({ type: 'clearActiveDigit' })
+    // Vim keys alongside the arrows, so a hand never leaves the home row.
+    else if (k === 'h') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: -1, dy: 0 }) }
+    else if (k === 'j') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: 0, dy: 1 }) }
+    else if (k === 'k') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: 0, dy: -1 }) }
+    else if (k === 'l') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: 1, dy: 0 }) }
+    // Jump to the edge of the grid, the way a cursor does everywhere else.
+    else if (k === 'H') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: -8, dy: 0 }) }
+    else if (k === 'L') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: 8, dy: 0 }) }
+    else if (k === 'K') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: 0, dy: -8 }) }
+    else if (k === 'J') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: 0, dy: 8 }) }
+    // The next empty cell, which is what you actually want between placements.
+    else if (k === 'Tab') { e.preventDefault(); dispatch({ type: 'nextEmpty', back: e.shiftKey }) }
   })
 
   // ---- render ----
@@ -1003,7 +1018,7 @@ export default function App() {
       )}
 
       <div className="hint">
-        keys: {settings.quickInput ? '1–9 pick · Enter place' : '1–9 place'} · N notes · A auto · U undo · R redo · P pause · Q quick · H hint · B mark · arrows move
+        keys: {settings.quickInput ? '1–9 pick · Enter place' : '1–9 place'} · N notes · A auto · U undo · R redo · P pause · Q quick · ? hint · B mark · arrows or hjkl move · Tab next empty
         {autoFills && ' · C complete'}
       </div>
       {settings.quickInput && (
