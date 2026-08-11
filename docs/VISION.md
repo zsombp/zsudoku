@@ -114,6 +114,44 @@ Recorded so they are not proposed again.
   exists because of these. The ambitious version is the same restraint applied
   to a larger idea, not a relaxation of it.
 
+## Everything explains itself
+
+Agreed 2026-08-11, to be done before this is called finished.
+
+The app has invented a lot of vocabulary: six tiers, twelve techniques, six move
+classes, justified placements, stale notes, missed-easier, slow-easy, p-values,
+five variants. Zsomb will not recall all of it, and nobody should have to. Every
+term the app coins should explain itself where it appears.
+
+**What already exists.** Forty-one pieces of explanatory copy: twelve technique
+blurbs, six move-class definitions, six tier blurbs, five variant blurbs, six
+settings hints, thirteen tooltips. The habit is there; it is the statistics
+screens that were built without it.
+
+**What is missing.** Every bare label on a statistics surface. Win rate, median
+solve, placements, wrong, undos, first move, longest pause, pencil marks,
+checks, justified placements, and "hardest" on the status bar. These carry real
+definitions that nothing states: whether a count is this game or every game,
+what counts as a check, what "hardest" is hardest of.
+
+**The mechanism matters more than the copy.** A `title` tooltip does nothing on
+a touch screen, so thirteen of the explanations already written are invisible on
+the device this app is mostly played on. Hover cannot be the primitive here.
+
+The shape that works on both:
+
+- **Subtext under a label** where there is room. Always visible, costs nothing
+  to discover, works everywhere. This is the default.
+- **Tap to reveal** where there is not: a small marker that opens a line of
+  explanation in place, and a `title` as well so a pointer gets a hover for
+  free. Never hover alone.
+- **Defined once, used everywhere.** A glossary the interface reads from, so a
+  term cannot be explained two ways in two places, the same rule that keeps the
+  grader and the hint engine as one piece of code.
+
+Rules out: a separate help page, which is where explanations go to be unread,
+and any explanation that only appears on hover.
+
 ## Order of work
 
 1. **Belief archaeology.** Unprecedented, and close to free: both halves are
