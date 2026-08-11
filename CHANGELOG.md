@@ -2,6 +2,28 @@
 
 Newest first.
 
+## v2.6.0 - 2026-08-11 - how it feels
+
+Sound and motion that mark the moments you earned, rather than reporting that
+something occurred.
+
+- **Completing a row, column or region has its own sound**, a rising pair under
+  the placement rather than instead of it. The flash has acknowledged this since
+  Phase 4 and nothing else did.
+- **The last digit sounds different.** A held note under the final placement, so
+  the moment the grid closes is audibly not the ninety placements before it.
+- **A placed digit lands**, dropping in with a slight overshoot rather than
+  appearing.
+- **A wrong digit is refused**, with a short shake, instead of only turning red.
+- **Arming a digit answers**, on the pad and in the ear, both barely there
+  because it happens constantly.
+- **Undo has a sound**, the placement backwards in feel.
+- **A spent digit marks itself done** on the pad with a tick rather than going
+  blank. Nine of those accumulating is the quiet progress bar of a solve.
+
+All of it sits behind `prefers-reduced-motion` and the sound switch, as
+everything already did.
+
 ## v2.4.0 - 2026-08-11 - four things the coach can now tell you
 
 - **Tilt.** Whether a mistake makes the next five minutes worse, measured for

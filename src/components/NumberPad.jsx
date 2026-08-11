@@ -21,7 +21,9 @@ export default function NumberPad({ counts, notes, quick, activeDigit, onDigit, 
             }
           >
             <span className="kv">{v}</span>
-            <span className="kc">{left > 0 ? left : ''}</span>
+            {/* A digit that is spent says so rather than going blank. Nine of
+                these accumulating is the quiet progress bar of a solve. */}
+            <span className="kc">{left > 0 ? left : '✓'}</span>
           </button>
         )
       })}

@@ -58,6 +58,34 @@ export const hint = () => {
   tone(780, { duration: 0.09, gain: 0.035, delay: 0.06 })
 }
 /** A major triad, unhurried. The only sound allowed to last longer than a blink. */
+/**
+ * Completing a unit. A small rising pair, quieter than a placement, because it
+ * happens on top of one: the placement sound has already fired and this sits
+ * behind it rather than competing.
+ */
+export const unitDone = () => {
+  tone(784, { duration: 0.06, gain: 0.028 })
+  tone(1046, { duration: 0.08, gain: 0.024, delay: 0.05 })
+}
+
+/**
+ * The last digit going in before the win fanfare. A held note under the final
+ * placement, so the moment the grid closes is audibly different from the ninety
+ * placements that led to it.
+ */
+export const lastCell = () => {
+  tone(523, { duration: 0.18, gain: 0.03, type: 'triangle' })
+}
+
+/** Arming a digit on the pad. Barely there: it happens constantly. */
+export const arm = () => tone(880, { duration: 0.035, gain: 0.018, type: 'sine' })
+
+/** Undo. The place sound backwards, in feel if not in fact. */
+export const undo = () => {
+  tone(520, { duration: 0.05, gain: 0.03, type: 'triangle' })
+  tone(390, { duration: 0.06, gain: 0.025, type: 'triangle', delay: 0.04 })
+}
+
 export const win = () => {
   const notes = [523.25, 659.25, 783.99, 1046.5]
   notes.forEach((f, i) => tone(f, { duration: 0.4, gain: 0.045, delay: i * 0.09 }))

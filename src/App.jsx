@@ -370,7 +370,7 @@ export default function App() {
 
   const onPadDigit = useCallback(
     v => {
-      if (settings.quickInput) dispatch({ type: 'setActiveDigit', value: v })
+      if (settings.quickInput) { sound.arm(); dispatch({ type: 'setActiveDigit', value: v }) }
       else dispatch({ type: 'digit', value: v })
     },
     [settings.quickInput]
@@ -582,9 +582,17 @@ export default function App() {
     // you are speculating. If the board is not telling you, neither is the
     // speaker.
     const tellingYou = settings.checkErrors && !state.bookmark
-    if (m.kind === 'place') (m.correct === false && tellingYou ? sound.wrong : sound.place)()
-    else if (m.kind === 'erase' || m.kind === 'clear') sound.erase()
+    if (m.kind === 'place') {
+      const empties = state.board ? state.board.reduce((a, v) => a + (v ? 0 : 1), 0) : 1
+      if (m.correct === false && tellingYou) sound.wrong()
+      else if (empties === 0) sound.lastCell()
+      else sound.place()
+      // Finishing a row, column or region is the small satisfaction the game
+      // runs on, and until now only the animation acknowledged it.
+      if (m.correct !== false && state.flash?.length) sound.unitDone()
+    } else if (m.kind === 'erase' || m.kind === 'clear') sound.erase()
     else if (m.kind === 'hint') sound.hint()
+    else if (m.kind === 'undo' || m.kind === 'redo') sound.undo()
   }, [state.moveLog, state.status, settings.checkErrors, state.bookmark])
 
   // ---- win ----
