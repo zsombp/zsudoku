@@ -27,6 +27,13 @@ export const initialState = {
   stripped: {},
   // How many times the board was checked. An assist, so it is counted.
   checks: 0,
+  // The technique this puzzle was generated to require, when it came from
+  // practice mode rather than a tier.
+  practice: null,
+  // The pattern currently being pointed at, when you asked the hint button why
+  // rather than what. Cleared by the next move: an explanation of a position
+  // you have left is worse than none.
+  explain: null,
   // A saved position to come back to. On a Diabolical puzzle you sometimes
   // commit to a branch, and twenty undos is a clumsy way to get back.
   bookmark: null,
@@ -229,11 +236,19 @@ function placeDigit(state, i, v, t) {
   return next
 }
 
+/** Actions that leave a shown explanation still true. Pausing is not a move. */
+const KEEPS_EXPLAIN = new Set(['explain', 'pause', 'resume', 'togglePause', 'select', 'cycleTint'])
+
 export function gameReducer(state, action) {
-  const next = reduce(state, action)
+  let next = reduce(state, action)
   // The hint marker survives only until the next thing you do.
   if (action.type !== 'hint' && next !== state && next.hintCell !== -1) {
-    return { ...next, hintCell: -1 }
+    next = { ...next, hintCell: -1 }
+  }
+  // So does a shown pattern: it describes one position, and explaining a
+  // position you have already left is worse than explaining nothing.
+  if (!KEEPS_EXPLAIN.has(action.type) && next !== state && next.explain) {
+    next = { ...next, explain: null }
   }
   return next
 }
@@ -255,6 +270,10 @@ function reduce(state, action) {
         requested: made.requested,
         graded: made.graded,
         mode: action.mode || 'casual',
+        // Which technique this puzzle was drilled for, if any. Kept apart from
+        // `mode`, which decides the save slot: a drill is still a casual game
+        // as far as storage is concerned.
+        practice: action.practice || null,
         dayKey: action.dayKey || null,
         score: made.score,
         hardest: made.hardest,
@@ -280,6 +299,7 @@ function reduce(state, action) {
         // progress on the floor.
         graded: s.graded || LEGACY_LEVEL_NAME[s.level] || 'Medium',
         mode: s.mode || 'casual',
+        practice: s.practice || null,
         dayKey: s.dayKey || null,
         score: s.score ?? 0,
         hardest: s.hardest ?? null,
@@ -366,6 +386,22 @@ function reduce(state, action) {
       if (state.puzzle[i] !== 0) return { ...state, selected: i }
       return { ...placeDigit(state, i, state.activeDigit, action.t), selected: i }
     }
+
+    /**
+     * Show the reasoning without filling anything in.
+     *
+     * Two-stage on purpose. Phase 3 settled that the plain hint is the right
+     * default for flow, and this does not change that: it adds a rung below it
+     * for when you want to learn rather than move on. Asking again places the
+     * digit.
+     */
+    case 'explain': {
+      if (!state.board || state.status !== 'playing' || !action.explain) return state
+      return { ...state, explain: action.explain, selected: action.explain.cell }
+    }
+
+    case 'clearExplain':
+      return state.explain ? { ...state, explain: null } : state
 
     case 'hint': {
       if (!state.board || state.status !== 'playing') return state

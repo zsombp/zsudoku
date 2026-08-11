@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { analyseGame, verdict, CLASSES } from './analysis.js'
+import { analyseGame, verdict, timeShape, CLASSES } from './analysis.js'
 import { makePuzzle } from '../logic/generator.js'
 
 // A real solved grid, so a "correct" placement in these fixtures is genuinely
@@ -152,5 +152,51 @@ describe('verdict', () => {
   it('calls out guessing that happened to work', () => {
     const line = verdict({ moves: new Array(10).fill({}), counts: { lucky: 4, routine: 6 } })
     expect(line).toMatch(/proved/)
+  })
+})
+
+describe('what the clock says about the judgment', () => {
+  const game = moves => ({ moves })
+  const mv = (cls, gap, over = {}) => ({ cls, gap, value: 5, cellName: 'r1c1', ...over })
+
+  it('says nothing on a game too short to have a rhythm', () => {
+    expect(timeShape(game([mv('routine', 1000), mv('routine', 2000)]))).toEqual([])
+  })
+
+  it('calls out a long think that ended in a move already available', () => {
+    const moves = [...Array(10)].map(() => mv('routine', 2000))
+    moves.push(mv('routine', 40000, { cellName: 'r4c4' }))
+    const out = timeShape(game(moves))
+    const found = out.find(o => o.id === 'stall-on-easy')
+    expect(found).toBeTruthy()
+    expect(found.text).toContain('r4c4')
+    expect(found.tone).toBe('warn')
+  })
+
+  it('does not scold a long think that needed a real pattern', () => {
+    const moves = [...Array(10)].map(() => mv('routine', 2000))
+    moves.push(mv('sharp', 40000))
+    const out = timeShape(game(moves))
+    expect(out.find(o => o.id === 'stall-on-easy')).toBeFalsy()
+    expect(out.find(o => o.id === 'earned')?.tone).toBe('good')
+  })
+
+  it('flags placements that were both fast and unproven', () => {
+    const moves = [...Array(10)].map(() => mv('routine', 8000))
+    moves.push(mv('lucky', 200), mv('lucky', 200), mv('lucky', 200))
+    expect(timeShape(game(moves)).find(o => o.id === 'fast-guess')).toBeTruthy()
+  })
+
+  it('needs three fast guesses before saying so, not one', () => {
+    const moves = [...Array(10)].map(() => mv('routine', 8000))
+    moves.push(mv('lucky', 200))
+    expect(timeShape(game(moves)).find(o => o.id === 'fast-guess')).toBeFalsy()
+  })
+
+  it('scales to the game rather than to a fixed number of seconds', () => {
+    // A 20s pause is unremarkable in a game whose median gap is 15s.
+    const slow = [...Array(10)].map(() => mv('routine', 15000))
+    slow.push(mv('routine', 20000))
+    expect(timeShape(game(slow)).find(o => o.id === 'stall-on-easy')).toBeFalsy()
   })
 })

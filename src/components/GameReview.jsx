@@ -3,8 +3,9 @@ import { rowOf, colOf } from '../logic/topology.js'
 import { fmtMs } from '../lib/format.js'
 import { TECHNIQUES } from '../logic/techniques.js'
 import { createState } from '../logic/grader.js'
-import { boardAt, stateAt, replaySteps, stallHeatmap, summarise } from '../stats/replay.js'
-import { analyseGame, verdict, settledCands, CLASSES } from '../stats/analysis.js'
+import { workedExamples } from '../logic/explain.js'
+import { boardAt, stateAt, replaySteps, stallHeatmap, summarise, cellHistory } from '../stats/replay.js'
+import { analyseGame, verdict, timeShape, settledCands, CLASSES } from '../stats/analysis.js'
 import ReviewBoard from './ReviewBoard.jsx'
 import { Play, Pause } from './Icons.jsx'
 
@@ -21,7 +22,7 @@ import { Play, Pause } from './Icons.jsx'
 const plural = (key, n) =>
   n === 1 || (key !== 'mistake' && key !== 'hint') ? CLASSES[key].label : CLASSES[key].label + 's'
 
-export default function GameReview({ game, onBack }) {
+export default function GameReview({ game, onBack, onPractice }) {
   const [mode, setMode] = useState('replay')
   const steps = useMemo(() => replaySteps(game), [game])
   const [pos, setPos] = useState(steps.length ? steps.length - 1 : 0)
@@ -33,6 +34,16 @@ export default function GameReview({ game, onBack }) {
   // tenth of a second. Cheap enough to do on open rather than in the worker.
   const analysis = useMemo(() => analyseGame(game), [game])
   const line = useMemo(() => verdict(analysis), [analysis])
+  const shape = useMemo(() => timeShape(analysis), [analysis])
+
+  // The patterns this grid actually required, drawn from this grid. Costs a
+  // full ladder walk, so it waits until the tab is opened.
+  const [patternTab, setPatternTab] = useState(0)
+  const examples = useMemo(
+    () => (mode === 'patterns' && game.puzzle ? workedExamples(game.puzzle) : []),
+    [mode, game.puzzle]
+  )
+  const example = examples[Math.min(patternTab, examples.length - 1)] || null
 
   const stepIndex = steps.length ? steps[Math.min(pos, steps.length - 1)] : -1
   const board = useMemo(() => boardAt(game, stepIndex), [game, stepIndex])
@@ -68,6 +79,12 @@ export default function GameReview({ game, onBack }) {
   // the one position on screen, so the ladder run costs a few milliseconds.
   const settled = useMemo(() => settledCands(before.board), [before])
   const [layer, setLayer] = useState('cands')
+  // A cell you clicked, to read its whole story instead of one move's worth.
+  const [cellFocus, setCellFocus] = useState(null)
+  const history = useMemo(
+    () => (cellFocus === null ? [] : cellHistory(game, cellFocus)),
+    [game, cellFocus]
+  )
 
   // The replay board shows the position after the step it is parked on, which
   // is a different moment from the one the move panel explains.
@@ -145,11 +162,68 @@ export default function GameReview({ game, onBack }) {
             </button>
             <button role="tab" aria-selected={mode === 'moves'}
               className={'segTab' + (mode === 'moves' ? ' on' : '')} onClick={() => setMode('moves')}>
-              Every move
+              {/* "Every move" wrapped onto two lines once a fourth tab existed. */}
+              Moves
+            </button>
+            <button role="tab" aria-selected={mode === 'patterns'}
+              className={'segTab' + (mode === 'patterns' ? ' on' : '')} onClick={() => setMode('patterns')}>
+              Patterns
             </button>
           </div>
 
-          {mode !== 'moves' && (
+          {mode === 'patterns' && (
+            examples.length === 0 ? (
+              <p className="dataNote">
+                This grid came apart on singles alone, so there is no pattern here worth drawing.
+                Patterns show up from Hard onwards.
+              </p>
+            ) : (
+              <>
+                <div className="patChips">
+                  {examples.map((ex, i) => (
+                    <button
+                      key={ex.technique}
+                      className={'clsPip patChip' + (i === patternTab ? ' on' : '')}
+                      onClick={() => setPatternTab(i)}
+                    >
+                      {TECHNIQUES[ex.technique]?.label || ex.technique}
+                    </button>
+                  ))}
+                </div>
+                {example && (
+                  <div className="moveStage">
+                    <ReviewBoard
+                      puzzle={game.puzzle}
+                      board={example.board}
+                      solution={game.solution}
+                      cands={example.cands}
+                      showing="cands"
+                      pattern={example.step}
+                    />
+                    <div className="stageSide">
+                      <div className="stageHead">
+                        <span className="moveWhat">{TECHNIQUES[example.technique]?.label}</span>
+                        <span className="moveGap">{example.at}/81 filled</span>
+                      </div>
+                      <p className="stageWhy">{example.step.detail}</p>
+                      <p className="stageNote">{TECHNIQUES[example.technique]?.about}</p>
+                      <p className="stageNote">
+                        This is the one from this grid, at the point it came up. The outlined cells
+                        are the pattern; anything struck through is a candidate it rules out.
+                      </p>
+                      {onPractice && (
+                        <button className="newBtn" onClick={() => onPractice(example.technique)}>
+                          Practise {TECHNIQUES[example.technique]?.label}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )
+          )}
+
+          {(mode === 'replay' || mode === 'heatmap') && (
             <ReviewBoard
               puzzle={game.puzzle}
               board={mode === 'replay' ? board : game.solution}
@@ -166,6 +240,9 @@ export default function GameReview({ game, onBack }) {
           {mode === 'moves' && (
             <div className="moveReview">
               {line && <p className="verdict">{line}</p>}
+              {shape.map(o => (
+                <p className={'timeNote ' + o.tone} key={o.id}>{o.text}</p>
+              ))}
 
               <div className="clsRow">
                 {['sharp', 'solid', 'routine', 'lucky', 'mistake', 'hint']
@@ -190,10 +267,33 @@ export default function GameReview({ game, onBack }) {
                     settled={settled}
                     showing={layer}
                     pattern={move.pattern || move.alternative?.step || null}
-                    focus={move.cell}
+                    focus={cellFocus ?? move.cell}
                     alternative={move.alternative?.cell ?? -1}
+                    onCell={setCellFocus}
                   />
                   <div className="stageSide">
+                    {cellFocus !== null && (
+                      <div className="cellStory">
+                        <div className="stageHead">
+                          <span className="moveWhat">
+                            r{Math.floor(cellFocus / 9) + 1}c{(cellFocus % 9) + 1}
+                          </span>
+                          <button className="linkBtn" onClick={() => setCellFocus(null)}>close</button>
+                        </div>
+                        {history.length ? (
+                          <ol className="storyList">
+                            {history.map((h, k) => (
+                              <li className={'storyItem ' + h.kind} key={k}>
+                                <span className="storyTime">{fmtMs(h.t)}</span>
+                                <span className="storyText">{h.text}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        ) : (
+                          <p className="stageNote">Nothing ever happened here. It was filled by auto-complete or never touched.</p>
+                        )}
+                      </div>
+                    )}
                     <div className="stageHead">
                       <span className="moveNo">{move.n}</span>
                       <span className="moveWhat">{move.value} to {move.cellName}</span>

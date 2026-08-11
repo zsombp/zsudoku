@@ -630,3 +630,48 @@ Those entries now carry a mark diff alongside the board diff. Games recorded
 before this replay approximately after the first undo, and `stateAt` reports
 that rather than hiding it, which is the same principle as `requested` versus
 `graded`: when the app cannot be certain, it says so.
+
+### The hint explains before it answers, and only if asked
+
+Resolved at v1.7.0. Phase 3 asked whether the hint should be a digit or a
+lesson, and the answer was the digit: it is better for flow, and the post-game
+review is where learning belongs. That still holds, so this does not replace it.
+It adds a rung below: the first press points at the pattern, the second gives up
+the digit.
+
+Practice mode forces it on. A drill whose hint hands you the answer is not a
+drill, and practice is the one place where interrupting flow is the point.
+
+The consequence worth keeping: **the explanation and the grader are one piece of
+code**, now in `src/logic/explain.js`. The review asking "why was this move
+justified" and the hint button asking "why is this the move" are the same
+function, for the same reason the grader and the hint engine always were. Two
+implementations of "why" could give a player two different answers about the
+same board.
+
+Rules out: a hint that describes a pattern in words only, which is useful only
+to someone who can already find one, and any second copy of the deduction logic.
+
+### Worked examples come from the player's own grid
+
+The practice screen can explain an X-Wing in the abstract. The Patterns tab
+shows the X-Wing that was in the puzzle just played, at the position it came up
+in, because that board has already had ten minutes of attention spent on it.
+
+Singles are skipped. A worked example of "this cell had one candidate left" is
+not an example of anything.
+
+Rules out: a static illustrated glossary, which would be a second source of
+truth about what a technique looks like and could drift from the ladder.
+
+### Time and judgment are only interesting crossed
+
+The review showed a gap and a class side by side for a version and never
+compared them. Everything useful is in the crossing: a long think before a move
+that was always available is a scanning problem, an instant placement nothing
+proved is not thinking at all, and a long think before a genuinely hard move is
+time well spent and worth saying so.
+
+Thresholds are relative to the game's own median rather than absolute. An
+absolute cutoff tells a fast player they stalled constantly and a slow player
+they never did.

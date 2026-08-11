@@ -1,14 +1,34 @@
 import { useEffect, useRef } from 'react'
-import { rowOf, colOf, boxOf, range } from '../logic/topology.js'
+import { rowOf, colOf, boxOf, range, UNITS, UNIT_META } from '../logic/topology.js'
 import { hasMark } from '../logic/marks.js'
 import { isWrong, highlightDigit } from '../state/gameReducer.js'
 
 export default function Board({ state, checkErrors, canGo, revealWrong, onCellTap, onCellTint, blurred, reveal }) {
-  const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status, tints, solution } = state
+  const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status, tints, solution, explain } = state
   const flashSet = flash?.length ? new Set(flash) : null
   const ready = Boolean(board)
   const litDigit = ready ? highlightDigit(state) : 0
   const gridRef = useRef(null)
+
+  // The pattern the hint button is pointing at. Drawn on the live board rather
+  // than described in a bar, because "there is an X-Wing on rows 2 and 6" is
+  // only useful to someone who can already find one.
+  const pattern = explain?.pattern || null
+  const patternCells = pattern ? new Set(pattern.cells || []) : null
+  const patternUnit = pattern?.unitCells
+    ? new Set(pattern.unitCells)
+    : pattern?.unit
+      ? new Set(
+          UNITS[
+            UNIT_META.findIndex(u => u.type === pattern.unit.type && u.index === pattern.unit.index)
+          ] || []
+        )
+      : null
+  const killed = new Map()
+  for (const e of pattern?.eliminations || []) {
+    if (!killed.has(e.cell)) killed.set(e.cell, new Set())
+    killed.get(e.cell).add(e.digit)
+  }
   // Long-press on touch, right-click on a pointer device. Deliberately not a
   // toolbar button: the toolbar is already at eight, and tinting is a thing you
   // do to a cell, so it belongs on the cell.
@@ -76,6 +96,9 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
     // the app's digits rather than yours.
     if (reveal && board[i] === 0) cls.push('revealed')
     if (tints?.[i]) cls.push('tint' + tints[i])
+    if (patternUnit?.has(i)) cls.push('inUnit')
+    if (patternCells?.has(i)) cls.push('inPattern')
+    if (explain && i === explain.cell) cls.push('explained')
     return cls.join(' ')
   }
 
@@ -128,8 +151,18 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
                   {range(9).map(k => {
                     const d = k + 1
                     const on = hasMark(marks[i], d)
+                    const dead = killed.get(i)?.has(d)
+                    const lit = patternCells?.has(i) && pattern.digits?.includes(d)
                     return (
-                      <span key={k} className={'m' + (on && litDigit === d ? ' mHi' : '')}>
+                      <span
+                        key={k}
+                        className={
+                          'm' +
+                          (on && litDigit === d ? ' mHi' : '') +
+                          (on && dead ? ' mDead' : '') +
+                          (on && lit ? ' mPat' : '')
+                        }
+                      >
                         {on ? d : ''}
                       </span>
                     )

@@ -75,7 +75,7 @@ export default function StatsView({ onClose, onPractice }) {
   if (reviewing) {
     return (
       <div className="statsView">
-        <GameReview game={reviewing} onBack={() => setReviewing(null)} />
+        <GameReview game={reviewing} onBack={() => setReviewing(null)} onPractice={onPractice} />
       </div>
     )
   }

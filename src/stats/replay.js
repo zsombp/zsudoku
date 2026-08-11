@@ -209,3 +209,66 @@ export function summarise(record) {
     mistakeBoxes: boxes,
   }
 }
+
+/**
+ * Everything that ever happened to one cell, in order.
+ *
+ * The review can say a great deal about a move and nothing about a cell. Some
+ * cells are the whole story of a game: pencilled early, argued with for ten
+ * minutes, filled wrong, erased, filled right. That history is all in the log
+ * and was never being read.
+ */
+export function cellHistory(record, cell) {
+  const log = record.moveLog || []
+  const out = []
+  const solution = record.solution || []
+
+  if (record.puzzle?.[cell]) {
+    return [{ t: 0, kind: 'given', text: `Given as ${record.puzzle[cell]}.` }]
+  }
+
+  for (let i = 0; i < log.length; i++) {
+    const m = log[i]
+    const touches =
+      m.cell === cell || (m.changes || []).some(([c]) => c === cell) ||
+      (m.markChanges || []).some(([c]) => c === cell)
+    if (!touches) continue
+
+    if (m.kind === 'pencil') {
+      // Whether this toggle put the mark in or took it out needs the state
+      // before it, which is the one thing a single entry cannot tell you.
+      const had = hasMark(stateAt(record, i - 1).marks[cell], m.value)
+      out.push({
+        t: m.t, index: i, kind: 'pencil',
+        text: had ? `Rubbed out the ${m.value}.` : `Pencilled in ${m.value}.`,
+      })
+    } else if (m.kind === 'place' || m.kind === 'hint') {
+      const right = solution[cell] === m.value
+      out.push({
+        t: m.t, index: i, kind: right ? 'place' : 'wrong',
+        text:
+          m.kind === 'hint'
+            ? `Hint filled in ${m.value}.`
+            : right
+              ? `Filled in ${m.value}.`
+              : `Filled in ${m.value}, which was wrong.`,
+      })
+    } else if (m.kind === 'erase' || m.kind === 'clear') {
+      out.push({ t: m.t, index: i, kind: 'erase', text: 'Cleared it.' })
+    } else if (m.changes?.some(([c]) => c === cell)) {
+      const to = m.changes.find(([c]) => c === cell)[1]
+      out.push({
+        t: m.t, index: i, kind: m.kind,
+        text: to === 0 ? `Emptied by ${LABEL[m.kind] || m.kind}.` : `Set to ${to} by ${LABEL[m.kind] || m.kind}.`,
+      })
+    }
+  }
+  return out
+}
+
+const LABEL = {
+  undo: 'an undo',
+  redo: 'a redo',
+  returnToBookmark: 'going back to your mark',
+  autoComplete: 'auto-complete',
+}

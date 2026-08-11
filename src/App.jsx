@@ -15,7 +15,8 @@ import { candMaskAt } from './logic/topology.js'
 import { hasMark } from './logic/marks.js'
 import { techFor, tierForScore } from './logic/difficulty.js'
 import { gradePuzzle, autoCompleteFills, hintPlacement } from './logic/grader.js'
-import { GRADER_VERSION } from './logic/techniques.js'
+import { explainPlacement } from './logic/explain.js'
+import { GRADER_VERSION, TECHNIQUES } from './logic/techniques.js'
 import { useTimer } from './hooks/useTimer.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
 import { useSettings } from './hooks/useSettings.js'
@@ -33,6 +34,8 @@ import * as sound from './lib/sound.js'
 export default function App() {
   const [state, rawDispatch] = useReducer(gameReducer, initialState)
   const [settings, updateSettings] = useSettings()
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
   const [records, setRecords] = useState(() => getSync(KEYS.records) || {})
   const [showPicker, setShowPicker] = useState(false)
   const [newRecord, setNewRecord] = useState(false)
@@ -114,6 +117,7 @@ export default function App() {
       requested: s.requested,
       graded: s.graded,
       mode: s.mode,
+      practice: s.practice,
       dayKey: s.dayKey,
       score: s.score,
       hardest: s.hardest,
@@ -241,7 +245,7 @@ export default function App() {
       try {
         const made = await generator.practice(technique)
         timerRef.current.reset(0)
-        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual' })
+        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual', practice: technique })
         setView('game')
       } catch (err) {
         setGenError(String(err.message || err))
@@ -314,11 +318,32 @@ export default function App() {
 
   // One tap, one number. Computed on demand rather than on every render,
   // because unlike auto-complete this runs the whole ladder.
+  /**
+   * One tap, one number, unless you asked to be taught.
+   *
+   * With explanations on, the first press points at the pattern and fills
+   * nothing in; the second press gives up the digit. Phase 3 settled that the
+   * plain hint is the better default for flow and that still holds, so this is a
+   * rung below it rather than a replacement. Practice mode forces it on: a
+   * drill that hands you the answer is not a drill.
+   */
   const onHint = useCallback(() => {
     const s = stateRef.current
     if (!s.board || s.status !== 'playing') return
     const hint = hintPlacement(s.board, s.solution)
-    if (hint) dispatch({ type: 'hint', hint })
+    if (!hint) return
+
+    const teaching = settingsRef.current.explainHints || Boolean(s.practice)
+    if (teaching && !s.explain) {
+      const ex = explainPlacement(s.board, hint.cell, hint.digit)
+      // Nothing proves it, which in practice means a wrong digit is poisoning
+      // the position. There is nothing honest to point at, so just place it.
+      if (ex) {
+        dispatch({ type: 'explain', explain: { ...ex, cell: hint.cell, digit: hint.digit } })
+        return
+      }
+    }
+    dispatch({ type: 'hint', hint })
   }, [])
 
   // "Check" flashes the wrong digits for a moment rather than marking them
@@ -562,7 +587,7 @@ export default function App() {
   if (view === 'review' && lastGame) {
     return (
       <div className="app wide">
-        <GameReview game={lastGame} onBack={() => setView('game')} />
+        <GameReview game={lastGame} onBack={() => setView('game')} onPractice={startPractice} />
       </div>
     )
   }
@@ -741,6 +766,31 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {state.explain && (
+        <div className="explainBar">
+          <div className="explainText">
+            <span className="explainWhy">{state.explain.why}</span>
+            {state.explain.technique && TECHNIQUES[state.explain.technique] && (
+              <span className="explainTech">{TECHNIQUES[state.explain.technique].label}</span>
+            )}
+          </div>
+          <div className="explainBtns">
+            <button
+              className="newBtn"
+              onClick={() => {
+                const s = stateRef.current
+                dispatch({ type: 'hint', hint: hintPlacement(s.board, s.solution) })
+              }}
+            >
+              Fill it in
+            </button>
+            <button className="linkBtn" onClick={() => dispatch({ type: 'clearExplain' })}>
+              I see it
+            </button>
+          </div>
+        </div>
+      )}
 
       {autoFills && (
         <button className="autoDone" onClick={() => dispatch({ type: 'autoComplete', fills: autoFills })}>

@@ -139,6 +139,16 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
             onChange={v => updateSettings({ checkErrors: v })}
           />
         </Row>
+        <Row
+          label="Hints explain first"
+          hint="The first press points at the pattern and fills nothing in. Press again for the digit. Always on in practice."
+        >
+          <Switch
+            label="Hints explain first"
+            checked={settings.explainHints}
+            onChange={v => updateSettings({ explainHints: v })}
+          />
+        </Row>
         <Row label="Sound" hint="Synthesised, not sampled. Nothing to download.">
           <Switch label="Sound" checked={settings.sound} onChange={v => updateSettings({ sound: v })} />
         </Row>

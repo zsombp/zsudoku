@@ -21,6 +21,10 @@ const DEFAULTS = {
   // Synthesised, and off by default: a sudoku that makes noise you did not ask
   // for is worse than a silent one.
   sound: false,
+  // Hints point at the pattern before they give up the digit. Off by default
+  // because Phase 3 settled that the plain hint is better for flow, and that
+  // has not changed. Practice mode turns it on regardless.
+  explainHints: false,
   // Which save slot to reopen on launch.
   lastMode: 'casual',
 }

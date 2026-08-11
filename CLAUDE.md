@@ -15,7 +15,7 @@ It costs nothing and must keep costing nothing. Seven dependencies; adding an ei
    - The token lives in its own localStorage key, never in the settings blob, never in an export, never in the repo.
 2. **Honest difficulty.** The difficulty shown is always the grader's verdict on the puzzle in front of you, never the difficulty that was requested. No puzzle ships that the technique ladder cannot finish by pure logic. `requested` and `graded` stay separate fields everywhere; when they disagree the interface says so.
    - Score measures deduction, never board size. Naked singles cost zero on purpose: see `docs/DECISIONS.md`. A regression test asserts naked-singles-only puzzles score exactly 0 at any clue count.
-   - Techniques return structured steps, so the grader and the hint engine are the same code and cannot disagree.
+   - Techniques return structured steps, so the grader, the hint engine, the post-game review and the drawn explanations are all the same code and cannot disagree. `src/logic/explain.js` is the single answer to "why does this digit go here"; never write a second one.
    - Change a technique, a cost or a band and you must bump `GRADER_VERSION` and re-run `npm run calibrate -- explore`. Both move the whole scale.
 3. **Honest timing.** Timestamp-based, not interval ticks, auto-paused on `visibilitychange`. Every statistic depends on this.
 4. **Nothing leaves the device except to the user's own repository.** Analytics are local and are never sent anywhere. Export is a file the user saves themselves. The GitHub backup writes the same data to a repo they own and control, and nothing else ever goes out.
@@ -29,7 +29,7 @@ Vite + React, plain JS. `vite-plugin-pwa` with `registerType: 'autoUpdate'`. `@f
 ## Layout
 
 ```
-src/logic/      topology, solver, generator, grader, techniques   (pure, tested, no React)
+src/logic/      topology, solver, generator, grader, techniques, explain   (pure, tested, no React)
 src/lib/        storage, idb, prng, format
 src/components/ Board, Cell, NumberPad, Toolbar, StatusBar, Sheet, Veil, Stats
 src/hooks/      useGame, useTimer, useKeyboard, useTheme

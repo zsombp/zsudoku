@@ -1842,6 +1842,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 }
 /* Somewhere a candidate died. */
 .rvCell.hasKill { background: color-mix(in srgb, var(--error) 12%, transparent); }
+/* A hidden pair kills candidates inside its own cells, so both classes land on
+ * the same cell. Being part of the pattern is the more important fact, and the
+ * struck-through digit already says a candidate died there. */
+.rvCell.inPattern.hasKill { background: color-mix(in srgb, var(--accent) 20%, transparent); }
 /* The move that was available instead, so it can be found without hunting. */
 .rvCell.alt { box-shadow: inset 0 0 0 2px var(--t1); }
 .rvCell.now.inPattern, .rvCell.now { box-shadow: inset 0 0 0 3px var(--accent); }
@@ -1870,3 +1874,95 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     padding-right: 2px;
   }
 }
+
+/* ---- the hint that explains itself ----
+ *
+ * Sits where the auto-complete button does, under the board, so the thing being
+ * pointed at and the sentence about it are both in view. */
+
+.explainBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 9px 11px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--ctl-radius);
+}
+.explainText { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.explainWhy { font-size: 12.5px; color: var(--ink); line-height: 1.4; }
+.explainTech { font-size: 10.5px; color: var(--sub); font-weight: 600; }
+.explainBtns { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+
+/* The cells the pattern is made of, on the live board. Same language as the
+ * review, so a pattern looks the same wherever it is drawn. */
+.cell.inUnit { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.cell.inPattern {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.cell.explained { box-shadow: inset 0 0 0 3px var(--accent); }
+.m.mDead {
+  color: var(--error);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.m.mPat { color: var(--accent); font-weight: 600; }
+
+/* Where the clock and the judgment disagree. */
+.timeNote {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--sub);
+  margin: 0 0 6px;
+  padding-left: 9px;
+  border-left: 2px solid var(--line-strong);
+}
+.timeNote.warn { border-left-color: var(--t4); }
+.timeNote.good { border-left-color: var(--t1); }
+
+.patChips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.patChip { cursor: pointer; font-family: inherit; }
+.patChip::before { content: none; }
+.patChip.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* One cell's whole story. Some cells are the entire game. */
+.cellStory {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--ctl-radius);
+  padding: 9px 11px;
+  margin-bottom: 4px;
+}
+.storyList { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.storyItem { display: flex; gap: 8px; font-size: 12px; line-height: 1.4; align-items: baseline; }
+.storyTime {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--sub);
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+.storyText { color: var(--sub); }
+.storyItem.place .storyText { color: var(--ink); }
+.storyItem.wrong .storyText { color: var(--error); }
+.storyItem.given .storyText { color: var(--ink); font-weight: 600; }
+
+/* Review cells are buttons only when they open something, so the button reset
+ * lives on .rvCell itself. Putting it on `button.rvCell` would outrank
+ * .rvCell.inPattern and silently wipe every pattern background. */
+.rvCell {
+  appearance: none;
+  background: transparent;
+  border-top: 0;
+  border-left: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+button.rvCell { cursor: pointer; }
+button.rvCell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }

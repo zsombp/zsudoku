@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { boardAt, stateAt, replaySteps, stallHeatmap, longestStall, summarise } from './replay.js'
+import { boardAt, stateAt, replaySteps, stallHeatmap, longestStall, summarise, cellHistory } from './replay.js'
 import { marksToList } from '../logic/marks.js'
 
 /** A record with a puzzle of 81 zeros unless stated, and whatever log we need. */
@@ -223,5 +223,56 @@ describe('rebuilding pencil marks', () => {
     ])
     expect(boardAt(r, 1)[3]).toBe(7)
     expect(boardAt(r, 1)[0]).toBe(0)
+  })
+})
+
+describe('one cell, from start to finish', () => {
+  const rec = (moveLog, over = {}) => ({
+    puzzle: new Array(81).fill(0),
+    solution: new Array(81).fill(0).map((_, i) => (i === 4 ? 7 : 1)),
+    moveLog,
+    ...over,
+  })
+
+  it('knows a pencil toggle put a mark in rather than took it out', () => {
+    const r = rec([
+      { t: 1000, kind: 'pencil', cell: 4, value: 3 },
+      { t: 2000, kind: 'pencil', cell: 4, value: 3 },
+    ])
+    const h = cellHistory(r, 4)
+    expect(h[0].text).toContain('Pencilled in 3')
+    expect(h[1].text).toContain('Rubbed out the 3')
+  })
+
+  it('says when a digit was wrong, using the solution rather than the flag', () => {
+    const r = rec([{ t: 1000, kind: 'place', cell: 4, value: 2 }])
+    expect(cellHistory(r, 4)[0].kind).toBe('wrong')
+  })
+
+  it('reports a given as a given and stops there', () => {
+    const puzzle = new Array(81).fill(0)
+    puzzle[4] = 7
+    const r = rec([{ t: 1000, kind: 'place', cell: 4, value: 7 }], { puzzle })
+    const h = cellHistory(r, 4)
+    expect(h).toHaveLength(1)
+    expect(h[0].kind).toBe('given')
+  })
+
+  it('picks up a cell changed by an undo it was not the subject of', () => {
+    const r = rec([
+      { t: 1000, kind: 'place', cell: 4, value: 7 },
+      { t: 2000, kind: 'undo', changes: [[4, 0]] },
+    ])
+    const h = cellHistory(r, 4)
+    expect(h).toHaveLength(2)
+    expect(h[1].text).toContain('an undo')
+  })
+
+  it('ignores moves that never touched this cell', () => {
+    const r = rec([
+      { t: 1000, kind: 'place', cell: 9, value: 1 },
+      { t: 2000, kind: 'pencil', cell: 9, value: 5 },
+    ])
+    expect(cellHistory(r, 4)).toEqual([])
   })
 })

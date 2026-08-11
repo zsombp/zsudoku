@@ -2,6 +2,66 @@
 
 Newest first.
 
+## v1.7.0 - 2026-08-11 - hints that teach, and patterns from your own grid
+
+### Hints can explain instead of answering
+
+A setting, off by default. With it on, the first press points at the pattern and
+fills nothing in: the cells outlined, the unit tinted, the candidates it kills
+struck through, and a sentence saying what it is. Press again and it gives up
+the digit as before.
+
+Phase 3 settled that the plain hint is better for flow and that has not changed,
+so this is a rung below it rather than a replacement. **Practice mode turns it on
+regardless**, because a drill that hands you the answer is not a drill.
+
+The deduction engine behind it moved to `src/logic/explain.js`, so the review's
+"why was this move justified" and the hint button's "why is this the move" are
+now literally the same function. They could not disagree before; now they cannot
+drift either.
+
+### The patterns from the grid you just played
+
+A fourth tab. Every technique the puzzle required, drawn from that puzzle at the
+moment it came up, with a button to go and drill it.
+
+The practice screen could already tell you what an X-Wing is in the abstract.
+This is the X-Wing that was in the board you spent ten minutes on, which is the
+version worth looking at. Singles are skipped: a worked example of "this cell
+had one candidate left" teaches nobody anything.
+
+### One cell, start to finish
+
+Click any cell in the review. Pencilled in 3, rubbed out the 3, filled in 2
+which was wrong, cleared it, filled in 7. Some cells are the whole story of a
+game and the review could previously say a great deal about a move and nothing
+about a cell.
+
+Working out whether a pencil entry put a mark in or took it out needs the state
+before it, which a single log entry cannot tell you. It reads the reconstructed
+position instead.
+
+### What the clock says about the judgment
+
+The review has always shown a gap next to a class and never crossed them. A long
+think that ended in a move which was a lone candidate the whole time is a
+scanning problem. An instant placement that nothing proved is not thinking at
+all. Neither shows up in either number alone.
+
+Thresholds are relative to the game rather than absolute, because a fast
+player's long pause and a slow player's are different numbers.
+
+### Fixes
+
+- **Pattern cells were painted as errors.** A hidden pair kills candidates inside
+  its own cells, so `.hasKill` and `.inPattern` landed on the same cell and the
+  later rule won. Being part of the pattern is the more important fact.
+- **The review board lost its width cap**, because the class that made the stage
+  board fill its column was on every instance of the board, including the replay
+  one.
+- **The heatmap lost its second labels.** The new board gated them on an empty
+  cell, and the heatmap shows the finished grid.
+
 ## v1.6.0 - 2026-08-11 - the review shows its working, and backup to GitHub
 
 ### The review draws the evidence

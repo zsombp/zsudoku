@@ -31,6 +31,7 @@ export default function ReviewBoard({
   alternative = -1,
   heat = null,
   heatLevel = null,
+  onCell = null,
 }) {
   // A unit is drawn whole when it is the evidence: a hidden single means
   // nothing without the row it was hidden in.
@@ -76,8 +77,17 @@ export default function ReviewBoard({
         if (i === focus) cls.push('now')
         if (i === alternative) cls.push('alt')
 
+        // Only becomes a control when there is something to open, so a board
+        // that is purely a picture keeps 81 cells out of the tab order.
+        const Tag = onCell ? 'button' : 'div'
         return (
-          <div key={i} className={cls.join(' ')}>
+          <Tag
+            key={i}
+            className={cls.join(' ')}
+            {...(onCell
+              ? { onClick: () => onCell(i), 'aria-label': `row ${rowOf(i) + 1} column ${colOf(i) + 1}, show history` }
+              : {})}
+          >
             {v !== 0 ? (
               <span className="rvVal">{v}</span>
             ) : (
@@ -119,7 +129,7 @@ export default function ReviewBoard({
             {heat && heatLevel && !given && heat[i] > 0 && (
               <span className="rvTime">{Math.round(heat[i] / 1000)}s</span>
             )}
-          </div>
+          </Tag>
         )
       })}
     </div>
