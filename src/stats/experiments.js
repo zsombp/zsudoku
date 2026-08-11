@@ -166,9 +166,10 @@ function outcomeValues(games, outcome, all) {
   for (const g of games) {
     if (outcome === 'time') {
       if (!g.completed) continue
-      // Against your own median for that tier, so mixed difficulty does not
-      // decide the result.
-      const base = tierMedian(all, g.graded)
+      // Against your own median for that tier on that kind of board. Tier
+      // alone is not enough once variants exist: a jigsaw Hard and a classic
+      // Hard are different amounts of time for the same amount of thinking.
+      const base = tierMedian(all, g.graded, g.variant || 'classic')
       if (!base) continue
       out.push(g.durationMs / base)
     } else if (outcome === 'mistakes') out.push(g.mistakes || 0)
@@ -183,9 +184,15 @@ function outcomeValues(games, outcome, all) {
   return out
 }
 
-const tierMedian = (games, tier) => {
-  const times = games.filter(g => g.completed && g.graded === tier).map(g => g.durationMs)
-  return times.length >= 3 ? median(times) : null
+const tierMedian = (games, tier, variant) => {
+  const same = games.filter(
+    g => g.completed && g.graded === tier && (g.variant || 'classic') === variant
+  )
+  if (same.length >= 3) return median(same.map(g => g.durationMs))
+  // Not enough of that board at that tier yet. Falling back to the tier across
+  // all boards is better than dropping the game, and is stated in the copy.
+  const anyBoard = games.filter(g => g.completed && g.graded === tier)
+  return anyBoard.length >= 3 ? median(anyBoard.map(g => g.durationMs)) : null
 }
 
 const mean = xs => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)

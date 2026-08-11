@@ -6,6 +6,9 @@ import { achievements } from '../stats/achievements.js'
 import { dailyStreak } from '../logic/daily.js'
 import GameReview from './GameReview.jsx'
 import Experiments from './Experiments.jsx'
+import { VARIANT_LIST, VARIANTS } from '../logic/variants.js'
+
+const variantName = id => VARIANTS[id]?.name || id
 import * as gameLog from '../lib/gameLog.js'
 import { fmtMs } from '../lib/format.js'
 
@@ -25,6 +28,10 @@ export default function StatsView({ onClose, onPractice }) {
   const fileRef = useRef(null)
 
   const [backfill, setBackfill] = useState(null)
+  // Every claim on this screen is about one kind of board. Pooling a jigsaw
+  // with a classic would put a median between two things that are not the same
+  // thing, and the coach would then reason from it.
+  const [variant, setVariant] = useState('all')
 
   useEffect(() => {
     let alive = true
@@ -48,7 +55,26 @@ export default function StatsView({ onClose, onPractice }) {
     return () => { alive = false }
   }, [])
 
+  // Which kinds of board have actually been played. The filter only appears
+  // once there is more than one, so a classic-only history never sees it.
+  const played = useMemo(() => {
+    if (!games) return []
+    const seen = new Map()
+    for (const g of games) {
+      const id = g.variant || 'classic'
+      seen.set(id, (seen.get(id) || 0) + 1)
+    }
+    return VARIANT_LIST.filter(v => seen.has(v.id)).map(v => ({ ...v, count: seen.get(v.id) }))
+  }, [games])
+
+  const shown = useMemo(() => {
+    if (!games) return null
+    if (variant === 'all') return games
+    return games.filter(g => (g.variant || 'classic') === variant)
+  }, [games, variant])
+
   const derived = useMemo(() => {
+    const games = shown
     if (!games) return null
     return {
       overview: compute.overview(games),
@@ -60,7 +86,7 @@ export default function StatsView({ onClose, onPractice }) {
       daily: dailyStreak(games),
       badges: achievements(games),
     }
-  }, [games])
+  }, [shown])
 
   async function doExport() {
     const json = await gameLog.exportJson()
@@ -205,6 +231,8 @@ export default function StatsView({ onClose, onPractice }) {
               <span className="grTier">{g.graded}</span>
               <span className="grMeta">
                 {new Date(g.endedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                {/* Which board, when there is more than one kind in the list. */}
+                {g.variant && g.variant !== 'classic' && ` · ${variantName(g.variant)}`}
                 {g.daily && ' · daily'}
                 {!g.completed && ' · unfinished'}
               </span>
@@ -248,6 +276,39 @@ export default function StatsView({ onClose, onPractice }) {
       <Section title="When you play">
         <HourBars hours={derived.hours} />
       </Section>
+
+      {played.length > 1 && (
+        <div className="variantFilter">
+          <div className="variantRow" role="tablist" aria-label="Which boards">
+            <button
+              role="tab"
+              aria-selected={variant === 'all'}
+              className={'variantChip' + (variant === 'all' ? ' on' : '')}
+              onClick={() => setVariant('all')}
+            >
+              All boards
+            </button>
+            {played.map(v => (
+              <button
+                key={v.id}
+                role="tab"
+                aria-selected={variant === v.id}
+                className={'variantChip' + (variant === v.id ? ' on' : '')}
+                onClick={() => setVariant(v.id)}
+              >
+                {v.name} <em>{v.count}</em>
+              </button>
+            ))}
+          </div>
+          {variant === 'all' && (
+            <p className="dataNote">
+              Every number below covers all of these together. A jigsaw and a classic are not the
+              same puzzle, so a median across both sits between two things rather than describing
+              either. Pick one to see figures that mean something on their own.
+            </p>
+          )}
+        </div>
+      )}
 
       {backfill && (
         <p className="dataNote notice">

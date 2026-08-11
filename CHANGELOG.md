@@ -2,6 +2,21 @@
 
 Newest first.
 
+## v2.1.0 - 2026-08-11 - statistics know which board you played
+
+Variants shipped with records kept per variant and everything else pooled, so a
+median sat between two things rather than describing either. On a history of six
+classic games at four minutes and six jigsaws at fifteen, the median read five
+minutes, which is true of no board anyone played.
+
+Statistics now filter by board, and the filter only appears once more than one
+kind has been played. Every figure under it, the coach included, then describes
+one thing. Pooling is still available and says plainly what it is.
+
+The experiment normalises a solve time against your usual time for that tier on
+that board, falling back to the tier across all boards when there is not enough
+of one yet. Recent games say which board each row was.
+
 ## v2.0.1 - 2026-08-11 - explanations that exist on a phone
 
 Thirteen explanations had been written as `title` attributes, which is the same
