@@ -1,4 +1,4 @@
-import { rowOf, colOf, range, UNITS, UNIT_META } from '../logic/topology.js'
+import { CLASSIC, rowOf, colOf, range, regionEdges, unitCellsOf } from '../logic/topology.js'
 import { cageEdges } from '../logic/variants.js'
 import { hasMark } from '../logic/marks.js'
 import { cageClass } from './Board.jsx'
@@ -24,10 +24,17 @@ export default function ReviewBoard({
   puzzle,
   board,
   solution,
-  // A killer game's cage list. Optional, and null on every other board: a
-  // review that could not draw the cages would be describing moves nobody can
-  // check, which is the one thing a review must not do.
-  cages = null,
+  /**
+   * The board this game was played on.
+   *
+   * Everything shaped by it was drawn from the classic grid instead: the heavy
+   * rules came from `col % 3 === 2`, which draws square boxes over a jigsaw,
+   * the unit behind a pattern was looked up in the classic list, and the cage
+   * outlines had a prop for them that no caller ever passed, so a killer review
+   * showed a bare grid while the panel beside it talked about cages. A review
+   * that cannot draw its evidence is the one thing a review must not be.
+   */
+  topo = CLASSIC,
   cands = null,
   marks = null,
   settled = null,
@@ -43,15 +50,7 @@ export default function ReviewBoard({
 }) {
   // A unit is drawn whole when it is the evidence: a hidden single means
   // nothing without the row it was hidden in.
-  const unitCells = pattern?.unitCells
-    ? new Set(pattern.unitCells)
-    : pattern?.unit
-      ? new Set(
-          UNITS[
-            UNIT_META.findIndex(u => u.type === pattern.unit.type && u.index === pattern.unit.index)
-          ] || []
-        )
-      : null
+  const unitCells = unitCellsOf(topo, pattern)
 
   const patternCells = new Set(pattern?.cells || [])
   const patternDigits = new Set(pattern?.digits || [])
@@ -63,7 +62,10 @@ export default function ReviewBoard({
     killed.get(e.cell).add(e.digit)
   }
 
-  const cageAt = cages?.length ? cageEdges(cages) : null
+  // Read off the cage list the arithmetic rungs reason about, never from a
+  // picture, the same rule the playable board follows.
+  const cageAt = topo.cages?.length ? cageEdges(topo.cages) : null
+  const edges = regionEdges(topo)
 
   // A derived pattern carries the candidate state it was found in. Showing the
   // raw set instead would draw a pattern over cells that contradict it.
@@ -76,8 +78,11 @@ export default function ReviewBoard({
         const given = puzzle[i] !== 0
         const v = board[i]
         const cls = ['rvCell']
-        if (colOf(i) % 3 === 2 && colOf(i) !== 8) cls.push('bR')
-        if (rowOf(i) % 3 === 2 && rowOf(i) !== 8) cls.push('bB')
+        if (edges[i].right && colOf(i) !== 8) cls.push('bR')
+        if (edges[i].bottom && rowOf(i) !== 8) cls.push('bB')
+        if (edges[i].left && colOf(i) !== 0) cls.push('bL')
+        if (edges[i].top && rowOf(i) !== 0) cls.push('bT')
+        if (topo.overlaid?.has(i)) cls.push('overlaid')
         if (given) cls.push('given')
         if (!given && v !== 0 && solution && v !== solution[i]) cls.push('bad')
         if (heat && heatLevel && !given && heat[i] > 0) cls.push('h' + heatLevel(heat[i]))

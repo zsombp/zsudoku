@@ -177,7 +177,7 @@ const WRITTEN = {
   boardProved: {
     label: 'What the board proved',
     definition:
-      'The candidates left once every elimination the ladder can make has been applied, which is stricter than a plain scan of the row, column and box.',
+      'The candidates left once every elimination the ladder can make has been applied, which is stricter than a plain scan of the cells a cell shares a unit with.',
   },
   yourNotes: {
     label: 'Your notes',
@@ -321,7 +321,7 @@ const WRITTEN = {
   misread: {
     label: 'Misread',
     definition:
-      'A pencil mark that was already impossible by a plain scan of its row, column and box the moment you wrote it, which is not the same as a note going stale.',
+      'A pencil mark that was already impossible by a plain scan of the cells it shares a unit with, the moment you wrote it, which is not the same as a note going stale.',
   },
 
   // ---- the statistics screen ----
@@ -671,7 +671,10 @@ const WRITTEN = {
       'The first rung of the hint button: it names a unit or a digit and never a cell, and it is free because it gives nothing away.',
   },
   hintRungs: {
-    label: 'Hints explain first',
+    // Not "Hints explain first", which is the name of the switch directly above
+    // it on the settings screen: the line read as a link back to the control it
+    // was meant to be explaining.
+    label: 'The three rungs',
     definition:
       'The hint button can offer a question, then the pattern, then the digit, and only the digit ever spends a hint.',
   },

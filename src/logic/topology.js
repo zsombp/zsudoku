@@ -119,6 +119,28 @@ export function unitName({ type, index, name }) {
   return name || `region ${index + 1}`
 }
 
+/**
+ * The cells to draw whole when a pattern's evidence is a unit.
+ *
+ * A hidden single means nothing without the row it was hidden in, so both
+ * boards shade the unit behind the pattern. Both used to find it in the classic
+ * lists, which is a different nine cells on a jigsaw and none at all on an
+ * X-Sudoku, where `diagonal` is a type the classic meta does not contain and
+ * `findIndex` returns -1. Nothing threw either way: the wrong cells lit up, or
+ * no cells did.
+ *
+ * Returns null when the pattern has no unit, which is what a naked single is:
+ * proved by its peers rather than by any one unit.
+ */
+export function unitCellsOf(topo, pattern) {
+  if (pattern?.unitCells) return new Set(pattern.unitCells)
+  if (!pattern?.unit) return null
+  const i = topo.unitMeta.findIndex(
+    u => u.type === pattern.unit.type && u.index === pattern.unit.index
+  )
+  return i === -1 ? null : new Set(topo.units[i])
+}
+
 // ---- the classic topology, as plain exports ----
 //
 // Everything that has no opinion about variants keeps importing these and keeps

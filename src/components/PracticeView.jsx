@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { TECHNIQUES, LADDER } from '../logic/techniques.js'
+import { TECHNIQUES, LADDER, CAGE_TECHNIQUES } from '../logic/techniques.js'
 import * as gameLog from '../lib/gameLog.js'
 import { hintsByTechnique } from '../stats/compute.js'
 import { VARIANT_LIST } from '../logic/variants.js'
@@ -36,6 +36,20 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
   const due = useMemo(() => (games ? schedule(games) : []), [games])
   const soonest = useMemo(() => (games ? nextUp(games) : null), [games])
   const byTechnique = useMemo(() => new Map(due.map(d => [d.technique, d])), [due])
+
+  /**
+   * The rungs this board can actually require.
+   *
+   * The five cage techniques were listed on every board, so picking Classic and
+   * asking for a drill on the 45 rule sent the generator hunting for a puzzle
+   * that cannot exist. It searched for about a minute and then said "it is
+   * rare, try again", which is a true sentence about a different situation:
+   * it is not rare on a classic grid, it is impossible.
+   */
+  const rungs = useMemo(
+    () => (variant === 'killer' ? LADDER : LADDER.filter(k => !CAGE_TECHNIQUES.includes(k))),
+    [variant]
+  )
 
   return (
     <div className="statsView">
@@ -134,7 +148,7 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
       </div>
 
       <div className="techList">
-        {LADDER.map(key => {
+        {rungs.map(key => {
           const t = TECHNIQUES[key]
           const used = hints?.counts?.[key] || 0
           const isOpen = open === key
@@ -180,8 +194,14 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
                       {busy ? 'Finding a puzzle…' : `Practise ${t.label}`}
                     </button>
                     {/* A whole puzzle teaches the pattern once in ten minutes.
-                        Cards ask the same question twenty times in three. */}
-                    {onCards && key !== 'nakedSingle' && (
+                        Cards ask the same question twenty times in three.
+
+                        Not offered on the cage rungs: `buildDeck` deals from
+                        classic grids, so the button would spend twelve seconds
+                        finding nothing and blame the rarity of the pattern.
+                        Dealing killer positions is a real piece of work and is
+                        deliberately not started here. */}
+                    {onCards && key !== 'nakedSingle' && !CAGE_TECHNIQUES.includes(key) && (
                       <button
                         className="newBtn"
                         disabled={Boolean(busyWith)}

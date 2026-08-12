@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import Board from './components/Board.jsx'
 import NumberPad from './components/NumberPad.jsx'
 import HandwritingPad from './components/HandwritingPad.jsx'
+import VoiceButton from './components/VoiceButton.jsx'
+import { actionsFor } from './lib/voice.js'
 import Toolbar from './components/Toolbar.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import NewGameSheet from './components/NewGameSheet.jsx'
@@ -20,7 +22,7 @@ import { techFor, tierForScore, TIERS } from './logic/difficulty.js'
 import { gradePuzzle, autoCompleteFills } from './logic/grader.js'
 import { topologyFromRecord } from './logic/variants.js'
 import { encodePuzzle, decodePuzzle } from './logic/share.js'
-import { GRADER_VERSION, TECHNIQUES } from './logic/techniques.js'
+import { CAGE_TECHNIQUES, GRADER_VERSION, TECHNIQUES } from './logic/techniques.js'
 import { useTimer } from './hooks/useTimer.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
 import { useSettings } from './hooks/useSettings.js'
@@ -400,7 +402,13 @@ export default function App() {
    * than pretending to be instant.
    */
   const startPractice = useCallback(
-    async (technique, variant = 'classic') => {
+    async (technique, asked = 'classic') => {
+      // A cage rung only exists on a killer board, so asking for one anywhere
+      // else is a search that cannot succeed. The practice list no longer
+      // offers them off killer, but the coach and the due card also land here
+      // and neither of them picks a board, so the correction belongs at the one
+      // point they all pass through.
+      const variant = CAGE_TECHNIQUES.includes(technique) && asked !== 'killer' ? 'killer' : asked
       setPracticing(technique)
       setGenError(null)
       setNewRecord(false)
@@ -511,6 +519,17 @@ export default function App() {
     updateSettings({ quickInput: !settings.quickInput })
     dispatch({ type: 'clearActiveDigit' })
   }, [settings.quickInput, updateSettings])
+
+  /**
+   * A spoken move, as the actions a tap would have made.
+   *
+   * `actionsFor` decides the shape so the strip and the board cannot disagree
+   * about what a sentence meant. Dispatching in order matters: a placement is a
+   * select and then a digit, which is a tap on the cell and a press on the pad.
+   */
+  const onVoiceCommand = useCallback(cmd => {
+    for (const action of actionsFor(cmd)) dispatch(action)
+  }, [])
 
   /**
    * Giving up. A recorded result like any other, so the win rate stays honest,
@@ -917,6 +936,7 @@ export default function App() {
               ? {
                   mode: state.mode,
                   graded: label,
+                  variant: state.variant,
                   tech,
                   elapsedMs: timer.ms,
                   empty: state.board.reduce((a, v) => a + (v ? 0 : 1), 0),
@@ -925,6 +945,7 @@ export default function App() {
           }
           daily={dailyInfo}
           records={records}
+          variant={settings.variant || 'classic'}
           theme={settings.theme}
           onTheme={th => updateSettings({ theme: th })}
           onResume={() => setView('game')}
@@ -1167,6 +1188,23 @@ export default function App() {
           onCommit={v => dispatch({ type: 'digit', value: v })}
         />
       )}
+
+      {/* Built, tested and mounted nowhere until now, which is the failure
+          `DECISIONS.md` calls a shipped feature that never reached the device.
+          Every command becomes the same `select` and `digit` actions a tap
+          makes, so notes mode, the move log and undo need to know nothing.
+
+          `allowOffDevice` is deliberately not passed. Without it the button
+          renders only where the browser can recognise speech on the device, and
+          nowhere else, so the app keeps its promise that the GitHub backup is
+          the only request it can ever make. That leaves Safari, and therefore
+          the iPhone, without voice: see the note in `docs/DECISIONS.md`. */}
+      <VoiceButton
+        enabled={settings.voiceInput}
+        disabled={busy || won || lost}
+        notes={state.notes}
+        onCommand={onVoiceCommand}
+      />
 
       <div className="footRow">
         <label className="toggle">

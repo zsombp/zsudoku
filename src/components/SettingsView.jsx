@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as gameLog from '../lib/gameLog.js'
+import { privacyNote, voiceMode } from '../lib/voice.js'
 import { dayKey } from '../logic/daily.js'
 import BackupSettings from './BackupSettings.jsx'
 import * as experiments from '../stats/experiments.js'
@@ -45,6 +46,9 @@ function Switch({ checked, onChange, label, disabled }) {
 }
 
 export default function SettingsView({ settings, updateSettings, onClose }) {
+  // Read once: it is a fact about the browser, not about this render.
+  const voice = useMemo(() => voiceMode(), [])
+
   /**
    * A running experiment drives one of these switches itself, flipping it at
    * the start of every game. Two things follow, and both were missing.
@@ -226,6 +230,22 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
             onChange={v => updateSettings({ handwriting: v })}
           />
         </Row>
+        {/* Only where the browser can recognise speech without sending the
+            audio anywhere. Everywhere else the row is not drawn at all, rather
+            than drawn and then quietly doing nothing: a switch you can turn on
+            that has no effect is worse than no switch. */}
+        {voice !== 'local' ? null : (
+          <Row
+            label="Speak a move"
+            hint={'A press-to-talk button under the number pad. Say "five in row three column two", or just a digit for the cell you have selected, or "clear" or "undo". It writes down what it heard before the board moves. ' + privacyNote(voice)}
+          >
+            <Switch
+              label="Speak a move"
+              checked={settings.voiceInput}
+              onChange={v => updateSettings({ voiceInput: v })}
+            />
+          </Row>
+        )}
         <Row
           label="Offer a race"
           hint="On a grid you have played before, offer to run your old solve alongside this one. A quiet marker under the clock, never a scoreboard."

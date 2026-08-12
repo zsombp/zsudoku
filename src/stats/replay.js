@@ -4,11 +4,34 @@
 // These functions are what actually spend it: reconstructing the board at any
 // moment, and working out where on the grid the time went.
 
-import { boxOf, PEERS, candMaskAt, range } from '../logic/topology.js'
+import { range } from '../logic/topology.js'
+import { topologyFromRecord } from '../logic/variants.js'
 import { hasMark, addMark, removeMark, toggleMark } from '../logic/marks.js'
 
 /** Entries that move a digit. Pencilling and checking do not change the board. */
 const CHANGES_BOARD = new Set(['place', 'clear', 'erase', 'hint', 'undo', 'redo', 'autoComplete'])
+
+/**
+ * The board a record was played on, built once per record.
+ *
+ * Everything here used the classic exports, so a jigsaw replayed against square
+ * boxes: auto-pencil was rebuilt from a peer scan the game never made, and
+ * placing a digit stripped it from the wrong neighbours. The review then drew
+ * notes the player had never had, and belief archaeology counted them.
+ *
+ * Cached because `analyseGame` calls `boardAt` once per move, and rebuilding a
+ * killer cage layout from its seed costs about 150ms: sixty of those is nine
+ * seconds on a screen that is meant to open instantly.
+ */
+const topoCache = new WeakMap()
+function topoOf(record) {
+  let topo = topoCache.get(record)
+  if (!topo) {
+    topo = topologyFromRecord(record)
+    topoCache.set(record, topo)
+  }
+  return topo
+}
 
 /**
  * The board as it stood immediately after move `step`.
@@ -53,6 +76,7 @@ export function marksExact(record, step) {
 const RESTORES = new Set(['undo', 'redo', 'returnToBookmark'])
 
 function walk(record, step, wantMarks) {
+  const topo = topoOf(record)
   const board = record.puzzle.slice()
   const marks = wantMarks ? new Int16Array(81) : null
   // What each placed digit took out of its peers' marks, so erasing puts back
@@ -70,7 +94,7 @@ function walk(record, step, wantMarks) {
     }
     if (wantMarks && m.kind === 'autoPencil') {
       // Deterministic from the board, which is why it needs nothing logged.
-      for (const c of range(81)) marks[c] = board[c] === 0 ? candMaskAt(board, c) : 0
+      for (const c of range(81)) marks[c] = board[c] === 0 ? topo.candMaskAt(board, c) : 0
       stripped = {}
       continue
     }
@@ -87,14 +111,14 @@ function walk(record, step, wantMarks) {
     // ---- the board, and the mark rules that follow from it ----
     if (m.changes) {
       for (const [cell, value] of m.changes) {
-        if (wantMarks) applyCellChange(board, marks, cell, value, stripped)
+        if (wantMarks) applyCellChange(topo, board, marks, cell, value, stripped)
         board[cell] = value
       }
     } else if (m.kind === 'place' || m.kind === 'hint') {
-      if (wantMarks) applyCellChange(board, marks, m.cell, m.value, stripped)
+      if (wantMarks) applyCellChange(topo, board, marks, m.cell, m.value, stripped)
       board[m.cell] = m.value
     } else if (m.kind === 'clear' || m.kind === 'erase') {
-      if (wantMarks) applyCellChange(board, marks, m.cell, 0, stripped)
+      if (wantMarks) applyCellChange(topo, board, marks, m.cell, 0, stripped)
       board[m.cell] = 0
     }
   }
@@ -111,7 +135,7 @@ const marksTouched = marks => {
  * One cell changing value, and what that does to the pencil marks around it.
  * Exactly the rules `placeDigit` applies, so the replay and the game agree.
  */
-function applyCellChange(board, marks, cell, value, stripped) {
+function applyCellChange(topo, board, marks, cell, value, stripped) {
   // Whatever the previous occupant took out of its peers goes back first.
   const rec = stripped[cell]
   if (rec) {
@@ -125,7 +149,7 @@ function applyCellChange(board, marks, cell, value, stripped) {
   const own = marks[cell]
   marks[cell] = 0
   const taken = []
-  for (const p of PEERS[cell]) {
+  for (const p of topo.peers[cell]) {
     if (hasMark(marks[p], value)) {
       marks[p] = removeMark(marks[p], value)
       taken.push([p, value])
@@ -194,7 +218,7 @@ export function summarise(record) {
   const { total } = stallHeatmap(record)
 
   const boxes = new Array(9).fill(0)
-  for (const m of wrong) boxes[boxOf(m.cell)]++
+  for (const m of wrong) boxes[topoOf(record).regionOf[m.cell]]++
 
   return {
     moves: log.length,

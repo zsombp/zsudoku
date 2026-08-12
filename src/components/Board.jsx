@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { CLASSIC, rowOf, colOf, range, UNITS, UNIT_META, regionEdges } from '../logic/topology.js'
+import { CLASSIC, rowOf, colOf, range, regionEdges, unitCellsOf } from '../logic/topology.js'
 import { cageEdges } from '../logic/variants.js'
 import { hasMark } from '../logic/marks.js'
 import { isWrong, highlightDigit } from '../state/gameReducer.js'
@@ -36,15 +36,10 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
   // only useful to someone who can already find one.
   const pattern = explain?.pattern || null
   const patternCells = pattern ? new Set(pattern.cells || []) : null
-  const patternUnit = pattern?.unitCells
-    ? new Set(pattern.unitCells)
-    : pattern?.unit
-      ? new Set(
-          UNITS[
-            UNIT_META.findIndex(u => u.type === pattern.unit.type && u.index === pattern.unit.index)
-          ] || []
-        )
-      : null
+  // Looked the unit up in the classic list, which is the wrong nine cells on a
+  // jigsaw and no cells at all on an X-Sudoku, where `diagonal` is a type the
+  // classic list has never heard of and the lookup silently returns nothing.
+  const patternUnit = unitCellsOf(topo, pattern)
   const killed = new Map()
   for (const e of pattern?.eliminations || []) {
     if (!killed.has(e.cell)) killed.set(e.cell, new Set())

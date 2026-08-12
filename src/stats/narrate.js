@@ -98,6 +98,17 @@ function opening(moves, info) {
   return 'The opening was steady.'
 }
 
+/**
+ * How a class reads at the end of "and it came out ...".
+ *
+ * Four of the six labels are adjectives and lowercasing them was enough. Two
+ * are nouns, and the same template produced "it came out hint" and "it came out
+ * mistake". Both are reachable: a hint is the longest stall in any game where
+ * one was taken on the cell that was stared at, which is the common case.
+ */
+const cameOut = cls =>
+  (cls === 'hint' || cls === 'mistake' ? 'a ' : '') + CLASSES[cls].label.toLowerCase()
+
 /** The middle: where the game was actually decided. */
 function middle(moves, beliefs, info) {
   const out = []
@@ -110,7 +121,7 @@ function middle(moves, beliefs, info) {
     out.push(
       `The longest you sat on anything was ${secs(worstStall.gap)}, on ${
         at ? at.cellName : 'one cell'
-      }${at ? `, and it came out ${CLASSES[at.cls].label.toLowerCase()}` : ''}.`
+      }${at ? `, and it came out ${cameOut(at.cls)}` : ''}.`
     )
   }
 
@@ -180,6 +191,9 @@ export function headline(record) {
   const hour = when.getHours()
   const part = hour < 5 ? 'late night' : hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
   // "an evening", "an afternoon". Only two of the four start with a consonant.
-  const article = /^[aeiou]/i.test(part) ? 'an' : 'a'
-  return `A ${record.graded} on ${article} ${part} in ${fmtMs(record.durationMs)}.`
+  const article = w => (/^[aeiou]/i.test(w) ? 'an' : 'a')
+  // The tier needs the same treatment and was not getting it, so every game at
+  // one of the six opened "A Easy on an afternoon". Expert is the other one.
+  const tier = article(record.graded)
+  return `${tier[0].toUpperCase()}${tier.slice(1)} ${record.graded} on ${article(part)} ${part} in ${fmtMs(record.durationMs)}.`
 }

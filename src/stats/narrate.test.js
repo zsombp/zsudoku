@@ -30,6 +30,24 @@ describe('the account of a game', () => {
     expect(out[0]).toMatch(/misread/)
   })
 
+  it('reads as a sentence whichever class the long stall came out as', () => {
+    // "and it came out sharp" is fine; "and it came out hint" is not. Four of
+    // the six labels are adjectives and two are nouns, and lowercasing all six
+    // shipped the two that need an article. A hint on the cell you stared at
+    // longest is the common case, not a corner one.
+    for (const [cls, want] of [
+      ['sharp', /came out sharp\./],
+      ['lucky', /came out lucky\./],
+      ['hint', /came out a hint\./],
+      ['mistake', /came out a mistake\./],
+    ]) {
+      const g = game(20)
+      g.moves[0].cls = cls
+      const out = narrate({ completed: true }, g, null, info({ longest: { gap: 90000, cell: 0 } }))
+      expect(out.join(' '), cls).toMatch(want)
+    }
+  })
+
   it('mentions a long stall only when it was genuinely long', () => {
     const short = narrate({ completed: true }, game(20), null, info({ longest: { gap: 20000, cell: 0 } }))
     expect(short.join(' ')).not.toMatch(/longest you sat/)
@@ -54,6 +72,22 @@ describe('the account of a game', () => {
     for (const [hour, word] of [[2, 'a late night'], [9, 'a morning'], [15, 'an afternoon'], [21, 'an evening']]) {
       const line = headline({ graded: 'Hard', durationMs: 60000, endedAt: new Date(2026, 7, 11, hour).getTime() })
       expect(line).toContain(word)
+    }
+  })
+
+  it('gets the article right on the tier as well as the hour', () => {
+    // The part of the day was handled and the tier was hardcoded to "A", so
+    // two of the six tiers opened every account of a game with "A Easy".
+    for (const [graded, want] of [
+      ['Easy', 'An Easy'],
+      ['Expert', 'An Expert'],
+      ['Gentle', 'A Gentle'],
+      ['Medium', 'A Medium'],
+      ['Hard', 'A Hard'],
+      ['Diabolical', 'A Diabolical'],
+    ]) {
+      const line = headline({ graded, durationMs: 60000, endedAt: new Date(2026, 7, 11, 15).getTime() })
+      expect(line, graded).toMatch(new RegExp('^' + want + ' '))
     }
   })
 })

@@ -9,6 +9,7 @@
 
 import { TIERS } from '../logic/difficulty.js'
 import { dailyStreak } from '../logic/daily.js'
+import { fmtMs } from '../lib/format.js'
 import { streaks } from './compute.js'
 
 const done = games => games.filter(g => g.completed)
@@ -36,6 +37,11 @@ export function achievements(games) {
   }
 
   const tiersCleared = TIERS.filter(t => finished.some(g => g.graded === t.name)).length
+
+  const nightOwl = finished.some(g => {
+    const h = new Date(g.endedAt).getHours()
+    return h >= 0 && h < 4
+  })
 
   const list = [
     counter('first', 'First blood', 'Finish a puzzle.', finished.length, 1),
@@ -68,7 +74,9 @@ export function achievements(games) {
       description: 'Finish a Medium puzzle in under five minutes.',
       earned: fastest('Medium') < 300000,
       progress: fastest('Medium') < 300000 ? 1 : 0,
-      detail: Number.isFinite(fastest('Medium')) ? `best ${Math.round(fastest('Medium') / 1000)}s` : 'not yet',
+      // m:ss, like every other time on this screen. Raw seconds read as a
+      // different unit of measurement sitting next to "median solve 7:06".
+      detail: Number.isFinite(fastest('Medium')) ? `best ${fmtMs(fastest('Medium'))}` : 'not yet',
     },
     {
       id: 'no-pencil',
@@ -82,12 +90,11 @@ export function achievements(games) {
       id: 'night-owl',
       name: 'Night owl',
       description: 'Finish a puzzle between midnight and 4am.',
-      earned: finished.some(g => {
-        const h = new Date(g.endedAt).getHours()
-        return h >= 0 && h < 4
-      }),
-      progress: 0,
-      detail: '',
+      earned: nightOwl,
+      progress: nightOwl ? 1 : 0,
+      // Every other badge says where it stands. This one said nothing at all,
+      // so it rendered as a name over an empty line and read like a bug.
+      detail: nightOwl ? 'done' : 'not yet',
     },
   ]
 

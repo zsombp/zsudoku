@@ -10,6 +10,7 @@ const boardName = id => (id && id !== 'classic' ? ` · ${VARIANTS[id]?.name}` : 
 import { hintsByTechnique } from '../stats/compute.js'
 import { TECHNIQUES } from '../logic/techniques.js'
 import { Calendar, Chart, Gear, Play, Trophy } from './Icons.jsx'
+import { recordKey } from './NewGameSheet.jsx'
 import ThemeMenu from './ThemeMenu.jsx'
 import { Term, TermButton, TermGroup, termLabel } from './Term.jsx'
 
@@ -21,7 +22,7 @@ import { Term, TermButton, TermGroup, termLabel } from './Term.jsx'
  * the front door: what is in progress, what today's puzzle is, how you are
  * doing, and every way in.
  */
-export default function Dashboard({ handoff, inProgress, daily, records, theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice, onTailored }) {
+export default function Dashboard({ handoff, inProgress, daily, records, variant = 'classic', theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice, onTailored }) {
   const [summary, setSummary] = useState(null)
 
   useEffect(() => {
@@ -82,7 +83,12 @@ export default function Dashboard({ handoff, inProgress, daily, records, theme, 
             <button className="card cardPrimary" onClick={onResume}>
               <span className="cardKicker">Continue</span>
               <span className="cardTitle">
-                {inProgress.mode === 'daily' ? `${daily.weekday} puzzle` : inProgress.graded}
+                {inProgress.mode === 'daily'
+                  ? `${daily.weekday} puzzle`
+                  : /* Named here as it is on the daily card and the handoff
+                       card. Resuming a killer said "Expert" and nothing else,
+                       so the board you were on was a surprise on arrival. */
+                    inProgress.graded + boardName(inProgress.variant)}
               </span>
               <span className="cardMeta">
                 {fmtMs(inProgress.elapsedMs)} · {pctDone}% filled
@@ -169,13 +175,21 @@ export default function Dashboard({ handoff, inProgress, daily, records, theme, 
           )}
 
           <div className="dashPick">
-            <div className="dashPickHead">New game</div>
+            <div className="dashPickHead">
+              New game{variant !== 'classic' && <span className="dashPickBoard">{VARIANTS[variant]?.name}</span>}
+            </div>
             <div className="tierGrid">
               {TIERS.map(t => (
                 <button key={t.name} className="tierChip" onClick={() => onPick(t.name)}>
                   <span className="tierChipName">{t.name}</span>
                   <span className="tierChipMeta">
-                    {records[t.name] !== undefined ? fmtMs(records[t.name]) : t.tech}
+                    {/* Keyed on the board these buttons will actually deal.
+                        Reading `records[tier]` showed the classic best beside a
+                        button that starts a killer, so the number was real and
+                        belonged to a different game. */}
+                    {records[recordKey(variant, t.name)] !== undefined
+                      ? fmtMs(records[recordKey(variant, t.name)])
+                      : t.tech}
                   </span>
                 </button>
               ))}

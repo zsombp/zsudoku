@@ -48,9 +48,11 @@ export const DEFAULTS = {
   // cannot be told to recognise speech on the device, listening at all sends the
   // audio to Apple or to Google, which is a second exception to the rule that
   // nothing leaves this device. Unlike the GitHub backup it does not go to
-  // infrastructure the user owns, so it gets its own explicit yes rather than
-  // riding along on the one above. Safari has no way to keep it local, which
-  // means the iPhone cannot use voice at all without this.
+  // infrastructure the user owns, so it does not clear the bar `CLAUDE.md` sets
+  // for a second exception, and no screen offers it: it is held at false and
+  // `App.jsx` never passes it on. Kept rather than deleted because the machinery
+  // behind it is built and tested, and the only thing missing is Zsomb's own
+  // answer to whether the iPhone is worth the audio leaving the device.
   voiceOffDevice: false,
   // The name published to the shared league file. Empty means not taking part,
   // which is the default: the league is opt-in twice over, once here and once

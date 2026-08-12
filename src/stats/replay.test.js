@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { boardAt, stateAt, replaySteps, stallHeatmap, longestStall, summarise, cellHistory } from './replay.js'
 import { marksToList } from '../logic/marks.js'
+import { CLASSIC } from '../logic/topology.js'
+import { makeVariantPuzzle, topologyFromRecord } from '../logic/variants.js'
 
 /** A record with a puzzle of 81 zeros unless stated, and whatever log we need. */
 const rec = (moveLog, over = {}) => ({
@@ -274,5 +276,60 @@ describe('one cell, from start to finish', () => {
       { t: 2000, kind: 'pencil', cell: 9, value: 5 },
     ])
     expect(cellHistory(r, 4)).toEqual([])
+  })
+})
+
+describe('the board a game was played on', () => {
+  /**
+   * Auto-pencil is the one entry the log does not describe: it writes nothing
+   * down because it is deterministic from the board. That only holds if the
+   * replay scans the same board the game did, and it did not, so a jigsaw came
+   * back with the candidates of a classic grid.
+   *
+   * Nothing failed. The review drew notes the player had never had, and belief
+   * archaeology then reported them as misreads: one real game claimed fifteen
+   * on a board whose only notes came from pressing Auto.
+   */
+  it('rebuilds auto-pencil from the regions the game actually had', () => {
+    const made = makeVariantPuzzle('jigsaw', 'Easy', { seed: 7202 })
+    const topo = topologyFromRecord(made)
+    const record = { ...made, moveLog: [{ t: 1000, kind: 'autoPencil' }] }
+
+    const { marks } = stateAt(record, 0)
+    for (let cell = 0; cell < 81; cell++) {
+      if (made.puzzle[cell] !== 0) continue
+      expect(marks[cell], `r${Math.floor(cell / 9) + 1}c${(cell % 9) + 1}`)
+        .toBe(topo.candMaskAt(made.puzzle, cell))
+    }
+    // And it has to differ from the classic answer somewhere, or this test
+    // would pass just as well against the bug it exists to catch.
+    const differs = [...Array(81).keys()].some(
+      cell => made.puzzle[cell] === 0 && topo.candMaskAt(made.puzzle, cell) !== CLASSIC.candMaskAt(made.puzzle, cell)
+    )
+    expect(differs).toBe(true)
+  })
+
+  it('strips a placed digit from the peers that board gives it', () => {
+    // Two cells in the same jigsaw region but different 3x3 boxes. Placing a
+    // digit in one has to take it out of the other's notes, which the classic
+    // peer list has no reason to do.
+    const made = makeVariantPuzzle('jigsaw', 'Easy', { seed: 7202 })
+    const topo = topologyFromRecord(made)
+    const cell = made.puzzle.findIndex(v => v === 0)
+    const peer = topo.peers[cell].find(
+      p => made.puzzle[p] === 0 && !CLASSIC.peers[cell].includes(p)
+    )
+    expect(peer, 'a peer this board adds').toBeGreaterThanOrEqual(0)
+
+    const digit = 1 + ((made.solution[cell] + 3) % 9)
+    const record = {
+      ...made,
+      moveLog: [
+        { t: 100, kind: 'pencil', cell: peer, value: digit },
+        { t: 200, kind: 'place', cell, value: digit, correct: false },
+      ],
+    }
+    expect(marksToList(stateAt(record, 0).marks[peer])).toEqual([digit])
+    expect(marksToList(stateAt(record, 1).marks[peer])).toEqual([])
   })
 })

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { rowOf, colOf } from '../logic/topology.js'
+import { VARIANTS, topologyFromRecord } from '../logic/variants.js'
 import { fmtMs } from '../lib/format.js'
 import { TECHNIQUES } from '../logic/techniques.js'
 import { createState } from '../logic/grader.js'
@@ -15,7 +16,7 @@ import SolveArt from './SolveArt.jsx'
 import { Play, Pause } from './Icons.jsx'
 import { Fact } from './stats/charts.jsx'
 import { Explain, Term, TermGroup, termLabel } from './Term.jsx'
-import { classTerm, define, techniqueTerm } from '../logic/glossary.js'
+import { classTerm, define, techniqueTerm, variantTerm } from '../logic/glossary.js'
 
 /**
  * The move classes, out of the glossary rather than out of `CLASSES.about`.
@@ -42,6 +43,15 @@ const plural = (key, n) =>
   n === 1 || (key !== 'mistake' && key !== 'hint') ? CLASSES[key].label : CLASSES[key].label + 's'
 
 export default function GameReview({ game, onBack, onPractice, onDelete }) {
+  /**
+   * The board this game was played on, rebuilt once for the whole screen.
+   *
+   * Everything below took the classic grid by default, so a jigsaw was reviewed
+   * against square boxes and a killer against no cages at all. A killer costs
+   * about 150ms here because the cage layout is rebuilt from the seed rather
+   * than stored on the record; every other variant is free.
+   */
+  const topo = useMemo(() => topologyFromRecord(game), [game])
   const [mode, setMode] = useState('replay')
   const steps = useMemo(() => replaySteps(game), [game])
   const [pos, setPos] = useState(steps.length ? steps.length - 1 : 0)
@@ -70,14 +80,17 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
   // twenty milliseconds on a full game, and gating it made the account of the
   // game change depending on which tab you happened to be looking at, which is
   // worse than the cost by a wide margin.
-  const beliefs = useMemo(() => falseBeliefs(game), [game])
+  const beliefs = useMemo(() => falseBeliefs(game, { topo }), [game, topo])
   const belief = beliefs?.stale[Math.min(beliefTab, beliefs.stale.length - 1)] || null
   // The position at the moment the note stopped being true.
   const beliefAt = useMemo(
     () => (belief ? stateAt(game, belief.diedAtIndex) : null),
     [game, belief]
   )
-  const beliefTruth = useMemo(() => (beliefAt ? settledCands(beliefAt.board) : null), [beliefAt])
+  const beliefTruth = useMemo(
+    () => (beliefAt ? settledCands(beliefAt.board, topo) : null),
+    [beliefAt, topo]
+  )
 
   // The account of the game, above the numbers. Declared after `beliefs`
   // because a dependency array is evaluated the moment the hook is called, so
@@ -87,8 +100,8 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
     [game, analysis, beliefs, info]
   )
   const examples = useMemo(
-    () => (mode === 'patterns' && game.puzzle ? workedExamples(game.puzzle) : []),
-    [mode, game.puzzle]
+    () => (mode === 'patterns' && game.puzzle ? workedExamples(game.puzzle, { topo }) : []),
+    [mode, game.puzzle, topo]
   )
   const example = examples[Math.min(patternTab, examples.length - 1)] || null
 
@@ -121,10 +134,10 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
   // only position in which its explanation is true.
   const at = move ? move.index - 1 : stepIndex
   const before = useMemo(() => stateAt(game, at), [game, at])
-  const trueCands = useMemo(() => createState(before.board).cands, [before])
+  const trueCands = useMemo(() => createState(before.board, topo).cands, [before, topo])
   // What the board actually proves, eliminations included. Only computed for
   // the one position on screen, so the ladder run costs a few milliseconds.
-  const settled = useMemo(() => settledCands(before.board), [before])
+  const settled = useMemo(() => settledCands(before.board, topo), [before, topo])
   const [layer, setLayer] = useState('cands')
   // A cell you clicked, to read its whole story instead of one move's worth.
   const [cellFocus, setCellFocus] = useState(null)
@@ -138,7 +151,10 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
   // is a different moment from the one the move panel explains.
   const replayState = useMemo(() => stateAt(game, stepIndex), [game, stepIndex])
   const replayMarks = replayState.marks
-  const replayCands = useMemo(() => createState(replayState.board).cands, [replayState])
+  const replayCands = useMemo(
+    () => createState(replayState.board, topo).cands,
+    [replayState, topo]
+  )
 
   // How many of your own notes had already been ruled out by the board.
   const staleCount = useMemo(() => {
@@ -214,6 +230,15 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
         </div>
         <div className="reviewMeta">
           {new Date(game.endedAt).toLocaleString()} · {fmtMs(game.durationMs)}
+          {/* Which board. The history row says it and this screen did not, so a
+              jigsaw and a classic at the same tier were two identical headings
+              over two boards that took different amounts of thinking. */}
+          {game.variant && game.variant !== 'classic' && (
+            <>
+              {' · '}
+              <Term id={variantTerm(game.variant)}>{VARIANTS[game.variant]?.name || game.variant}</Term>
+            </>
+          )}
           {/* "needed X" describes the puzzle, not the player, and both halves
               of it are terms: what hardest means, and what that rung is. */}
           {game.hardest && (
@@ -307,6 +332,7 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
                     <div className="moveStage">
                       <ReviewBoard
                         puzzle={game.puzzle}
+                        topo={topo}
                         board={beliefAt.board}
                         solution={game.solution}
                         cands={beliefTruth}
@@ -356,9 +382,13 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
               )}
               {beliefs.misreads.length > 0 && (
                 <p className="timeNote warn">
+                  {/* "row, column and box" is only the classic board. The scan
+                      is over whatever units this grid has, which on a jigsaw is
+                      a region and on an anti-knight includes cells no unit
+                      contains at all. */}
                   {beliefs.misreads.length} {beliefs.misreads.length === 1 ? 'note was' : 'notes were'} impossible
-                  the moment you wrote {beliefs.misreads.length === 1 ? 'it' : 'them'}, by a plain scan of the row,
-                  column and box. That is a <Term id="misread">misread</Term> rather than a belief going stale:{' '}
+                  the moment you wrote {beliefs.misreads.length === 1 ? 'it' : 'them'}, by a plain scan of the cells
+                  it shares a unit with. That is a <Term id="misread">misread</Term> rather than a belief going stale:{' '}
                   {beliefs.misreads.slice(0, 4).map(m => `${m.digit} in ${m.cellName}`).join(', ')}.
                 </p>
               )}
@@ -388,6 +418,7 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
                   <div className="moveStage">
                     <ReviewBoard
                       puzzle={game.puzzle}
+                      topo={topo}
                       board={example.board}
                       solution={game.solution}
                       cands={example.cands}
@@ -425,6 +456,7 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
           {(mode === 'replay' || mode === 'heatmap') && (
             <ReviewBoard
               puzzle={game.puzzle}
+              topo={topo}
               board={mode === 'replay' ? board : game.solution}
               solution={game.solution}
               cands={mode === 'replay' ? replayCands : null}
@@ -480,6 +512,7 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
                 <div className="moveStage">
                   <ReviewBoard
                     puzzle={game.puzzle}
+                    topo={topo}
                     board={before.board}
                     solution={game.solution}
                     cands={trueCands}

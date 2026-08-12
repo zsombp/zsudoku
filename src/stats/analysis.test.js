@@ -9,6 +9,8 @@ import {
   CLASSES,
 } from './analysis.js'
 import { makePuzzle } from '../logic/generator.js'
+import { makeVariantPuzzle, topologyFromRecord } from '../logic/variants.js'
+import { createState, nextStep, applyStep } from '../logic/grader.js'
 
 // A real solved grid, so a "correct" placement in these fixtures is genuinely
 // correct and the classifier is reading a board that could exist.
@@ -263,5 +265,67 @@ describe('the stored summary', () => {
     // Every key must be a real technique, never a stray label.
     for (const k of Object.keys(s.sharpBy)) expect(CLASSES[k]).toBeUndefined()
     expect(s.counts.routine).toBeGreaterThan(0)
+  })
+})
+
+describe('the board the game was played on', () => {
+  /**
+   * A ladder-perfect solve, on each variant in turn.
+   *
+   * Every digit here was derived by the ladder a moment before it was written,
+   * so Lucky is impossible by construction whatever shape the regions are. It
+   * was not: `analyseGame` built its candidate state on the classic grid, so a
+   * jigsaw solve came back 38 Lucky out of 117 and a killer 56 out of 146.
+   * Nothing threw, every number was plausible, and the same counts were stored
+   * on the record and fed to statistics and the curriculum.
+   *
+   * Killer is in here deliberately even though it is the slow one: its cage
+   * arithmetic is the largest gap between the two topologies, and it is the
+   * only variant whose layout has to be rebuilt from the seed.
+   */
+  for (const variant of ['jigsaw', 'x', 'windoku', 'antiknight', 'killer']) {
+    it(`credits a ladder-perfect ${variant} solve without calling any of it luck`, () => {
+      const made = makeVariantPuzzle(variant, 'Medium', { seed: 7000 })
+      expect(made).toBeTruthy()
+      const topo = topologyFromRecord(made)
+
+      const state = createState(made.puzzle, topo)
+      const moveLog = []
+      let t = 0
+      for (let guard = 0; guard < 800 && state.board.includes(0); guard++) {
+        const step = nextStep(state)
+        if (!step) break
+        for (const p of step.placements) {
+          t += 1000
+          moveLog.push({ t, kind: 'place', cell: p.cell, value: p.digit, correct: true })
+        }
+        applyStep(state, step)
+      }
+
+      const { moves, counts } = analyseGame({ ...made, moveLog })
+      expect(moves.length).toBeGreaterThan(20)
+      expect(counts.lucky || 0).toBe(0)
+      expect(counts.mistake || 0).toBe(0)
+    }, 20000)
+  }
+
+  it('names a clashing digit from the peers of the board in play', () => {
+    // A jigsaw region is a different nine cells from the classic box that
+    // overlaps it, so a wrong digit explained against the classic box either
+    // names a cell that does not constrain this one or misses the one that
+    // does. Both read as a confident, checkable sentence.
+    const made = makeVariantPuzzle('jigsaw', 'Gentle', { seed: 7101 })
+    const topo = topologyFromRecord(made)
+    const empty = made.puzzle.findIndex(v => v === 0)
+    // A digit already sitting in one of this cell's peers, and wrong here.
+    const peer = topo.peers[empty].find(p => made.puzzle[p] !== 0 && made.puzzle[p] !== made.solution[empty])
+    const wrong = made.puzzle[peer]
+
+    const { moves } = analyseGame({
+      ...made,
+      moveLog: [{ t: 1000, kind: 'place', cell: empty, value: wrong, correct: false }],
+    })
+    expect(moves[0].cls).toBe('mistake')
+    expect(moves[0].why).toContain('There was already')
   })
 })

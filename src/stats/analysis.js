@@ -12,7 +12,8 @@
 
 import { createState, nextStep } from '../logic/grader.js'
 import { TECHNIQUES, GRADER_VERSION } from '../logic/techniques.js'
-import { PEERS, rowOf, colOf } from '../logic/topology.js'
+import { rowOf, colOf } from '../logic/topology.js'
+import { topologyFromRecord } from '../logic/variants.js'
 import { marksToList } from '../logic/marks.js'
 import { justification, cellName } from '../logic/explain.js'
 import { boardAt } from './replay.js'
@@ -30,7 +31,10 @@ export const CLASSES = {
 
 /** Why a wrong digit was wrong, in the most concrete terms available. */
 function faultOf(state, cell, digit, solution) {
-  const clash = PEERS[cell].find(p => state.board[p] === digit)
+  // The peers of the board in play. On a jigsaw the classic boxes are simply
+  // the wrong nine cells, so "there was already a 4 at r2c3" could name a cell
+  // that does not constrain this one, or miss the one that does.
+  const clash = state.topo.peers[cell].find(p => state.board[p] === digit)
   if (clash !== undefined) {
     return `There was already a ${digit} at ${cellName(clash)}.`
   }
@@ -53,6 +57,23 @@ export function analyseGame(record) {
   const solution = record.solution || []
   if (!log.length || !solution.length) return { moves: [], counts: {}, missed: 0 }
 
+  /**
+   * The board this game was played on, not the classic one.
+   *
+   * This defaulted to CLASSIC, so every variant game was reviewed against rules
+   * it was not played under, and nothing anywhere threw. Measured with
+   * `scripts/variantclass.mjs` over ladder-perfect solves, where Lucky must be
+   * zero by construction because every digit was derived a moment before it was
+   * written: classic 0 of 109, jigsaw 38 of 117, killer 56 of 146, anti-knight
+   * 33 of 122, windoku 22 of 116, X 13 of 106. The "you walked past an easier
+   * move" count was inflated the same way, 40 against classic's 2 on jigsaw.
+   *
+   * It reaches statistics as well as the review: `summariseAnalysis` stores
+   * these counts on the record, and the curriculum schedules drills off
+   * `sharpBy`. A jigsaw player was being told a third of their game was luck.
+   */
+  const topo = topologyFromRecord(record)
+
   const moves = []
   const counts = {}
   const toldAbout = new Set()
@@ -67,7 +88,7 @@ export function analyseGame(record) {
     if (!isPlacement) continue
 
     const before = boardAt(record, i - 1)
-    const state = createState(before)
+    const state = createState(before, topo)
 
     // The easiest thing the position offered, whether or not it was taken.
     const best = nextStep(state)
@@ -224,8 +245,11 @@ export function timeShape({ moves }) {
 /**
  * Bump when anything about classification changes, so summaries computed by an
  * older version are recomputed rather than quietly averaged with new ones.
+ *
+ * 2: the classifier reads the topology off the record. Every summary written
+ * for a variant game before this was computed against classic rules.
  */
-export const ANALYSIS_VERSION = 1
+export const ANALYSIS_VERSION = 2
 
 /**
  * A game's classification, small enough to keep on the record.

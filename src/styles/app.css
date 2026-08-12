@@ -172,6 +172,9 @@ body {
   color: var(--sub);
   margin-bottom: 9px;
 }
+/* Which board these six buttons will deal. Named before you tap, the same rule
+ * the daily card follows: finding out afterwards is a surprise. */
+.dashPickBoard { color: var(--accent); margin-left: 8px; }
 .tierGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .tierChip {
   display: flex;
@@ -1971,6 +1974,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   padding: 0 1px;
   font-weight: 600;
 }
+
+/* Windoku's windows on the review board. First of the shaded classes so that
+ * every highlight below wins on source order: a window is the shape of the
+ * board, and the pattern is the thing being argued about. */
+.rvCell.overlaid { background: color-mix(in srgb, var(--accent) 5%, transparent); }
 
 /* The unit that is the evidence, drawn whole. Deliberately weak: it is context
  * for the pattern, not the pattern. */

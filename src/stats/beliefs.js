@@ -26,6 +26,7 @@
 import { settledCands } from '../logic/explain.js'
 import { hasMark, marksToList } from '../logic/marks.js'
 import { rowOf, colOf } from '../logic/topology.js'
+import { topologyFromRecord } from '../logic/variants.js'
 import { stateAt } from './replay.js'
 
 const cellName = i => `r${rowOf(i) + 1}c${colOf(i) + 1}`
@@ -47,7 +48,10 @@ const key = (cell, digit) => cell * 10 + digit
  * `minMs` is there because a note that was wrong for four seconds before being
  * erased is not a false belief, it is a correction.
  */
-export function falseBeliefs(record, { minMs = 15000 } = {}) {
+export function falseBeliefs(record, { minMs = 15000, topo = null } = {}) {
+  // What the board rules out depends on the board. Handed in where the caller
+  // has already built it, since a killer layout costs about 150ms to rebuild.
+  const topology = topo || topologyFromRecord(record)
   const log = record.moveLog || []
   const empty = { stale: [], misreads: [], totalMs: 0, worst: null, considered: 0 }
   if (!log.length || !record.solution || !record.puzzle) return empty
@@ -56,6 +60,9 @@ export function falseBeliefs(record, { minMs = 15000 } = {}) {
   // anything dead from the moment it appeared was never a belief the board
   // supported, so it is either a misread or an artefact of auto-pencil.
   const wasTrue = new Set()
+  // Notes already on the board and already judged, so a misread is counted once
+  // rather than once per move it survives.
+  const judged = new Set()
   const dying = new Map()
   const finished = []
   const misreads = []
@@ -101,7 +108,7 @@ export function falseBeliefs(record, { minMs = 15000 } = {}) {
       }
     }
 
-    if (truth === null || CHANGES_TRUTH.has(m.kind) || m.changes) truth = settledCands(board)
+    if (truth === null || CHANGES_TRUTH.has(m.kind) || m.changes) truth = settledCands(board, topology)
 
     // Notes that have gone: erased, or the cell filled.
     for (const k of [...dying.keys()]) {
@@ -111,27 +118,57 @@ export function falseBeliefs(record, { minMs = 15000 } = {}) {
       else if (!hasMark(marks[cell], digit)) close(k, m.t, 'erased', i)
     }
 
+    // Notes that are no longer on the board can be judged afresh if they come
+    // back, so a digit pencilled in twice is two notes rather than one.
+    for (const k of [...judged]) {
+      const cell = Math.floor(k / 10)
+      if (board[cell] !== 0 || !hasMark(marks[cell], k % 10)) judged.delete(k)
+    }
+
     for (let cell = 0; cell < 81; cell++) {
       if (board[cell] !== 0 || marks[cell] === 0) continue
       for (const digit of marksToList(marks[cell])) {
         const k = key(cell, digit)
-        const possible = hasMark(truth[cell], digit)
 
+        /**
+         * First sighting of this note, and the only moment a misread can be
+         * decided.
+         *
+         * Two bugs lived here, and the screen printed the result of both as one
+         * number under the words "impossible the moment you wrote them".
+         *
+         * It was judged at every move the note survived rather than once, so
+         * one wrong note held for ten moves counted ten times: a real game
+         * reported 184 misreads over 18 distinct notes.
+         *
+         * And it was judged against the board as it stood at that later move,
+         * not as it stood when the note was written. A note that was fine when
+         * you wrote it and was overtaken by the game is the definition of a
+         * belief going stale, which is the other half of this file, so the two
+         * halves were competing for the same notes.
+         *
+         * The scan comes from the topology rather than a hand-rolled row,
+         * column and 3x3, which is not what auto-pencil writes on a jigsaw or
+         * an anti-knight: the two definitions of "a plain scan" disagreed on
+         * exactly the boards where it matters.
+         */
+        if (!judged.has(k)) {
+          judged.add(k)
+          if (!hasMark(topology.candMaskAt(board, cell), digit)) {
+            misreads.push({ cell, digit, cellName: cellName(cell), at: m.t })
+          }
+        }
+
+        const possible = hasMark(truth[cell], digit)
         if (possible) {
           wasTrue.add(k)
           continue
         }
         if (dying.has(k)) continue
-
-        if (!wasTrue.has(k)) {
-          // Never supported. A peer scan tells a misread from an auto-pencil
-          // artefact: the first is your error, the second is the app's own
-          // candidate set being coarser than the ladder.
-          if (!hasMark(nativeCands(board, cell), digit)) {
-            misreads.push({ cell, digit, cellName: cellName(cell), at: m.t })
-          }
-          continue
-        }
+        // Never supported by the ladder, so there was no belief here to go
+        // stale. Auto-pencil writes the coarser peer set, and calling the app's
+        // own surplus candidates a false belief would blame the player for it.
+        if (!wasTrue.has(k)) continue
 
         dying.set(k, { diedAt: m.t, diedAtIndex: i, mistakesHere: 0, killedBy: null })
       }
@@ -176,24 +213,6 @@ function union(intervals) {
     } else if (e > end) end = e
   }
   return total + (end - start)
-}
-
-/** The plain peer scan, which is what auto-pencil writes. */
-function nativeCands(board, cell) {
-  const row = Math.floor(cell / 9)
-  const col = cell % 9
-  const boxTop = Math.floor(row / 3) * 3
-  const boxLeft = Math.floor(col / 3) * 3
-  let mask = 0x1ff
-  for (let k = 0; k < 9; k++) {
-    const inRow = board[row * 9 + k]
-    const inCol = board[k * 9 + col]
-    const inBox = board[(boxTop + Math.floor(k / 3)) * 9 + boxLeft + (k % 3)]
-    if (inRow) mask &= ~(1 << (inRow - 1))
-    if (inCol) mask &= ~(1 << (inCol - 1))
-    if (inBox) mask &= ~(1 << (inBox - 1))
-  }
-  return mask
 }
 
 const secs = ms => (ms >= 60000 ? `${(ms / 60000).toFixed(1)} minutes` : `${Math.round(ms / 1000)} seconds`)

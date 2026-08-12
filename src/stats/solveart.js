@@ -340,7 +340,11 @@ function label(record, n) {
   // "an Expert", "a Hard". Only one of the six tiers starts with a vowel, which
   // is exactly the sort of thing that ships wrong.
   const on = tier ? ` on a${/^[aeiou]/i.test(tier) ? 'n' : ''} ${tier}` : ''
-  return `Solve path: ${n} placement${n === 1 ? '' : 's'}${on}${time}.`
+  // "Beads", not "placements". The picture draws the hints as well as your own
+  // digits, and the glossary defines Placements as the count without them, so
+  // the same screen carried 57 placements over a figure reading 56. A bead is
+  // the drawing's own unit and the paragraph beneath says what one is.
+  return `Solve path: ${n} bead${n === 1 ? '' : 's'}${on}${time}.`
 }
 
 // ---- the thread ----
