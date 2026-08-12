@@ -1160,3 +1160,55 @@ weak.
 Worth keeping as a general habit rather than a fact about this module: both of
 these were plausible, passed their tests, and were only visibly wrong when the
 output was read as a sentence about a real player.
+
+### The picture draws what was attended to, and nothing else
+
+Added at v2.15.0 with the solve-path art. The obvious thing to draw is every
+cell that ended up filled. What it draws instead is every cell the player
+filled, which is not the same list: auto-complete puts up to twelve digits on
+the board in one press, and a hint is the app's deduction rather than yours.
+
+Auto-completed cells are left out entirely and counted separately, because the
+thread is a record of attention and nobody attended to those. Hints are drawn,
+because you were there and you asked, but they carry their own colour rather
+than being folded in with what you worked out.
+
+Rules out: any version of this picture built from the finished board rather
+than from the move log. The finished board is the same for everyone who solved
+that puzzle, which is the opposite of the point.
+
+### Every drawn size is relative to the game it came from
+
+The width of the thread comes from dwell against **that game's own median**, not
+against a fixed number of seconds, which is the same rule the review and the
+coach already use for what counts as a long think. It falls out of measurement
+rather than taste: dwell is heavy-tailed enough that a linear map spends the
+whole width range on two or three stalls and draws the other fifty placements
+identically. Numbers in the changelog.
+
+The consequence worth stating: a picture is a portrait of one game and not a
+comparison between games. A fast player's thread and a slow player's thread look
+alike, and both show where the time went inside that game.
+
+### A drawing is data, and the SVG is a separate string builder
+
+`toArt` returns marks and a spine in a unit square with no notion of pixels, and
+`toSvg` is the only part that has a size. That split is what lets the same
+drawing be a thumbnail on the review, a full-width print, and eventually
+anything else, without a second implementation deciding where the marks go.
+
+It also keeps the colour rule enforceable. The SVG names no colour at all, only
+custom properties, and a palette handed in that names a literal is refused with
+an error rather than rendered. Without that check the rule would hold only for
+the palettes that exist today, and a literal would ship looking correct in
+whichever theme it was written in.
+
+Two consequences for anything that embeds it:
+
+- It has to go **in the document**, not in an `img` or a background. A `var()`
+  in a detached image has nothing to resolve against and every fill falls back
+  to black. Saving one as a file needs the computed values substituted first.
+- Colours are set as inline `style`, not as `fill` attributes. A presentation
+  attribute is not reliably parsed as a CSS value everywhere, and an SVG
+  `<style>` block is document-scoped rather than scoped to the SVG, so its rules
+  would leak into the app.

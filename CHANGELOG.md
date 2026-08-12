@@ -2,6 +2,184 @@
 
 Newest first.
 
+## v2.16.0 - 2026-08-12 - flow, struggle, and how little of a game is either
+
+Every game has recorded when each digit went in, so the rhythm it was played at
+was already written down and never read. `src/stats/flow.js` reads it.
+`flowSegments` returns the notable stretches of a game, steady and quick against
+stalled or erratic, and `flowSummary` says how much of the game each covered and
+how long the best run lasted. `tiltAfterMistake` asks whether the rhythm breaks
+after a wrong digit, which is the other half of the tilt already in `compute.js`.
+
+Nothing is wired to a screen yet.
+
+### The obvious definition of flow was measured and thrown away
+
+The ladder is the only oracle in the codebase for what a board offered, so the
+first design used it: a placement is easy when no elimination work stood in
+front of it, and a run of easy placements is a run of flow. It is a clean
+definition and it is worthless. Over 24 real puzzles it calls 96% to 100% of
+every game easy, at every tier, with 93% of placements inside a run of eight or
+more even on Diabolical. What separates a Diabolical from a Gentle is a handful
+of hard moments, not the texture of the solve.
+
+So flow is a fact about the clock, not about the grid, and the thresholds were
+calibrated against cadence planted at known positions in synthesised logs over
+those same real puzzles.
+
+### The share of the clock is the wrong number to show
+
+The first summary reported flow as a share of the game's minutes, which is what
+"how much of the game was flow" sounds like it means. Tested against a null,
+that number turns out to separate almost nothing. Running 480 games with flow
+planted in them against 480 with no cadence structure at all:
+
+| statistic | cutoff at the null's p90 | catches this share of games that really had flow |
+|---|---|---|
+| share of the clock | 14% | 14% |
+| share of the placements | 18% | 83% |
+| longest flow run | 9 placements | 85% |
+
+The reason is arithmetic rather than a bug. Flow is quick by definition, so a
+stretch holding a quarter of the digits holds a twelfth of the minutes, and one
+grind elsewhere outweighs it: on the planted games flow covered 9% of the clock
+and 26% of the placements. Both are reported and both are named for what they
+are, and the `notable` flag is keyed on the placements.
+
+### What it finds, and what it will not
+
+Per placement: flow precision 0.95 at recall 0.75, with 4% of ordinary play
+called flow. Struggle precision 0.90 at recall 0.57. Recall is the weaker half
+on purpose, in both. A false segment is a lie about the game and a missed one is
+only a quieter report.
+
+It finds a stretch running about half again quicker than the rest of the game
+(precision 0.93, recall 0.65) and finds subtler ones about half the time
+(precision 0.92, recall 0.54 at 1.25x). It does not invent them as the signal
+gets weaker: precision holds up the whole way down.
+
+The assumption underneath, and the one thing simulation cannot settle, is how
+steady real flow is. Sweeping that: gaps within a factor of 1.28 of each other
+give recall 0.75, within 1.42 give 0.50, within 1.57 give 0.29, within 1.82 give
+0.07, while precision only moves from 0.95 to 0.92 across the same range. If
+real flow is less even than about 1.4x, this reports very little of it. That is
+the direction to be wrong in, and it is the first thing to re-measure when there
+are enough real games to measure on.
+
+### Two guards, because cadence alone flatters flailing
+
+Forty placements at three seconds each read as 100% flow. Make every second
+digit wrong and, on the clock alone, they still do. With the guard they read as
+0%, and a stretch carried by hints reads as 0% the same way. One wrong digit in
+the forty costs 7%, because the guard is local to the window rather than a
+verdict on the whole game.
+
+A single enormous pause is deliberately not a struggle segment. `longestStall`
+in `replay.js` has reported the worst pause of a game since v1.2.0, and a four
+placement segment is the wrong shape for something that happened between two of
+them. Two stalls close together is a stretch, and that is reported.
+
+### The window was chosen twice, because the first comparison was wrong
+
+The first sweep varied the rolling window and the minimum run length together,
+concluded that a window of five beat a window of three, and was measuring the
+minimum run. Held at a run of eight, the head to head reverses:
+
+| window | precision | recall | flow found in a game with no rhythm at all |
+|---|---|---|---|
+| 3 | 0.95 | 0.75 | 3% of the clock, 7% of games called notable |
+| 5 | 0.95 | 0.69 | 6% of the clock, 15% of games called notable |
+| 7 | 0.96 | 0.62 | 9% of the clock, 22% of games called notable |
+
+Worth remembering as a shape of mistake: two knobs turned together produce a
+result that is true of the pair and gets written down as a fact about one of
+them.
+
+### One absolute number, borrowed rather than invented
+
+Everything here is relative to the game's own median, which is the house rule,
+except one anchor: 12 seconds. Relative thresholds alone call a metronomic game
+of one placement a minute pure flow, because half its windows sit under its own
+median by construction. `analysis.js` has called a pause of 12 seconds or more
+long since v1.5.0, so flow may never be slower than the app's own definition of
+a long pause and a stall must be at least it. The measured consequence: a
+metronome at 12.0 seconds a placement is flow and one at 12.5 is not, and a game
+played four times slower than the model reports no flow at all.
+
+### Tilt reads the direction and understates the size
+
+Injecting a known slowdown after every mistake and reading it back:
+with mistakes on 5% of placements, an injected 1.0x reports 1.06x, 1.5x reports
+1.39x, 2.0x reports 1.71x and 3.0x reports 2.56x. At a 12% mistake rate the same
+four come back as 1.02x, 1.29x, 1.47x and 1.90x, because the window before one
+mistake contains the wake of the last one. The null is clean, so the direction
+can be trusted and the magnitude cannot. It says so in the docstring, and it
+returns null rather than a number when fewer than three mistakes have a full
+window on each side.
+
+## v2.15.0 - 2026-08-12 - the solve path as a picture
+
+Every game has recorded the order the cells were filled, how long you sat on
+each one, and whether the board had proved the digit at the moment you wrote
+it. None of it has ever been visible as a shape. `src/stats/solveart.js` draws
+all three at once: a thread through the cells in the order you filled them,
+swelling where you stalled, with a bead at each placement coloured by what the
+classifier made of it. The grid you were given stays square underneath while
+the solve turns around it, so a game is a different picture from any other
+game rather than the same tangle with different dots.
+
+Two halves. `toArt` returns a drawing as data, normalised to a unit square and
+knowing nothing about pixels. `toSvg` builds the string. No colour is named
+anywhere in the output, only custom properties, so one drawing themes six ways,
+and a palette that names a literal colour is refused rather than shipped and
+found later in the five themes nobody looked at.
+
+Nothing is wired to a screen yet.
+
+### Three numbers that decided the design
+
+**Dwell has to be logarithmic.** On a simulated Expert solve of 58 placements
+with a four second median gap, a linear width gives the middle 80% of
+placements 30% of the width range, and adding three genuine multi-minute stalls
+drops that to 8%: one fat mark and fifty identical ones. Logarithmic against
+the game's own median holds it at 68% in both.
+
+**Uniform Catmull-Rom overshoots exactly where this path lives.** A solve path
+is long jumps followed by short hops, which is the worst case for it. Across
+five simulated solves the worst excursion outside the box formed by the two
+points a segment runs between was 0.077 of the canvas uniform and 0.089
+chordal, against 0.034 centripetal. An overshoot here is a loop drawn around a
+cell nothing ever happened in.
+
+**Six samples a gap, not twelve.** The angle the drawn polyline turns through at
+each joint: 10.0 degrees median at four samples, 6.4 at six, 5.0 at eight. The
+95th percentile hardly moves (25.3, 23.0, 21.5), because that tail is the
+path's own hairpins rather than the sampling, so more samples relocate the
+corners instead of removing them while the file grows linearly: 9.8KB, 13.9KB,
+18.1KB.
+
+### And two things only looking could settle
+
+The first attempt drew the board square and let it drift, which put every
+picture off balance: the whole path leaned one way and left a wedge of empty
+canvas on the other. The drift is centred now, and the givens are the still
+point it turns about.
+
+The second attempt fitted the board at a fixed fraction of the canvas computed
+from the widest possible sweep. That is correct and wasteful: at a third of a
+turn it left the drawing at 62% of the frame, which is 39% of the area. The
+drawing is scaled to fit what it actually contains instead, over the lattice as
+well as the path so that the scale barely moves between games.
+
+### The classifier is twenty times slower on some games than others
+
+Measured while deciding whether the drawing should be handed a ready analysis:
+`analyseGame` costs 0.2ms on a game played in the ladder's own order, where the
+first technique tried always fires, and 4.7ms on the same puzzle played in
+reading order, where the ladder runs to the bottom at every step. The four
+milliseconds quoted in `analysis.js` is the second case. Worth knowing before
+anything else decides to classify on demand.
+
 ## v2.14.0 - 2026-08-12 - a curriculum of your own failures
 
 Which pattern to drill next, decided by what has actually been beating you
