@@ -938,3 +938,43 @@ is never the only route.
 The general rule, and the reason this is written down rather than just fixed:
 **an explanation reachable only by hovering does not exist on the device this
 app is for.** Any future help text has to be readable with a thumb.
+
+### A race counts the cells that are right, not the cells that are filled
+
+Added at v2.11.0, with ghost racing. The obvious progress count is "cells that
+are not empty", and measuring killed it before any interface existed: on a Hard
+game with wrong digits left standing, that count and the honest one disagree at
+59% of board changes with two wrong digits down and 85% with five, and the gap
+is exactly the number standing.
+
+That matters here more than it looks, because a race is decided by one, two or
+three cells. The error is the same size as the signal, and it points the wrong
+way: you would be told you were two cells ahead precisely because two of your
+digits were wrong. So a cell counts once it holds the digit the solution has.
+
+The consequence for anything that races: **both sides must count with the same
+function.** `progressOf` is exported for the live board rather than left to the
+caller, because the natural thing to write there is `board.filter(Boolean)`,
+which includes the givens and would report the player a clue count ahead for a
+whole game while nothing anywhere looked broken.
+
+Rules out: any progress measure that credits a digit the board disagrees with,
+and any second count of "how far along am I" living in a component.
+
+### A ghost is a scalar over time, and reuses the replay it came from
+
+A replay wants every cell and every mark. A race wants one number it can compare
+sixty times a second, so a ghost is exactly that: the filled count as a function
+of the clock, plus the same timeline read backwards to answer "when did it reach
+this many". The counts are not sorted, since a ghost that erases a correct digit
+goes backwards, so that second direction is precomputed rather than searched.
+
+The timeline is built by asking `replay.js` for the board at each move rather
+than folding the log again here. Folding it here measured 0.01ms against 0.11ms
+per ghost, and the tenth of a millisecond is the right thing to spend: the
+alternative is a second description of what an undo does, free to drift from the
+first, for a saving nobody can perceive.
+
+Also decided: **the ghost reports the gap in cells and the gap on the clock.**
+Cells are not equal, level on cells is often five seconds down, and the clock
+half is the one that still moves while both players are stuck on the same cell.

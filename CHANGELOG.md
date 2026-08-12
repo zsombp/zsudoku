@@ -2,6 +2,67 @@
 
 Newest first.
 
+## v2.11.0 - 2026-08-12 - ghost racing
+
+Race the game you played last week, or race the engine, on the same grid. A
+ghost is one number over time: at this moment, how many cells it had filled. A
+live game compares itself against that and gets "three cells ahead" or "forty
+seconds down" out of one lookup.
+
+This is the timeline and the comparison only, in `src/stats/ghost.js`. Nothing
+is wired to a screen yet.
+
+### Filled means filled correctly, and measuring is what settled it
+
+The obvious count is cells that are not empty. Measured on a Hard game with
+wrong digits left standing on the board, that count and the honest one disagree
+at 59% of board changes with two wrong digits down, and 85% with five, and the
+gap is exactly the number standing. A race is decided by one, two or three
+cells, so the error is the same size as the signal: you would be told you were
+two cells ahead precisely because two of your digits were wrong.
+
+So a cell counts once it holds the digit the solution has, on both sides of the
+race. `progressOf` is exported for the live side for the same reason: counting a
+live board with `filter(Boolean)` would include the givens and report the player
+a clue count ahead of a ghost on the same grid, all game.
+
+### The timeline is replay.js read a different way, not a second board walk
+
+Folding the move log here in one pass measured 0.01ms per ghost against 0.11ms
+for reusing `boardAt`, on a 782-entry log. The tenth of a millisecond was worth
+paying: the other version is a second description of what an undo does, free to
+drift from the first. `replaySteps` already names the entries that can move a
+digit, 86 of those 782, so the quadratic-looking version is cheap and is paid
+once when a race starts rather than during play.
+
+Verified against an independent recount at 501 sample times through a game with
+mistakes, erases, undos and redos in it: no disagreements, and the ghost's line
+goes backwards four times, which is the erases and undos showing up as they
+should.
+
+### The engine pays for its thinking
+
+The ladder's solve path contains steps that only eliminate candidates: 6 of the
+62 steps on the Hard used as a test fixture, 5 of 56 on a Diabolical. Those cost
+time and fill nothing, so the engine's line has flat stretches where it is
+thinking rather than writing. An engine charged only for placements would finish
+six steps early and be a harder race than the ladder actually is.
+
+At three seconds a step it finishes a Gentle in 1:51 and a Diabolical in 3:18,
+median over six seeds a tier, so the default pace beats a person on every tier.
+It is a dial, and the code says so.
+
+### Two numbers, because cells are not equal
+
+The race reports the gap in cells and the gap on the clock. They are not the
+same reading: level on cells can be five seconds down, because the ghost got to
+that count earlier and is about to move again. The clock half is also the one
+that keeps meaning something while you are both stuck on the same cell.
+
+Costs, warm: 0.09ms to build a ghost from a game record, 0.16ms to build one
+from the ladder, and 0.026 microseconds per race readout, so a live display can
+ask on every frame.
+
 ## v2.10.0 - 2026-08-11 - start on the phone, finish on the Mac
 
 The position you are in the middle of now travels, not just the games you have
