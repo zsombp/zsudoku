@@ -2,6 +2,81 @@
 
 Newest first.
 
+## v2.22.0 - 2026-08-12 - every word the app invented, defined once
+
+153 terms in `src/logic/glossary.js`: every tier, every one of the seventeen
+techniques, every variant, every move class, every achievement, and every bare
+label on a statistics surface. Each is a short label and one sentence saying what
+the number means and, where it could be either, whether it covers this game or
+all your games.
+
+Logic only in this version. Nothing reads it yet, so no screen has changed.
+
+### Where a definition already exists, this points at it rather than rewriting it
+
+The rule from `docs/VISION.md` is that a term must not be explained two ways in
+two places. Copying the technique blurbs into a glossary would have broken that
+on day one, so techniques keep their sentence in `techniques.js`, tiers in
+`difficulty.js` and variants in `variants.js`, and the glossary derives those 29
+entries from them. Every entry carries `source`, which says where its sentence
+lives.
+
+The six move classes are the exception and the file says so: `CLASSES` lives in
+`src/stats/` and `src/logic/` may not import upwards, so those are written in the
+glossary and the test asserts their labels against `analysis.js`. That catches a
+rename and not a rewording, which is the remaining hole.
+
+### Three numbers that do not mean what their labels say
+
+Verified by driving the real reducer, not by reading it.
+
+**Undoing a wrong digit unmakes the mistake.** Place two wrong digits, undo one,
+and the record carries `mistakes: 1` while the review's Wrong says 2. Both are
+defensible and nothing anywhere said which was which, so a game can be Clean on
+the statistics screen with a wrong digit in its move log.
+
+**Pencil marks counts toggles, not notes.** One note written and rubbed out again
+reads as 2, not 1 and not 0.
+
+**"Play seven days in a row" is not what the Habit badge does.** It is implemented
+as finishing at least one game on seven consecutive days, and opening the app
+does not count. The badge copy in `achievements.js` is the loose one; the
+glossary states the rule.
+
+Win rate keeps abandoned games in its denominator, which is deliberate and
+recorded in `DECISIONS.md`, and now says so where it is read.
+
+### How long a definition may be, measured rather than chosen
+
+Over the 62 pieces of explanatory copy already on the device and known to fit:
+technique `about` 76-166 characters, technique `short` 17-25, tier blurbs 39-51,
+variant blurbs 36-94, move class `about` 27-46, toolbar hold-to-explain lines
+27-140. Across all of them p50 51, p90 135, max 166.
+
+So the cap is 180, a little over the longest thing that ships, and one sentence.
+The glossary as written runs 36 to 166, p50 119. One term would not fit and was
+split instead of trimmed: justified placements means this game on the review and
+an average over a run in the experiments table, and a sentence covering both said
+neither.
+
+### What the tests protect
+
+They walk the ladder, the tiers, the variants, the move classes, the achievements
+and the experiment outcomes, and fail if any member has no entry, so a future
+feature cannot add a term without defining it. Checked by deleting a rung from
+the derivation and watching it fail rather than by assuming.
+
+Three more that are about the copy rather than the coverage: every definition
+sits inside the measured length and is one sentence, an entry that claims to be
+about one game has to say "this game" in words and one that spans many must not,
+and a definition may not lean on jargon that has no entry of its own. The last
+one found nothing on the way in and is there for the next person; deleting the
+`candidate` entry fails the eleven definitions that use the word.
+
+Two of those were written before the copy and caught real vagueness in it: an
+entry about tilt that never said it pooled across games, and a race statistic
+that said "this grid" where it meant this game.
+
 ## v2.21.0 - 2026-08-12 - write the digit with a finger
 
 A pad under the number keys. Tap a cell, draw the digit, and the pad shows what
