@@ -29,10 +29,26 @@ const DEFAULTS = {
   // pointing at anything. Same default and the same reason, and practice turns
   // it on for the same reason it turns the explanation on.
   askFirst: false,
+  // A pad to write digits on with a finger. Off by default, and it has to be:
+  // the recogniser is right somewhere between 98% and 84% of the time depending
+  // on how steady the hand is, against a number pad that is right every time,
+  // so this is a thing to want rather than a better default.
+  handwriting: false,
   // Offer a race against a past run of the same grid when one exists. Ambient
   // rather than a scoreboard, so it has to be possible to turn off for good
   // rather than only for this game.
   raceOffers: true,
+  // Speak a move instead of tapping one. Off by default, and the microphone
+  // never opens without a press even when it is on.
+  voiceInput: false,
+  // The second half of that switch, and the one that matters. Where the browser
+  // cannot be told to recognise speech on the device, listening at all sends the
+  // audio to Apple or to Google, which is a second exception to the rule that
+  // nothing leaves this device. Unlike the GitHub backup it does not go to
+  // infrastructure the user owns, so it gets its own explicit yes rather than
+  // riding along on the one above. Safari has no way to keep it local, which
+  // means the iPhone cannot use voice at all without this.
+  voiceOffDevice: false,
   // The name published to the shared league file. Empty means not taking part,
   // which is the default: the league is opt-in twice over, once here and once
   // in the GitHub settings it rides on.

@@ -2590,3 +2590,88 @@ h3.statHeading { margin-top: 20px; }
 }
 .segTabs::-webkit-scrollbar { display: none; }
 .segTab { flex: 1 0 auto; white-space: nowrap; }
+
+/* ---- voice input ----
+ *
+ * A press-to-talk button and the strip that says what was heard. The strip is
+ * not decoration: nothing may happen to the board that is not written there
+ * first, so it holds the transcript, the move it was read as, and a way out.
+ *
+ * Sized like a tool because it is one, but outside the .tools grid, which is
+ * six fixed columns and has no room. */
+
+/* Wraps rather than keying on the viewport. The controls sit in a 340px column
+ * on a desktop and full width on a phone, so what decides whether the strip
+ * fits beside the button is the room the row has, not the size of the screen. */
+.voiceRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 7px;
+  margin-top: 7px;
+}
+.voiceBtn { flex: 0 0 68px; }
+
+.voiceStrip {
+  flex: 1 1 190px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--ctl-radius);
+  background: var(--panel);
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--sub);
+}
+
+/* Live is carried by the border and by the words, never by the pulse alone:
+ * the reduced-motion rule near the top of this file switches every animation
+ * off, and "is the microphone open" is not a thing anyone may be left guessing
+ * about because they asked for less movement. */
+.voiceStrip.live { border-left-color: var(--accent); }
+.voiceWhere {
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.voiceWhere::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: voicePulse 1.4s ease-in-out infinite;
+}
+@keyframes voicePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.28; }
+}
+
+.voiceHelp { color: var(--sub); }
+
+/* The transcript, in the digit font, because it is mostly numbers and because
+ * it should not read as more app chrome. */
+.voiceHeard {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.voiceHeard em {
+  font-style: normal;
+  font-family: var(--ui);
+  color: var(--sub);
+  margin-right: 5px;
+}
+.voiceTook { color: var(--sub); }
+.voiceDid { color: var(--accent); }
+.voiceNone { color: var(--sub); }
+.voiceErr { color: var(--error); }
+.voiceUndo { align-self: flex-start; font-size: 11px; padding: 2px 0; }

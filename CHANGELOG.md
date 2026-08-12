@@ -2,6 +2,126 @@
 
 Newest first.
 
+## v2.20.0 - 2026-08-12 - speak a move, and say where the audio goes
+
+A press-to-talk button, a grammar of four commands, and a strip that writes down
+what was heard before anything happens to the board. Off by default. The
+microphone opens on a press and on nothing else: no wake word, no restart when
+the recogniser ends, and nothing at all while the app is in the background.
+
+    "five in row three column two"   place a digit
+    "five"                           into the cell already selected
+    "clear"                          empty it
+    "undo"                           step back
+
+### The privacy question came first, and it changed the design
+
+Established rather than assumed. MDN, on the API this uses: "By default, using
+speech recognition on a web page involves a server-based recognition engine.
+Your audio is sent to a web service for recognition processing, so it won't work
+offline." In Safari that service is Apple's and Safari says so in its own
+permission sheet; in Chrome it is Google's.
+
+Chromium has since grown a way to demand otherwise. Probed in Chromium 148 on
+this Mac: `processLocally` is on `SpeechRecognition.prototype`, and the static
+gate is `SpeechRecognition.available({ langs, processLocally })`. MDN documents
+that static under a different name, `availableOnDevice(lang)`, so the name is not
+settled and neither is relied on. WebKit has neither, which is the case that
+decides everything here, because the iPhone is the device this app is played on.
+
+So there are two modes and the app never guesses which it is in. Where
+`processLocally` exists it is set to true, and a browser that cannot manage local
+recognition has to refuse rather than send the audio away. Where it does not
+exist, listening at all means the speech leaves the device.
+
+**That second case is a second exception to the non-negotiable, and it does not
+clear the bar `CLAUDE.md` sets for one.** The GitHub backup goes to
+infrastructure Zsomb owns and is useless to anyone else. A recording of a voice
+sent to Apple or Google is neither of those things. So it is not folded into the
+voice switch: it gets its own, off by default, and the copy says what happens in
+words rather than in a euphemism. On an iPhone voice input does not work at all
+until that second switch is thrown, and the settings screen says so.
+
+`SpeechRecognition.available()` is never called. It hung the renderer for a full
+30 second probe, once, unreproduced; it is also unnecessary, since setting the
+flag and letting the recogniser refuse is the same answer with no call.
+`install()` is never called either: it downloads a model, which is a network
+request nobody asked for.
+
+The strip says which mode it is in while the microphone is actually open. A
+setting is read once, months ago; this is on screen at the moment it is true.
+
+### The grammar is strict, and that is where the accuracy is
+
+Any word the grammar does not know makes the whole utterance "not a command"
+rather than a best guess. Measured against the alternative, on 2318 sentences of
+this project's own docs, which is a deliberately cruel corpus because it is prose
+about a grid, full of "row", "column" and every number word:
+
+| parser | sentences read as a command |
+|---|---|
+| strict, refuses on any unknown word | 0 of 2318 |
+| lenient, drops words it does not know | 387 of 2318, 16.7% |
+
+The lenient ones are mostly headings: "Phase 4, the interface" is a 4. Both
+halves are kept as tests rather than as a comment, because a comment cannot fail.
+
+The same measurement from the other end: 40 of 40 phrasings meant as commands are
+accepted, and getting there took two additions. Homophones, because a recogniser
+hears "row two" as "row to" constantly, resolved only where a number is the only
+thing that can go: after "row" or "column", or as the value of a command that
+already has both coordinates. A bare "to" does nothing. And ordinals in front of
+the noun, because "five in the third row second column" is how a person says it
+and was one of three phrasings out of forty that the first grammar threw away.
+
+Four of the recogniser's guesses are read and the first that parses is taken.
+"Rome" and "row" sound identical and only one of them means anything here. The
+strip shows the top guess as what was heard and the lower one as what it was
+taken as, because acting on words the player was never shown is the thing that
+strip exists to prevent. A parse costs 0.68 microseconds, so reading four is free.
+
+### Showing before acting, and three bugs found doing it
+
+The command is applied from a passive effect rather than from the recogniser
+callback, so React paints the transcript and only then changes the board. A
+layout effect would run before the paint and the digit would appear in the same
+frame as the words explaining it.
+
+Driven end to end in a browser against a fake recogniser, under StrictMode, which
+is what found the rest:
+
+- **StrictMode runs effects twice**, and `placeDigit` treats the same digit twice
+  as a clear. Unguarded, voice would have typed the number and rubbed it out
+  again in development only. A ref guard on the applied result fixes it.
+- **The eight second cutoff bypassed the controller's own teardown.** It called
+  the recogniser's `abort` directly, which left `onresult` attached after the
+  microphone was supposed to be shut, so a late result could still have placed a
+  digit. It goes through the same teardown now.
+- **An empty strip rendered as a bare bordered pill** beside the button, which
+  reads as something that failed to load. With nothing to say it is not drawn.
+
+Also found in the browser and worth keeping: the visibility guard fired for real
+when the pane went to the background mid-probe, and aborted the microphone.
+
+Eight seconds is the cutoff because the longest thing the grammar accepts is six
+words, which is 3.6 seconds at a slow and deliberate 100 words a minute. It is a
+backstop for a browser that does not end the session itself; `continuous` is
+false, so normally one utterance ends it.
+
+Two smaller decisions. Tap to start and tap to stop, not hold to talk: hold is
+unusable from a keyboard and awkward with a screen reader, and buys nothing when
+the recogniser ends the session by itself after one sentence. And the recogniser
+is told `en-GB` rather than inheriting the device language, because the grammar
+is English words and a phone set to Hungarian would return Hungarian text for the
+same speech and nothing would ever parse.
+
+### Not yet on screen
+
+`App.jsx` is not touched, so nothing mounts the button yet: another agent is in
+that file. Six lines of wiring are needed and they are written down in the
+handover. Until they land this is a feature that has not shipped, in the sense
+v1.7.1 settled.
+
 ## v2.19.0 - 2026-08-12 - killer on the ladder and on the screen
 
 Five arithmetic rungs in `techniques.js`, killer registered as a variant, and
