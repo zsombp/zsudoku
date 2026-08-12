@@ -1052,3 +1052,111 @@ theirs.
 Rules out: ranking on a raw median, any denominator that includes days a player
 was absent for, and any statistic in a league table that is silently truncated
 by the period being viewed.
+
+### A question is a phrasing of a step, never a second opinion
+
+Resolved at v2.13.0. Socratic hints could have been written as their own reading
+of the board, and that would have been a second deduction path: the question
+could point at a pattern the grader does not rate and the hint does not use.
+Instead there is one phrasing per technique over the step `nextStep` already
+returns, which is the same rule that keeps the grader, the hint and `explain.js`
+as one piece of code.
+
+One phrasing per technique rather than one for all of them. A question that fits
+every technique ("what can you see here?") points at nothing, and the point of
+the rung is to point.
+
+**The question names a unit or a digit and never a cell.** A question that names
+the cell is a hint with a question mark on the end, and it leaves the two rungs
+above it, the pattern and the digit, with nothing to reveal.
+
+The naked single needed a decision, because it is the only placement that
+carries no unit: it is proved by its peers, not by any one unit, so the question
+has to choose where to send you. Naming the region is the natural scanning
+motion and gives the answer away 22% of the time, measured over 1637 naked
+singles on real solve paths, because the region holds exactly one blank. Choosing
+the widest unit containing the cell drops that to 3.7%, and those are cells that
+are the last blank of their row, their column and their region at once, where
+there is nothing left to protect.
+
+### Asking again has to be able to move on, and only over eliminations
+
+An elimination step changes no digit, so a caller that rebuilds from the board
+gets the identical question next time it asks. That is why `askAbout` takes a
+`skip`, and measuring turned it from a nicety into the main path: at skip zero
+only six of the twelve rungs can ever be the question, and every hidden pair,
+naked triple, hidden triple and swordfish seen across 9090 questions was behind
+at least one skip.
+
+It never walks past a placement. Behind a placement is a board with a digit the
+player has not written, and a question about a position they cannot see is worse
+than no question. Everything reached through a skip carries the candidate state
+it was found in and the techniques it assumes, for the same reason the review
+draws a pattern over the candidates it was true in rather than the raw board.
+
+Rules out: any question about a position the player is not in, and any escalation
+that re-asks the ladder for each rung, which could describe one move and then
+draw another.
+
+### The teaching rungs need the same guard against a wrong digit as the hint does
+
+`hintPlacement` checks its answer against the solution because a wrong digit
+poisons every candidate set. A question needs it more, not less: a hint that is
+wrong is one wrong digit, while a question that is wrong sends someone hunting
+for a pattern that does not exist and teaches them that they cannot see patterns.
+
+Measured by planting one wrong digit in 197 real positions: the cheapest step
+claimed a digit the solution contradicts 39.6% of the time, and the board gave
+no sign of it. Only 18.8% had a cell with no candidates left and not one had a
+duplicate in a unit, so a board that is quietly broken looks completely normal
+from the inside.
+
+So with a solution in hand the question becomes one about the player's own
+digits, and without one the cell that has run out of candidates is still proof
+enough to ask. Both are still questions, and neither names the cell.
+
+### A curriculum is scheduled against evidence, and exposure is not evidence
+
+Resolved at v2.14.0. The scheduler has three signals on every record: the hint
+log says which pattern beat you, `summary.sharpBy` says which ones the classifier
+credited to you unaided, and `techniques` says what the grader's own solve path
+required. They are not interchangeable and the difference is the whole design.
+
+The first two are evidence about the player. The third is evidence about the
+puzzle. A rung whose entire history is "a puzzle you finished contained it" is
+never suggested, because the player's solve path is not the grader's and they may
+never have used it; it still moves the strength, and that is the only thing that
+lets the bottom of the ladder recover.
+
+It has to recover, and measuring is what showed it. Across 72 ladder-perfect
+games `sharpBy` credited every elimination rung and credited naked and hidden
+singles exactly zero times, because `justification` answers routine or solid for
+those two and never reaches the branch that names a pattern. Without the weak
+signal, one hint on a hidden single would have left it at the bottom of the class
+permanently, with no way for anything to ever say otherwise.
+
+Rules out: treating what a puzzle contained as a demonstration of skill, and any
+scheduler whose weakest signal is also its only one.
+
+### Overdue is a poor proxy for weak
+
+Same version, and the ordering was wrong until real games were run through it.
+Ranking purely by how far past its due date a rung was put an X-Wing that two
+puzzles happened to contain ahead of a pointing pair that had been hinted 57
+times, because the pointing pair had been met yesterday and so was not technically
+due. Both statements were true and the suggestion was still absurd.
+
+So the list is three groups, due before waiting before thin, and within a group
+the weakest band first rather than the most overdue. Bands rather than raw
+strength, because two hundredths apart is not a real difference in how well
+somebody knows a pattern.
+
+The related fix was the starting strength. From zero, a rung met twice in twenty
+games reads as weak no matter how well it went, which on the rare rungs is every
+rung: a player who found four hidden triples unaided and never needed help read
+0.58 and was offered a drill on it. It starts at 0.5, meaning unknown rather than
+weak.
+
+Worth keeping as a general habit rather than a fact about this module: both of
+these were plausible, passed their tests, and were only visibly wrong when the
+output was read as a sentence about a real player.

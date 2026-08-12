@@ -2,6 +2,131 @@
 
 Newest first.
 
+## v2.14.0 - 2026-08-12 - a curriculum of your own failures
+
+Which pattern to drill next, decided by what has actually been beating you
+rather than by a syllabus. Each rung carries a strength that rises when you find
+the pattern unaided and falls when you take a hint on it, plus a due date derived
+from that strength: half a day for something you keep failing, three weeks for
+something you own.
+
+Logic only in this version, `src/stats/curriculum.js`. Nothing is wired to a
+screen yet.
+
+### It can only teach what your own puzzles have contained
+
+Measured over twelve generated puzzles per tier before any of it was written. A
+Swordfish turned up in none of the 72 and a naked quad in one, while hidden
+singles are in 100% of puzzles from Easy up and pointing pairs in 92% of Mediums.
+
+So a rung you have never met is not on the list at all, and naked singles never
+are: they cost zero in the grader on purpose and fire in every puzzle at every
+tier, so a scheduler able to suggest them would suggest them for ever.
+
+That table also decides what pushes a rung down the list. The cheap rungs get
+their practice whether this asks for them or not, so having met one recently
+counts for a lot: you will meet a hidden single tomorrow whatever happens, and
+you will not meet an XY-Wing unless you go looking for one.
+
+### Two things measuring found that guessing would not have
+
+**A hidden single can never be credited to you.** Replaying those same 72 puzzles
+as a ladder-perfect player and running the real classifier over them, `sharpBy`
+credited every elimination rung (pointing 26, XY-Wing 25, X-Wing 13, hidden pair
+15) and credited naked and hidden singles exactly zero times. That is structural:
+`justification` answers routine or solid for those two and never reaches the
+branch that names a pattern. One hint on a hidden single would therefore have
+pinned it at the bottom of the class for good. Meeting a rung in a game you then
+finished without asking for help counts too, at a lower weight, and it is the
+only route back up for the bottom of the ladder. On real games: five games of
+hidden-single hints take it to 0.06, and fifteen clean games bring it to 0.90.
+
+**Being overdue is a poor proxy for being weak.** The first ordering ranked
+purely by how far past its date a rung was, and on real games that put an X-Wing
+which two puzzles happened to contain ahead of a pointing pair that had been
+hinted 57 times, because the pointing pair had been met yesterday and so was not
+technically due yet. The list is three groups now: due, waiting, and the ones
+there is nothing to say about yet. A rung whose whole record is "the grader's
+solve path needed it and you did not ask for help" is in that third group, since
+that is a record of what the puzzles contained rather than of what you can do.
+
+The starting strength moved for the same reason. From zero, a player who had
+found four hidden triples unaided and never once needed help still read 0.58, and
+the schedule offered to drill the pattern they had just demonstrated. It starts
+at 0.5 now, meaning unknown rather than weak, and the same player reads 0.79.
+
+Costs 0.6ms over a thousand games, so it can be recomputed on every view rather
+than stored. Practice puzzles are recorded like any other game, so a drill counts
+as the review it is.
+
+## v2.13.0 - 2026-08-12 - a question instead of an answer
+
+The hint button already had two rungs: press once for the pattern, press again
+for the digit. This is the rung below both. It asks you something.
+
+    What do you notice about the 6s in row 8?
+    Two cells in the top left box can only be 2 or 7. What does that mean for
+    the rest of it?
+    Where can 3 still go in the top right box? If those cells all sit on one
+    line, what does that rule out?
+
+One phrasing per technique, built from the step the grader would take next, so a
+question cannot disagree with the difficulty rating any more than a hint can.
+Nothing generic: a question that fits every technique points at nothing.
+
+Logic only in this version, `src/logic/socratic.js`. Nothing is wired to a
+screen yet.
+
+### Every question names a unit or a digit, and never a cell
+
+Checked over 2643 questions from real solve paths across five tiers and four
+variants: not one names the cell it is about, every one ends in a question mark,
+every one names the unit and the digits it hands back, and the claim behind each
+one holds against the candidate state it was asked in.
+
+A naked single needed care, because it has no unit of its own: it is proved by
+its peers, not by any one unit, so the question has to pick a place to search.
+Naming the region is the natural scan and gives the answer away outright 22% of
+the time, because the region holds exactly one blank. Picking by breadth instead
+drops that to 3.7%, which is the cells that are the last blank of their row,
+their column and their region at once. Nothing can point at those without
+pointing at them, and by then there is nothing left to protect.
+
+### Four of the twelve techniques cannot be asked about at all without this
+
+An elimination step leaves every digit on the board where it was. A caller
+rebuilding from the board therefore gets the identical question next time it
+asks, forever, so `askAbout` takes a `skip` that walks past eliminations already
+given away. That sounded like a nicety until it was measured: over 9090
+questions at every skip depth, every hidden pair, naked triple, hidden triple
+and swordfish reached was behind at least one skip, and at skip zero only six of
+the twelve rungs are reachable at all.
+
+It never walks past a placement. Behind a placement is a board holding a digit
+the player has not written, and a question about a grid they are not looking at
+is worse than no question.
+
+### It will not send you hunting for a pattern that is not there
+
+A wrong digit poisons every candidate set, and the ladder then derives things
+confidently and wrongly. Planting one wrong digit in 197 real positions, the
+cheapest step claimed a digit the solution contradicts 39.6% of the time, and
+the board looked healthy from the inside: 18.8% had a cell with no candidates
+left, and not one had a duplicate in a unit. Given the solution, the question
+becomes one about your own digits. Without it, the cell that has run out is
+still proof enough for a fifth of them.
+
+### A bug found on the way
+
+The naked single question said "one cell in the top left box" while the result
+it handed back carried `unit: null`, because the unit it chose was thrown away
+after the sentence was built. The words were right, the highlight would have had
+nothing to draw, and no test, build or type could have noticed. `focusUnit` is
+now the one place that decides, and both the sentence and the result read it.
+
+Cost of a question: p50 under 0.01ms, worst case 0.23ms, and 0.59ms walking
+eight steps ahead. One ladder pass, so nothing here needs the worker.
+
 ## v2.12.0 - 2026-08-12 - a private league on a shared repository
 
 Point the GitHub sync at a repository a few friends can write to and the daily
