@@ -2,6 +2,132 @@
 
 Newest first.
 
+## v2.18.0 - 2026-08-12 - the killer engine
+
+`src/logic/killer.js`. Every variant so far was a topology, and the twelve
+techniques handled all of them without a line of change because they reason
+about units and peers rather than arithmetic. A cage is a set of cells with a
+sum and no repeated digit, which none of them can say, and DECISIONS.md records
+that as the reason killer was deferred while jigsaw, X, Windoku and anti-knight
+shipped.
+
+Five pieces: the digit combinations behind a sum, the cage model, `cageLayout`
+building cages over a finished grid, `killerSolutions` searching with cages, and
+`uniqueCageLayout` turning a sound layout into a puzzle with exactly one answer.
+Nothing is wired to a screen and no technique reads cages yet.
+
+Measured, on the shipped defaults over 60 grids:
+
+| | mean | p50 | p90 | worst |
+|---|---|---|---|---|
+| a cage layout | 0.04ms | 0.03ms | | 0.39ms |
+| a uniqueness check | 2.8ms | 0.5ms | 8.6ms | 49ms |
+| layout to a unique puzzle | 13ms | 5ms | 46ms | 130ms |
+
+A layout is 31 cages averaging 2.6 cells. Cages are a constraint on top of a
+topology rather than instead of one, so killer-X, killer-Windoku and
+killer-anti-knight all work today, and are faster than plain killer because the
+extra units prune the search.
+
+### Building the shapes and the digits together, again
+
+`jigsawLayout` records three ways of building a constraint structure first and
+searching for something that satisfies it second, all of which failed. The same
+ordering applies here and killer gets it more cheaply than jigsaw did: a jigsaw
+region has to be exactly nine cells, so a growth that runs out of legal
+neighbours must backtrack, while a cage has no required size and the same dead
+end is simply a smaller cage. Growing against the finished grid and refusing any
+cell whose digit the cage already holds cannot fail, and needs no search.
+
+Doing it the other way round fails silently, which is why the numbers are in the
+file: growing the same shapes while ignoring the digits put a repeated digit in
+57 of 915 cages across 30 grids, and 26 of those 30 layouts held at least one.
+Nothing throws. The sums are still right and the grid is still a legal sudoku
+solution, so what ships is a puzzle whose own answer breaks its stated rules.
+
+### A sound layout is not a puzzle, and repairing beats redrawing
+
+A raw layout has exactly one solution 1 time in 40 with cages up to five cells,
+6 in 40 up to four, 11 in 40 up to three, 14 in 40 with nothing but pairs. So
+something has to close the gap. Redrawing until one comes out unique took 18.4
+attempts and 2443ms on average, and one grid in 25 never got there in sixty
+tries.
+
+Splitting instead takes 3.0 splits and 13ms. A second solution says exactly
+where the ambiguity is, so the cells the two answers disagree about are the only
+ones worth touching, and the largest cage among them gets cut in half. It is
+also the only one of the two that must terminate: every split adds a cage, and
+eighty-one one-cell cages is the solution written out.
+
+Halves rather than peeling one cell off, which needs marginally fewer splits at
+2.7 against 3.0 and leaves 2.7 one-cell cages behind against 2.2. A one-cell
+cage is a given digit wearing an outline, so that is the only difference worth
+deciding on. Growth gets one-cell cages down to 0.7% and repair puts 2.2 back on
+an average board; that is the price of a unique answer, paid in the open.
+
+### Cage size to four, because five barely constrains anything
+
+Hand-set killers run to five cells and this did too. On the same forty grids,
+stopping at four takes the whole build-and-repair from a mean of 651ms and a
+worst case of 7694ms down to 13ms and 129ms. A sum says less the more cells it
+covers, so a two-cell cage has at most four ways to fill it and a five-cell cage
+twelve, and both the uniqueness check and the number of repairs it needs blow up
+together. Five is still reachable by passing `sizes`, at sixty times the tail.
+
+### The search needed the combinations, and did not need a matching
+
+An empty killer board gives every cell nine candidates, so all the pruning comes
+from the cages and the classic solver's approach is not enough. Over 20 layouts,
+counting to two solutions:
+
+| | p50 time | p50 nodes |
+|---|---|---|
+| plain candidates, reading order | 104ms | 19578 |
+| plain candidates, tightest cage first | 104ms | 18106 |
+| live combinations per cage | 4.2ms | 444 |
+| live combinations plus a perfect matching | 18.1ms | 274 |
+
+Keeping the live combinations per cage is worth twenty-five times the node
+count. Checking that each one can actually be matched onto the cage's empty
+cells is strictly stronger, cuts nodes by a further 38%, and costs four times
+the wall clock, so it was rejected on the measurement.
+
+### The cache the brief asked for was measured and removed
+
+The 511-entry combination table is built once at import and is the cache that
+pays. A memo on top of it, keyed on cage size, sum and the digits still
+available, is the obvious next move because the question is asked constantly,
+and it is slower: over 400,000 asks with about thirteen repeats per key, 0.033us
+recomputed against 0.046us through a Map and 0.046us through a flat 2MB
+Int32Array. The answer is at most twelve masks and two bitwise operations each,
+which is cheaper than hashing a key to avoid it.
+
+The flat table also carried a bug worth recording, because it is what a future
+attempt would rebuild. The key packed the sum into six bits, so a nonsense cage
+of one cell summing 70 landed on the key for one cell summing 6 and answered it
+"dead" for the life of the process. Nothing threw. Puzzles with a 6 in a
+one-cell cage simply stopped having solutions.
+
+### Two bugs found by disagreeing with something stupider
+
+The propagation is the only part of this complicated enough to be confidently
+wrong, so it is checked against an enumeration with no cleverness in it at all,
+over 130 boards including deliberately broken ones. It found four disagreements,
+all on boards with one digit moved, and all of them the reference's fault: it
+never checked that the givens were legal before counting. That is now the shape
+of the shipped test.
+
+The second was in the fixpoint. Narrowing a cage can place a digit without any
+combination dying, and the loop watched only the combinations, so it could stop
+with work still to do. Sound, since less propagation only means more branching,
+but the loop did not mean what it said.
+
+`countKillerSolutions` also refuses a cage list that does not cover the board
+rather than answering it. That list arrives from a saved game, and the
+alternatives are a type error from four calls down, reporting no solutions for a
+puzzle that has one, or quietly solving a different puzzle than the one asked
+about. `cageProblems` is the way to ask without an exception.
+
 ## v2.17.0 - 2026-08-12 - six engines, wired to the interface
 
 Six modules shipped in the last six entries with nothing on a screen: the
