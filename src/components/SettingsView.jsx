@@ -207,6 +207,16 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
           />
         </Row>
         <Row
+          label="Write digits by hand"
+          hint="Adds a pad under the number keys. Tap a cell, draw the digit with a finger, and it shows you what it read before anything is placed. It gets a digit wrong roughly one time in twenty at best, so it always asks first, and it says when it is not certain. 1 against 7 and 9 against 5 are the pairs it muddles."
+        >
+          <Switch
+            label="Write digits by hand"
+            checked={settings.handwriting}
+            onChange={v => updateSettings({ handwriting: v })}
+          />
+        </Row>
+        <Row
           label="Offer a race"
           hint="On a grid you have played before, offer to run your old solve alongside this one. A quiet marker under the clock, never a scoreboard."
         >

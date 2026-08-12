@@ -10,7 +10,10 @@ import { KEYS, getSync, set } from '../lib/storage.js'
 // Themes were called dark/light before Phase 4 gave them names.
 const LEGACY_THEME = { dark: 'ink', light: 'paper' }
 
-const DEFAULTS = {
+// Exported so the defaults can be asserted without a browser. Which switches
+// start off is a product decision rather than an implementation detail, and it
+// is the kind that gets changed by accident while adding the next one.
+export const DEFAULTS = {
   theme: 'ink',
   checkErrors: true,
   autoPencilOnStart: false,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import Board from './components/Board.jsx'
 import NumberPad from './components/NumberPad.jsx'
+import HandwritingPad from './components/HandwritingPad.jsx'
 import Toolbar from './components/Toolbar.jsx'
 import StatusBar from './components/StatusBar.jsx'
 import NewGameSheet from './components/NewGameSheet.jsx'
@@ -1153,6 +1154,19 @@ export default function App() {
         disabled={busy}
         onDigit={onPadDigit}
       />
+
+      {/* Opt in only, and it goes through the same `digit` action the number
+          pad and the keyboard do, so notes mode, the move log and undo all work
+          without knowing where the digit came from. It never dispatches on its
+          own: the player presses a button in the pad. */}
+      {settings.handwriting && !won && !lost && (
+        <HandwritingPad
+          selected={state.selected}
+          editable={!busy && state.selected >= 0 && state.puzzle?.[state.selected] === 0}
+          notes={state.notes}
+          onCommit={v => dispatch({ type: 'digit', value: v })}
+        />
+      )}
 
       <div className="footRow">
         <label className="toggle">

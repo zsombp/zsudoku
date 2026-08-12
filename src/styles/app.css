@@ -591,6 +591,141 @@ body {
 .pad.quick .key.active .kc { color: var(--accent-ink); }
 .pad.quick .key.active .kc { opacity: 0.75; }
 
+/* ---- handwriting pad ----
+ *
+ * Sits under the number keys rather than over the board, because a cell is
+ * 39px across on a phone and a fingertip is about the same: there is nowhere
+ * on the board to draw a digit. See HandwritingPad.jsx.
+ *
+ * Sized in px and not in cqw. Everything inside `.boardWrap` scales with the
+ * board because a digit has to hold its proportion to the grid; this is a
+ * surface for a finger, and a finger is the same size on both machines. */
+
+.hwPad {
+  margin-top: 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--ctl-radius);
+  background: var(--panel);
+  padding: 8px 9px 9px;
+}
+.hwOpen {
+  width: 100%;
+  margin-top: 9px;
+  background: var(--panel);
+  border: 1px dashed var(--line-strong);
+  color: var(--sub);
+  border-radius: var(--ctl-radius);
+  padding: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.hwHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.hwWhere { font-size: 11.5px; color: var(--sub); }
+
+.hwSurfaceWrap { position: relative; }
+.hwSurface {
+  display: block;
+  width: 100%;
+  /* Tall enough to write a digit at a comfortable size with a thumb and short
+   * enough not to push the footer off a phone screen. 132px is about 18mm,
+   * which is roughly how large people write on glass. */
+  height: 132px;
+  background: var(--panel2);
+  border-radius: 8px;
+  /* Without this the browser claims the gesture and scrolls the page instead
+   * of drawing, which on a phone means the pad simply does not work. */
+  touch-action: none;
+  cursor: crosshair;
+}
+.hwRule { stroke: var(--line-strong); stroke-width: 1; opacity: 0.35; }
+.hwInk {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.hwPrompt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--sub);
+  opacity: 0.6;
+  /* Or the placeholder would swallow the first stroke. */
+  pointer-events: none;
+}
+
+.hwResult {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  min-height: 34px;
+}
+.hwGuess {
+  font-family: var(--mono);
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--accent);
+  min-width: 22px;
+  text-align: center;
+}
+/* A guess the recogniser is not confident about must not look like one it is.
+ * Colour alone would not carry it, so it also loses weight and gains the
+ * sentence below, the same two-channel rule a wrong digit follows. */
+.hwGuess.unsure { color: var(--sub); font-weight: 400; }
+.hwActions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.hwPlace {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  border-radius: 9px;
+  padding: 7px 12px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hwPlace:disabled { opacity: 0.35; cursor: default; }
+.hwPlace:not(:disabled):active { transform: scale(0.96); }
+.hwAlts {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--sub);
+}
+.hwAlt {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 7px;
+  /* 30px square. Smaller reads as tidier and misses under a thumb, which is
+   * the one thing a correction control cannot afford to do. */
+  min-width: 30px;
+  height: 30px;
+  font-family: var(--mono);
+  font-size: 15px;
+  cursor: pointer;
+}
+.hwAlt:disabled { opacity: 0.35; cursor: default; }
+.hwAlt:not(:disabled):active { background: var(--accent); color: var(--accent-ink); }
+.hwIdle, .hwUnsure { font-size: 11.5px; color: var(--sub); }
+.hwUnsure { flex-basis: 100%; color: var(--error); }
+
 /* ---- footer ---- */
 
 .footRow {
@@ -990,6 +1125,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .footRow, .hint, .modeHint { margin-top: 16px; }
   .hint { font-size: 10.5px; line-height: 1.7; }
   .autoDone { margin-top: 16px; padding: 13px 16px; }
+
+  /* A mouse draws a worse digit than a finger does, so on the machine where
+   * this is least likely to be used it gets the same room and no more. */
+  .hwPad, .hwOpen { margin-top: 12px; }
+  .hwSurface { height: 150px; }
 }
 
 /* ---- motion ----

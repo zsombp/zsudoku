@@ -2,6 +2,175 @@
 
 Newest first.
 
+## v2.21.0 - 2026-08-12 - write the digit with a finger
+
+A pad under the number keys. Tap a cell, draw the digit, and the pad shows what
+it read and waits. Off by default, no new dependency, no network, no model file:
+the recogniser is 400 lines of arithmetic over the stroke, in
+`src/lib/handwriting.js`.
+
+### How well it works, which is the part that matters
+
+There is no handwriting dataset here and there is not going to be one, so the
+strokes are synthesised by `scripts/handwriting.mjs` and **every number below is
+an upper bound rather than a measurement of the feature in use.** Two reasons,
+and the second is the serious one. Synthetic ink is tidier than a thumb. And the
+author of the recogniser wrote the test set, which is circular; the only defence
+available was to describe the thirty forms again from scratch rather than copy
+them, with different proportions, and to include eight forms the recogniser has
+no description for at all. Those eight are reported separately throughout.
+
+So the number to quote is not a number, it is a curve. `slop` multiplies every
+distortion at once: slant, wobble, jitter, width, tilt, and how far the ends
+overshoot. 9000 strokes per row.
+
+| slop | overall | held out | right or runner-up | shown plainly | and right |
+|---|---|---|---|---|---|
+| 0.5 | 100.0% | 100.0% | 100.0% | 96% | 100.0% |
+| 1 | 98.8% | 98.8% | 99.9% | 89% | 99.9% |
+| 1.5 | 93.7% | 91.6% | 98.7% | 72% | 99.2% |
+| 2 | 83.6% | 77.6% | 94.3% | 55% | 96.6% |
+| 3 | 61.2% | 48.3% | 80.4% | 37% | 81.0% |
+| 4 | 45.6% | 33.0% | 66.2% | 28% | 66.9% |
+
+**Nobody knows where a real thumb sits on that dial.** Slop 1 was written to look
+like careful writing on a phone and it produces 98.8%, which is the clearest
+evidence available that it is too kind. Somewhere between 1.5 and 2 is the honest
+guess, so between 84% and 94%, and it is a guess.
+
+The last two columns are the ones the feature actually rests on. At slop 2, where
+the recogniser is right 83.6% of the time, the 55% of strokes it offers without a
+caveat are right 96.6% of the time. The confidence number is doing real work.
+
+### Which digits to distrust
+
+Confusion matrix at slop 2, rows are what was drawn.
+
+```
+          1     2     3     4     5     6     7     8     9   correct
+  1     888    22    11    14    68     3   185     .     9    74.0%
+  2       5   644   144     .     4     1    95     .     7    71.6%
+  3       2     .   795     .    87     .    11     1     4    88.3%
+  4       8     .     .  1076    30    38     .     .    48    89.7%
+  5       .     .     5     .   874     .     1     .    20    97.1%
+  6       .     .     2     .    58   829     .     9     2    92.1%
+  7      94    15   100     .    38     .   949     .     4    79.1%
+  8       .     1     6     .     .     .    23   786    84    87.3%
+  9       .     .     .    62   110    42     .     2   684    76.0%
+```
+
+**1 and 7 are the unreliable pair and they are unreliable in both directions.** A
+1 with a flag on it reads as a 7 nearly a fifth of the time, and a 7 with a
+crossbar reads as a 1. If you write either of those forms, this feature will
+annoy you.
+
+**A 9 goes to a 5** when its tail runs down and to the left, which is 110 of the
+216 nines it gets wrong. **A 2 goes to a 3** when its top is round rather than
+angular. 5 and 4 are the two it is best at.
+
+By form, the worst are a flagged 1 at 72.3% and a footed 1 at 79.7% (slop 1.5).
+A bare 1, a round 3, and both forms of 8 were perfect at that level.
+
+**A stroke order with no description is not recognised at all, and there is no
+graceful failure.** An 8 drawn from the bottom up scored 0% before it got a
+prototype-free measurement of 80.7%, and the general shape holds: the direction
+sequence is ordered, so an unknown order is an unknown digit. The twenty-two
+forms in `PROTOTYPES` are the honest limit of the feature.
+
+### Three features were built, measured, and thrown away
+
+Kept in the comments because each is the obvious thing to try, and each measured
+worse than nothing. All figures against the held-out forms as well as the total,
+because a change that helps only the forms with prototypes is fitting rather than
+improving, and that is invisible from the total alone.
+
+- **Endpoint positions.** Where the pen went down and came up. Cost 2.5 points at
+  every positive weight. At slop 2 it helped the prototyped forms by 1.6 and hurt
+  the held-out ones by 4.6, which is overfitting with a signature on it. The
+  direction sequence already implies where the ends are, and slant moves the ends
+  while leaving the shape alone.
+- **Net turning**, signed rather than absolute. Worth 0.2 points at its best
+  weight and negative above 0.2.
+- **Aspect ratio**, which ought to be the whole of "1". Cost 0.9 points overall
+  and, per digit, cost 1 itself 5.3 points. A bare 1 leans, so it measures 0.2 to
+  0.4 wide against an upright prototype at 0.05, and the feature argues against
+  the right answer. Shearing the lean out first, estimated from the near-upright
+  segments only, cost a further 2.8 points because the estimate is noisiest on
+  exactly the drawings that need it.
+
+What survives: the direction sequence is worth 36.5 points, the direction
+histogram 7.0, stroke count 3.9, crossings 1.3, total turning 0.6, loops 0.3.
+
+### The loop detector was joining strokes through the air
+
+Found by measurement rather than by reading. The near-closure search walked the
+whole drawing as one list of points, so the stem of a two-stroke 4 passing close
+to its own bar closed a loop across the gap where the pen had lifted, and every 4
+was reported with two holes in it. It showed up as the loop feature measuring
+worse than useless at any weight, which is the only reason anyone looked. Loops
+are now confined to a single stroke; crossings still count across strokes,
+because a crossbar genuinely crosses a leg.
+
+A limit left in place: a one-stroke 8 reports one loop rather than two, because
+the second is not a contiguous run of the path. Worth 0.3 points, so not worth a
+planar subdivision to fix.
+
+### There is no "that is not a digit" detector, and there cannot be a cheap one
+
+Gating on how close the best match got was the first thing tried. It cannot work:
+a circle matches its nearest digit at 0.218 and a zigzag at 0.171, while real
+strokes from an unsteady hand run to a median of 0.181 and a ninetieth percentile
+of 0.283. The two populations sit on top of each other. So the confidence number
+is a margin, how far ahead the winner is, and not a distance.
+
+Draw a circle on the pad and it will offer you an 8, fairly confidently. What
+stops that mattering is that the pad asks before it writes.
+
+### It is not on the board, and that is not a compromise
+
+"Draw a digit on the cell" does not survive the device this app is for. A cell on
+a 350px phone board is 39px across and a fingertip covers about 40px. There is
+nowhere to draw. Ink on a cell would also have to share the gesture space with
+tapping to select and holding to tint, and one of the three would have to lose.
+
+So the cell is chosen the way it always was and the digit is written large,
+underneath. Tap to select and long-press to tint are untouched; the pad is a
+separate element and does not exist unless the setting is on.
+
+### Nothing is placed without a press
+
+The recogniser is wrong somewhere between one time in seventy and one in six, and
+a misread written straight onto the board would be a mistake against the player's
+record that the player did not make. Every path ends at a button: the reading,
+then three near misses ranked by how close each came, then clear. When the margin
+is thin the guess goes grey and a sentence says so, two channels rather than one,
+the same rule a wrong digit on the board follows.
+
+It re-reads after every stroke rather than waiting for a pause. The obvious
+implementation waits a few hundred milliseconds in case a second stroke is
+coming, which is a delay on every single-stroke digit and a guess about how long
+people pause. Reading again costs 0.054ms, so there is no reason to wait.
+
+### Smaller things
+
+The whole module imports in 6.6ms, nearly all of it building the twenty-two
+prototype descriptions once, paid at import rather than on the first stroke where
+it would look like the recogniser was slow.
+
+`touch-action: none` on the writing surface. Without it the browser claims the
+gesture and scrolls the page, which on a phone means the pad simply does not
+work.
+
+The pad is wired into `App.jsx`, so unlike v2.20.0 this one is on screen. Ten
+lines, additive, next to the number pad.
+
+The pointer handling has no unit test: there is no DOM test environment in this
+project and adding one would mean a dependency. What is tested instead is
+`offerFor`, the pure function deciding what the pad offers, which is where the
+"nothing is placed without a press" promise actually lives, plus the recogniser
+itself. The drawing, the commit, notes mode, undo, both column layouts and two
+themes were driven in a real browser with synthetic pointer events.
+
 ## v2.20.0 - 2026-08-12 - speak a move, and say where the audio goes
 
 A press-to-talk button, a grammar of four commands, and a strip that writes down
