@@ -57,3 +57,71 @@ describe('the account of a game', () => {
     }
   })
 })
+
+/**
+ * The rhythm paragraph reads the move log rather than the analysis, so these
+ * records carry both: `moves` for everything else in the account, and a real
+ * `moveLog` for `flowSummary` to find a cadence in.
+ */
+const logOf = gaps => {
+  let t = 0
+  return gaps.map((gap, i) => {
+    t += gap
+    return { t, kind: 'place', cell: i, value: (i % 9) + 1, correct: true }
+  })
+}
+const rep = (n, gap) => Array.from({ length: n }, () => gap)
+
+describe('the account of the rhythm', () => {
+  it('says nothing at all about a game with no move log to read', () => {
+    // Games recorded before move logging kept only their summary, and the
+    // account of one must not gain a paragraph about a cadence nobody has.
+    const out = narrate({ completed: true }, game(20), null, info())
+    expect(out.join(' ')).not.toMatch(/rhythm|pace broke/)
+  })
+
+  it('names the run when the cadence actually found one', () => {
+    // Twenty even placements at four seconds inside a game that is otherwise
+    // slow. That is what the detector was calibrated to find.
+    const moveLog = logOf([...rep(12, 20000), ...rep(20, 4000), ...rep(12, 20000)])
+    const out = narrate({ completed: true, moveLog }, game(44), null, info())
+    expect(out.join(' ')).toMatch(/You found a rhythm: \d+ placements in a row/)
+    expect(out.join(' ')).toMatch(/of the digits in the game went in like that/)
+  })
+
+  it('calls a game that ran at one pace throughout what it was', () => {
+    // A real Hard solved at an even 9.2 seconds a placement came back as one
+    // segment covering all 58 of them, and the paragraph described the whole
+    // game as if it were a passage inside it.
+    const out = narrate({ completed: true, moveLog: logOf(rep(44, 9000)) }, game(44), null, info())
+    expect(out.join(' ')).toMatch(/The whole thing ran at one pace/)
+    expect(out.join(' ')).not.toMatch(/placements in a row/)
+  })
+
+  it('never calls a slow game flow, however even its rhythm was', () => {
+    // Written the other way round first, asserting that a perfectly metronomic
+    // game reports nothing, and it failed: 44 placements at exactly 9 seconds
+    // came back as 100% flow. That is the module behaving as documented rather
+    // than a bug, because a whole game running that evenly and that quickly is
+    // flowing. The real floor is absolute: the same metronome at 16 seconds a
+    // placement is slower than the app's own definition of a long pause, and
+    // must never be called flow whatever its spread.
+    const out = narrate({ completed: true, moveLog: logOf(rep(44, 16000)) }, game(44), null, info())
+    expect(out.join(' ')).not.toMatch(/You found a rhythm/)
+  })
+
+  it('says where the clock went when most of it went on being stuck', () => {
+    const moveLog = logOf([...rep(10, 5000), ...rep(8, 120000), ...rep(10, 5000)])
+    const out = narrate({ completed: true, moveLog }, game(28), null, info())
+    expect(out.join(' ')).toMatch(/the pace broke/)
+  })
+
+  it('keeps the opening first and the ending last, whatever it adds in between', () => {
+    // The account is an account: it reports what happened in the order it
+    // happened, and a paragraph inserted in the middle must not change that.
+    const moveLog = logOf([...rep(12, 20000), ...rep(20, 4000), ...rep(12, 20000)])
+    const out = narrate({ completed: true, moveLog }, game(44), null, info({ timeToFirstMove: 3000 }))
+    expect(out[0]).toMatch(/within seconds/)
+    expect(out[out.length - 1]).toMatch(/clean/)
+  })
+})

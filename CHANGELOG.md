@@ -2,6 +2,115 @@
 
 Newest first.
 
+## v2.17.0 - 2026-08-12 - six engines, wired to the interface
+
+Six modules shipped in the last six entries with nothing on a screen: the
+Socratic questions, the spaced repetition schedule, ghost racing, flow and
+struggle, the solve path as a picture, and the league. This is all of them, at
+the surface, on a 375px phone and on a Mac.
+
+**The hint button is a ladder of three rungs.** Question, then pattern, then
+answer, each one a separate press and each one a separate switch in settings,
+both off by default because Phase 3 settled that the plain hint is the right
+default for flow. Practice mode turns both on regardless. The question names a
+unit or a digit and never a cell, shows nothing on the board, and does not count
+as a hint: nothing is spent until you take one. "I see it" takes the eliminations
+as read and asks about what is behind them, which is the only thing that stops
+the button repeating itself on a board where the cheapest step changes no digit.
+
+**What is due, at the top of the practice screen.** `nextUp` with its reason
+written out, the strength as a word rather than a number, and both a drill and a
+deck of flashcards to start from. When nothing is due it says so in the coach's
+voice instead of showing an empty panel. Every rung in the list below carries its
+own band, so the catalogue says where you stand without being opened.
+
+**A race, if you want one.** On a grid you have finished before, or against the
+engine, offered once at the start of a game and never again. During play it is
+one line between the clock and the board: how many cells up or down and how many
+seconds, with an X that ends it. There is a switch to stop it being offered at
+all.
+
+**The rhythm of a game, in the review.** A paragraph in the narrated report, and
+a strip in the Time tab showing where flow and struggle actually sat along the
+clock. The bands do not tile the bar, because what lies between them is ordinary
+play, which is most of a game and is not a finding.
+
+**A Picture tab.** The solve path drawn as a thread that swells where you
+stalled, in three palettes, saveable as an SVG file with no network involved.
+
+**A league section in Statistics.** Set a name, publish your dailies, see
+standings and head to head. It says plainly, at the top rather than in a
+footnote, that it only works if the others point their own sync at the same
+repository.
+
+### The question and the answer had to be checked, not assumed
+
+`askAbout` returns the cheapest step the ladder can take, which may be an
+elimination. `hintPlacement` returns the cheapest placement, walking past
+eliminations to find one. Nothing makes them agree, and a ladder that asked about
+one cell and then filled another would be worse than no ladder at all.
+
+Measured over 636 positions taken from 22 generated games: the cheapest step is a
+placement in 591 of them and an elimination in 45, and in all 591 the cell the
+question named is the cell the hint fills. The other 45 are the interesting case,
+and they are why "I see it" carries a skip: an elimination changes no digit, so
+asking again about an unchanged board returns the identical question forever.
+`src/hooks/useHint.test.js` holds the measurement as a test, so a change to
+either module has to notice.
+
+### The engine at its own pace is a pacemaker, not an opponent
+
+`ENGINE_STEP_MS` is three seconds and finishes a Diabolical in 3:18, which is a
+line nobody will ever be near. The engine ghost instead runs at this player's own
+median gap between placements, taken from their last twenty finished games. On
+this device that is nine seconds a step, and the label says so: "The engine, a
+step every 9s". With no history to measure it falls back to the module default
+rather than inventing a number.
+
+### A race joined late opens with the ghost already gone
+
+Starting one on a board resumed with 5:15 on the clock and nothing placed opened
+at 38 cells down. That is true, because the comparison is at the same point on
+the clock and that is the only honest comparison there is. It also reads as
+broken.
+
+So the offer is only made while the game genuinely has not started. Measured over
+the 17 real games on this device: the first digit lands within 30 seconds in 14
+of them and within 60 in 16, the outlier being one 123 second study. A minute is
+the window, and the offer also takes itself away on the first digit rather than
+waiting to be closed.
+
+### Two bugs the tests caught, both invisible without them
+
+The flow strip clamped its bands in the wrong order, applying the minimum width
+after the clamp rather than before, so a segment ending on the last placement was
+pushed 1.2% past the end of its own track and disappeared into the overflow.
+Nothing failed; the band was simply not there.
+
+And the saved SVG names every colour as a custom property, which is right inside
+the app and useless in a file on its own, where nothing defines `--accent`. The
+download now carries the resolved values on the root `<svg>` element. Verified by
+loading the saved file as a standalone document: the accent group computes to
+`rgb(226, 166, 61)` and the paper to `rgb(27, 30, 39)`, against an empty frame
+before.
+
+### One paragraph described the whole game as if it were part of it
+
+A real Hard solved at an even 9.2 seconds a placement came back as a single flow
+segment covering all 58 of them, and the narrator wrote "you found a rhythm: 58
+placements in a row". Both halves are true and only one of them is an account of
+what happened, so above 90% of the placements it now says the whole thing ran at
+one pace. The test that found this was written the other way round and failed:
+44 placements at exactly nine seconds is 100% flow, and that is the module
+behaving as documented rather than a bug.
+
+### Six tabs no longer fit on a phone
+
+The review's tab row is 420px of tabs in 347px of space at 375px wide, so
+"Picture" was clipped at the right edge with no way to reach it. The row scrolls
+now, and a tab keeps its own width instead of being squeezed to nothing. The page
+never scrolls sideways.
+
 ## v2.16.0 - 2026-08-12 - flow, struggle, and how little of a game is either
 
 Every game has recorded when each digit went in, so the rhythm it was played at

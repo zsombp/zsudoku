@@ -25,6 +25,18 @@ const DEFAULTS = {
   // because Phase 3 settled that the plain hint is better for flow, and that
   // has not changed. Practice mode turns it on regardless.
   explainHints: false,
+  // A rung below that again: the first press asks a question instead of
+  // pointing at anything. Same default and the same reason, and practice turns
+  // it on for the same reason it turns the explanation on.
+  askFirst: false,
+  // Offer a race against a past run of the same grid when one exists. Ambient
+  // rather than a scoreboard, so it has to be possible to turn off for good
+  // rather than only for this game.
+  raceOffers: true,
+  // The name published to the shared league file. Empty means not taking part,
+  // which is the default: the league is opt-in twice over, once here and once
+  // in the GitHub settings it rides on.
+  leagueName: '',
   // Which save slot to reopen on launch.
   lastMode: 'casual',
   // The variant a new game uses unless one is picked explicitly.

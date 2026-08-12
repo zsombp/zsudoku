@@ -6,6 +6,7 @@ import { achievements } from '../stats/achievements.js'
 import { dailyStreak } from '../logic/daily.js'
 import GameReview from './GameReview.jsx'
 import Experiments from './Experiments.jsx'
+import League from './League.jsx'
 import { VARIANT_LIST, VARIANTS } from '../logic/variants.js'
 
 const variantName = id => VARIANTS[id]?.name || id
@@ -20,7 +21,7 @@ function shortDuration(ms) {
   return `${Math.round(ms / 60000)}m`
 }
 
-export default function StatsView({ onClose, onPractice }) {
+export default function StatsView({ onClose, onPractice, leagueName, onLeagueName }) {
   const [games, setGames] = useState(null)
   const [showNumbers, setShowNumbers] = useState(false)
   const [notice, setNotice] = useState(null)
@@ -317,6 +318,11 @@ export default function StatsView({ onClose, onPractice }) {
       )}
 
       <Experiments games={games} />
+
+      {/* Last of the sections and quiet about it: this is the only thing on the
+          screen that involves anybody else, and it is off until two switches
+          are on. */}
+      <League name={leagueName || ''} onName={onLeagueName} />
 
       <Section title="Data">
         <label className="toggle">

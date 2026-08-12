@@ -8,7 +8,10 @@ import { boardAt, stateAt, replaySteps, stallHeatmap, summarise, cellHistory } f
 import { analyseGame, verdict, timeShape, settledCands, CLASSES } from '../stats/analysis.js'
 import { falseBeliefs, beliefVerdict } from '../stats/beliefs.js'
 import { narrate, headline } from '../stats/narrate.js'
+import { flowSummary } from '../stats/flow.js'
 import ReviewBoard from './ReviewBoard.jsx'
+import FlowStrip from './FlowStrip.jsx'
+import SolveArt from './SolveArt.jsx'
 import { Play, Pause } from './Icons.jsx'
 
 /**
@@ -32,6 +35,10 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
 
   const heat = useMemo(() => stallHeatmap(game), [game])
   const info = useMemo(() => summarise(game), [game])
+  // Where the clock went, as opposed to where on the grid it went. 0.03ms on a
+  // full game, so it is computed on open like the rest rather than gated on the
+  // tab: the account of a game should not change depending on what you tapped.
+  const flow = useMemo(() => flowSummary(game), [game])
   // Roughly 1600 operations per placement, so a 60-move game costs about a
   // tenth of a second. Cheap enough to do on open rather than in the worker.
   const analysis = useMemo(() => analyseGame(game), [game])
@@ -227,7 +234,13 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
               className={'segTab' + (mode === 'beliefs' ? ' on' : '')} onClick={() => setMode('beliefs')}>
               Notes
             </button>
+            <button role="tab" aria-selected={mode === 'art'}
+              className={'segTab' + (mode === 'art' ? ' on' : '')} onClick={() => setMode('art')}>
+              Picture
+            </button>
           </div>
+
+          {mode === 'art' && <SolveArt game={game} analysis={analysis} />}
 
           {mode === 'beliefs' && beliefs && (
             <div className="moveReview">
@@ -569,12 +582,17 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
             </div>
           )}
           {mode === 'heatmap' && (
-            <div className="heatKey">
-              <span>quick</span>
-              <span className="hkSwatch h1" /><span className="hkSwatch h2" />
-              <span className="hkSwatch h3" /><span className="hkSwatch h4" />
-              <span>slow · up to {Math.round(heat.max / 1000)}s on one cell</span>
-            </div>
+            <>
+              <div className="heatKey">
+                <span>quick</span>
+                <span className="hkSwatch h1" /><span className="hkSwatch h2" />
+                <span className="hkSwatch h3" /><span className="hkSwatch h4" />
+                <span>slow · up to {Math.round(heat.max / 1000)}s on one cell</span>
+              </div>
+              {/* The grid above says where the time went. This says when. */}
+              <h3 className="statHeading">Where the rhythm was</h3>
+              <FlowStrip summary={flow} />
+            </>
           )}
 
           <div className="reviewStats">

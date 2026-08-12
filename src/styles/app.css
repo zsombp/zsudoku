@@ -2228,3 +2228,282 @@ button.rvCell:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 }
 .card.cardHandoff .cardKicker { color: var(--t2); }
 .handoffBtns { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+
+/* ---- the question rung ----
+ *
+ * The same bar as the explanation, one press earlier, so the ladder reads as
+ * one control rather than two. The only difference is the edge: the accent means
+ * "here is the answer", and a question has not answered anything yet. */
+
+.askBar { border-left-color: var(--line-strong); }
+.askBar .explainWhy { font-size: 13px; }
+
+/* ---- racing ----
+ *
+ * One line above the board. It has to fit on a 375px phone next to a label that
+ * can read "Your 12:04 from 3 September", so the label is the part that gives
+ * way and the score never is. */
+
+.raceStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 5px 6px 5px 9px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--ctl-radius);
+  background: var(--panel);
+  font-size: 11.5px;
+  color: var(--sub);
+}
+.raceStrip.ahead { border-left-color: var(--t1); }
+.raceStrip.behind { border-left-color: var(--t4); }
+.raceWho {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.raceScore {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+}
+.raceStrip.ahead .raceScore { color: var(--t1); }
+.raceStrip.behind .raceScore { color: var(--t4); }
+.raceClock { color: var(--sub); }
+.raceStop {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--sub);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.raceStop:active { transform: scale(0.9); }
+
+.raceOffer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--ctl-radius);
+  background: var(--panel);
+}
+.raceOfferText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.raceOfferTitle { font-size: 12.5px; color: var(--ink); }
+.raceOfferSub { font-size: 11px; color: var(--sub); line-height: 1.4; }
+.raceOfferBtns { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.raceOfferBtns .newBtn { font-size: 11.5px; padding: 7px 10px; }
+
+/* ---- what is due ----
+ *
+ * Above the catalogue on the practice screen, because the catalogue is every
+ * rung there is and this is the one the record points at. */
+
+.dueCard {
+  margin: 12px 0 4px;
+  padding: 13px;
+  border: 1px solid var(--accent);
+  border-radius: var(--ctl-radius);
+  background: var(--panel);
+}
+.dueKicker {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.dueTitle { font-size: 19px; font-weight: 600; margin-top: 3px; }
+.dueStrength {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--sub);
+}
+.dueBar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--panel2);
+  overflow: hidden;
+}
+.dueFill { display: block; height: 100%; background: var(--accent); opacity: 0.7; }
+.dueReason { font-size: 11.5px; color: var(--sub); line-height: 1.5; margin: 8px 0 0; }
+
+/* Four bands rather than a continuous number, matching `strengthLabel`: a
+ * hundredth of a strength is not a real difference in knowing a pattern. */
+.techBand {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--sub);
+}
+.techBand.b0 { border-color: var(--error); color: var(--error); }
+.techBand.b1 { border-color: var(--t4); color: var(--t4); }
+.techBand.b3 { border-color: var(--t1); color: var(--t1); }
+.techBand.due { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* ---- the flow strip ----
+ *
+ * The bands do not tile the bar and are not meant to: what lies between them is
+ * ordinary play, which is most of a game and is not a finding. */
+
+.flowWrap { margin-top: 6px; }
+.flowBar {
+  position: relative;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--panel2);
+  overflow: hidden;
+}
+.flowSeg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: var(--line-strong);
+}
+.flowSeg.flow { background: var(--t1); }
+.flowSeg.struggle { background: var(--t4); }
+.flowSeg.on { box-shadow: inset 0 0 0 2px var(--ink); }
+.flowSeg:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.flowScale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--sub);
+  margin-top: 3px;
+}
+.flowKey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 8px;
+  font-size: 10.5px;
+  color: var(--sub);
+}
+.flowKey span { display: inline-flex; align-items: center; gap: 5px; }
+.flowSwatch {
+  width: 14px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--panel2);
+  display: inline-block;
+}
+.flowSwatch.flow { background: var(--t1); }
+.flowSwatch.struggle { background: var(--t4); }
+.flowShares { font-family: var(--mono); font-size: 9.5px; }
+
+/* ---- the solve as a picture ---- */
+
+.artWrap { display: flex; flex-direction: column; }
+.artFrame {
+  border: 1px solid var(--line);
+  border-radius: var(--board-radius);
+  overflow: hidden;
+  line-height: 0;
+}
+.artFrame svg { width: 100%; height: auto; display: block; }
+.artLabel { font-size: 12px; color: var(--sub); margin: 9px 0 10px; line-height: 1.5; }
+.artKey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+  font-size: 10.5px;
+  color: var(--sub);
+}
+.artKey span { display: inline-flex; align-items: center; gap: 5px; }
+.artSwatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  background: var(--accent);
+}
+.artSwatch.sharp { background: var(--t1); }
+.artSwatch.lucky { background: var(--t4); }
+.artSwatch.hint { background: var(--t3); }
+/* A wrong digit is never signalled by colour alone, here or in the drawing. */
+.artSwatch.mistake { background: transparent; box-shadow: inset 0 0 0 1.5px var(--error); }
+
+/* ---- league ---- */
+
+.dataNote.bad { color: var(--error); }
+.leagueTable em { font-style: normal; color: var(--sub); font-size: 10px; }
+.h2h { margin-top: 6px; }
+.h2hScore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  font-family: var(--mono);
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.h2hSide { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.h2hSide em {
+  font-family: var(--ui);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  max-width: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.h2hScore i {
+  font-family: var(--ui);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--sub);
+}
+
+/* A subheading inside a section, which the section's own top margin does not
+ * cover: "Head to head" and "Where the rhythm was" both sat hard against the
+ * paragraph above them. */
+h3.statHeading { margin-top: 20px; }
+
+/* A key item must never break across lines: with the swatch and the words in
+ * one inline-flex, a wrap put the swatch on a different baseline from its own
+ * label and read as belonging to the item after it. */
+.flowKey span, .artKey span { white-space: nowrap; }
+.flowSwatch, .artSwatch { flex: 0 0 auto; }
+
+/* ---- six tabs on a phone ----
+ *
+ * The review grew a sixth tab and they no longer fit: at 375px the row is 347px
+ * of space against 420px of tabs, so "Picture" was clipped at the right edge with
+ * no way to reach it. Scroll the row rather than the page, and let a tab keep its
+ * own width instead of being squeezed to nothing. */
+
+.segTabs {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.segTabs::-webkit-scrollbar { display: none; }
+.segTab { flex: 1 0 auto; white-space: nowrap; }

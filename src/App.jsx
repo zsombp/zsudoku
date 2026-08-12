@@ -16,8 +16,7 @@ import { gameReducer, initialState, remainingCounts, currentLabel, highlightDigi
 import { candMaskAt } from './logic/topology.js'
 import { hasMark } from './logic/marks.js'
 import { techFor, tierForScore, TIERS } from './logic/difficulty.js'
-import { gradePuzzle, autoCompleteFills, hintPlacement } from './logic/grader.js'
-import { explainPlacement } from './logic/explain.js'
+import { gradePuzzle, autoCompleteFills } from './logic/grader.js'
 import { topologyFromRecord } from './logic/variants.js'
 import { encodePuzzle, decodePuzzle } from './logic/share.js'
 import { GRADER_VERSION, TECHNIQUES } from './logic/techniques.js'
@@ -25,6 +24,10 @@ import { useTimer } from './hooks/useTimer.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
 import { useSettings } from './hooks/useSettings.js'
 import { useGenerator } from './hooks/useGenerator.js'
+import { useHint } from './hooks/useHint.js'
+import { useRace } from './hooks/useRace.js'
+import { RaceOffer, RaceStrip } from './components/Race.jsx'
+import { progressOf, raceState } from './stats/ghost.js'
 import { KEYS, slotFor, getSync, set, requestPersistence } from './lib/storage.js'
 import { fmtMs } from './lib/format.js'
 import { dailyPlan, weekdayName, dailyStreak } from './logic/daily.js'
@@ -108,6 +111,27 @@ export default function App() {
     () => (state.status === 'playing' && state.board ? autoCompleteFills(state.board, { topo: state.topo }) : null),
     [state.board, state.status]
   )
+
+  // ---- racing ----
+  //
+  // Auto-pencil writes a log entry the moment a board opens, so "the log is
+  // empty" is not the same question as "nothing has been placed". Asking the
+  // wrong one meant the offer never appeared at all with that setting on.
+  const untouched = !state.moveLog.some(m => m.kind === 'place' || m.kind === 'hint')
+  const race = useRace({
+    puzzle: state.puzzle,
+    topo: state.topo,
+    elapsedMs: timer.ms,
+    untouched: state.status === 'playing' && untouched,
+    enabled: settings.raceOffers && state.status !== 'generating',
+  })
+
+  // Both of these are effectively free: 0.00ms each, measured over 2000 calls,
+  // so they can run on every one of the timer's four ticks a second.
+  const raceNow = useMemo(() => {
+    if (!race.ghost || !state.board) return null
+    return raceState(race.ghost, timer.ms, progressOf(state.board, state.puzzle, state.solution))
+  }, [race.ghost, state.board, state.puzzle, state.solution, timer.ms])
 
   /**
    * Fill in every candidate the moment a board appears, if that is the setting.
@@ -455,35 +479,18 @@ export default function App() {
     [settings.quickInput]
   )
 
-  // One tap, one number. Computed on demand rather than on every render,
-  // because unlike auto-complete this runs the whole ladder.
-  /**
-   * One tap, one number, unless you asked to be taught.
-   *
-   * With explanations on, the first press points at the pattern and fills
-   * nothing in; the second press gives up the digit. Phase 3 settled that the
-   * plain hint is the better default for flow and that still holds, so this is a
-   * rung below it rather than a replacement. Practice mode forces it on: a
-   * drill that hands you the answer is not a drill.
-   */
-  const onHint = useCallback(() => {
-    const s = stateRef.current
-    if (!s.board || s.status !== 'playing') return
-    const hint = hintPlacement(s.board, s.solution, s.topo)
-    if (!hint) return
-
-    const teaching = settingsRef.current.explainHints || Boolean(s.practice)
-    if (teaching && !s.explain) {
-      const ex = explainPlacement(s.board, hint.cell, hint.digit, s.topo)
-      // Nothing proves it, which in practice means a wrong digit is poisoning
-      // the position. There is nothing honest to point at, so just place it.
-      if (ex) {
-        dispatch({ type: 'explain', explain: { ...ex, cell: hint.cell, digit: hint.digit } })
-        return
-      }
-    }
-    dispatch({ type: 'hint', hint })
-  }, [])
+  // The whole three-rung ladder, out in its own module because the sequence is
+  // logic rather than layout and there was no way to test it inside a component.
+  const hint = useHint({
+    stateRef,
+    settingsRef,
+    dispatch,
+    moveCount: state.moveLog.length,
+    status: state.status,
+    seed: state.seed,
+    board: state.board,
+  })
+  const onHint = hint.press
 
   // "Check" flashes the wrong digits for a moment rather than marking them
   // permanently, so it stays a deliberate act you can count instead of an
@@ -838,7 +845,12 @@ export default function App() {
   if (view === 'stats') {
     return (
       <div className="app wide">
-        <StatsView onClose={() => setView('home')} onPractice={startPractice} />
+        <StatsView
+          onClose={() => setView('home')}
+          onPractice={startPractice}
+          leagueName={settings.leagueName}
+          onLeagueName={n => updateSettings({ leagueName: n })}
+        />
       </div>
     )
   }
@@ -957,6 +969,10 @@ export default function App() {
         onTogglePause={() => dispatch({ type: 'togglePause' })}
       />
 
+      {/* Between the clock and the board, because it is about the clock. One
+          line, and gone the moment you close it. */}
+      {!won && !lost && <RaceStrip ghost={race.ghost} race={raceNow} onStop={race.stop} />}
+
       <div className="boardWrap">
         <Board
           state={state}
@@ -1046,6 +1062,28 @@ export default function App() {
         )}
       </div>
 
+      {/* The rung below the explanation: the words, and nothing drawn on the
+          board. It sits in the same place and wears the same shape, because it
+          is the same button one press earlier. */}
+      {hint.ask && !state.explain && (
+        <div className="explainBar askBar">
+          <div className="explainText">
+            <span className="explainWhy">{hint.ask.question}</span>
+            <span className="explainTech">
+              {hint.ask.contradiction
+                ? 'Something already on the board is wrong'
+                : 'Nothing is filled in and nothing is drawn yet'}
+            </span>
+          </div>
+          <div className="explainBtns">
+            <button className="newBtn" onClick={onHint}>
+              {settings.explainHints || state.practice ? 'Show me the pattern' : 'Fill it in'}
+            </button>
+            <button className="linkBtn" onClick={hint.seen}>I see it</button>
+          </div>
+        </div>
+      )}
+
       {state.explain && (
         <div className="explainBar">
           <div className="explainText">
@@ -1055,20 +1093,25 @@ export default function App() {
             )}
           </div>
           <div className="explainBtns">
-            <button
-              className="newBtn"
-              onClick={() => {
-                const s = stateRef.current
-                dispatch({ type: 'hint', hint: hintPlacement(s.board, s.solution, s.topo) })
-              }}
-            >
-              Fill it in
-            </button>
+            {/* The same press as the button, which is the point of the ladder:
+                with a pattern already showing, the next rung is the digit. It
+                used to reach for hintPlacement itself, which meant two places
+                could disagree about what the answer was. */}
+            <button className="newBtn" onClick={onHint}>Fill it in</button>
             <button className="linkBtn" onClick={() => dispatch({ type: 'clearExplain' })}>
               I see it
             </button>
           </div>
         </div>
+      )}
+
+      {race.offer && (
+        <RaceOffer
+          mine={race.offer.mine}
+          engine={race.offer.engine}
+          onRace={race.start}
+          onDismiss={race.dismiss}
+        />
       )}
 
       {autoFills && (

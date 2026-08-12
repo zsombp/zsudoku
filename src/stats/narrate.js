@@ -10,10 +10,71 @@
 // that opened with a grade would be read as a grade and nothing else.
 
 import { CLASSES } from './analysis.js'
+import { flowSummary } from './flow.js'
 import { TECHNIQUES } from '../logic/techniques.js'
 import { fmtMs } from '../lib/format.js'
 
 const secs = ms => (ms >= 60000 ? `${(ms / 60000).toFixed(1)} minutes` : `${Math.round(ms / 1000)} seconds`)
+
+/**
+ * Below this share of the clock a struggle is a moment rather than a shape, and
+ * `longestStall` in replay.js already reports the single worst pause. This
+ * paragraph is only worth writing when the broken rhythm was most of the game.
+ */
+const STRUGGLE_WORTH_SAYING = 0.3
+
+/**
+ * Above this share of the placements, "a stretch of flow" is the wrong noun.
+ *
+ * Found on a real game rather than reasoned about: a Hard solved at an even 9.2
+ * seconds a placement came back as one segment covering all 58 of them, and the
+ * paragraph read "you found a rhythm: 58 placements in a row", which describes
+ * the whole game as if it were a passage inside it. Both sentences are true and
+ * only one of them is an account of what happened.
+ */
+const WHOLE_GAME = 0.9
+
+/**
+ * The rhythm of it, which is the half of a game nothing else here describes.
+ *
+ * Computed rather than passed in: `flowSummary` costs 0.03ms on a full game,
+ * measured over 22 real solves, so threading it through every caller would buy
+ * nothing. Silent on a game too short to have had a rhythm, which is the module's
+ * own `enough`, and silent on flow below `NOTABLE_MOVE_SHARE`, because below that
+ * a featureless game produces as much by chance.
+ */
+function rhythm(record) {
+  const f = flowSummary(record)
+  if (!f.enough) return []
+  const out = []
+
+  if (f.notable && f.longest) {
+    const run = f.longest
+    const pace = (run.msPerMove / 1000).toFixed(1)
+    out.push(
+      f.flowMoveShare >= WHOLE_GAME
+        ? `The whole thing ran at one pace, ${pace} seconds a placement from the first digit to the last, without a stall worth the name in it.`
+        : `You found a rhythm: ${run.moves} placements in a row at ${pace} seconds each, and ${Math.round(
+            f.flowMoveShare * 100
+          )}% of the digits in the game went in like that.`
+    )
+  }
+
+  const worst = f.segments
+    .filter(s => s.kind === 'struggle')
+    .sort((a, b) => b.ms - a.ms)[0]
+  if (worst && f.struggleShare >= STRUGGLE_WORTH_SAYING) {
+    out.push(
+      `The clock went somewhere else, though: ${Math.round(
+        f.struggleShare * 100
+      )}% of it sat in stretches where the pace broke, the worst of them ${secs(worst.ms)} for ${
+        worst.moves
+      } placements.`
+    )
+  }
+
+  return out
+}
 
 /** The opening: how the board went from empty to moving. */
 function opening(moves, info) {
@@ -105,6 +166,7 @@ export function narrate(record, analysis, beliefs, info) {
   const parts = [
     opening(moves, info),
     ...middle(moves, beliefs, info),
+    ...rhythm(record),
     credit(moves, counts),
     ending(record, moves, counts),
   ].filter(Boolean)

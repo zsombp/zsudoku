@@ -1272,3 +1272,68 @@ Worth keeping as a shape of mistake rather than for the parameter. A sweep over
 two things that move together produces a result that is true of the pair and
 gets written down as a property of one of them, and nothing about the number
 looks wrong afterwards.
+
+## A hint is a ladder, and every rung is opt-in
+
+Agreed 2026-08-12, wiring the Socratic questions.
+
+The hint button now has three rungs: the question, the pattern, the digit. Both
+teaching rungs are separate settings and both are off by default. Phase 3 settled
+that the plain hint is the right default for flow, and adding rungs below it must
+not quietly change what the button does for somebody who never asked to be
+taught. Practice mode forces both on, on the existing grounds that a drill which
+hands you the answer is not a drill.
+
+The question is free. It costs no hint, because it gives nothing away: it names a
+unit or a digit and never a cell. The hint counter moves when a digit lands, and
+only then.
+
+The rung state lives in a hook rather than in the reducer. It changes nothing on
+the board, is worth nothing after a reload, and the reducer stays the record of
+the game rather than of the interface. It is cleared by the same rule
+`KEEPS_EXPLAIN` applies to the explanation: any move at all, but not selecting a
+cell, because looking around the unit is what the question asked for.
+
+## Two modules agreeing is a measurement, not an assumption
+
+Agreed 2026-08-12.
+
+`askAbout` and `hintPlacement` walk the same ladder for different answers, and
+the three-rung hint depends on them naming the same cell. Nothing in either
+module enforces it. It was measured over 636 positions from 22 games (591
+placements, 45 eliminations, agreement on all 591) and the measurement is kept as
+a test rather than as a comment, because a comment cannot fail.
+
+The general shape: when a feature depends on two independent modules agreeing,
+the test belongs with the feature, not with either module.
+
+## An opponent is set from the player, not from the engine
+
+Agreed 2026-08-12, wiring ghost racing.
+
+The engine ghost runs at the player's own median gap between placements rather
+than at `ENGINE_STEP_MS`. Three seconds a rung finishes a Diabolical in 3:18,
+which is a line nobody is ever near, and a race nobody can win is a pacemaker
+wearing a scoreboard. The pace is stated in the label so nothing about it is
+hidden.
+
+The offer is made only while the game has not started, measured rather than
+guessed: 16 of 17 real games saw their first digit inside a minute. The race
+compares the two runs at the same point on the clock, which is the only honest
+comparison available, and that means one joined late opens with the ghost already
+gone. The fix is to not offer it late, never to bend the clock.
+
+## The league is opt in twice, and reads nothing until both
+
+Agreed 2026-08-12.
+
+GitHub backup is the first switch and a display name is the second. Before both,
+the league section explains itself and makes no request of any kind. After both,
+it reads the repository on open only when the cached table is more than an hour
+old, because a day's results cannot arrive before that day.
+
+Its GitHub plumbing is a thirty line copy of the one in `src/lib/backup.js`,
+which does not export a general helper. The right home for it is next to
+`readShard` and `writeShard`, and folding it in is a tidy-up for the next time
+that file is open. It is written down here so the duplication is a known debt
+rather than a discovery.

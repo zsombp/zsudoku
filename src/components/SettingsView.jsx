@@ -187,13 +187,33 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
           />
         </Row>
         <Row
+          label="Hints ask first"
+          hint="The first press asks a question about the position and shows nothing at all. It names a unit or a digit, never a cell, and it does not count as a hint until you take one. Always on in practice."
+        >
+          <Switch
+            label="Hints ask first"
+            checked={settings.askFirst}
+            onChange={v => updateSettings({ askFirst: v })}
+          />
+        </Row>
+        <Row
           label="Hints explain first"
-          hint="The first press points at the pattern and fills nothing in. Press again for the digit. Always on in practice."
+          hint="The next press points at the pattern and fills nothing in. Press again for the digit. Always on in practice."
         >
           <Switch
             label="Hints explain first"
             checked={settings.explainHints}
             onChange={v => updateSettings({ explainHints: v })}
+          />
+        </Row>
+        <Row
+          label="Offer a race"
+          hint="On a grid you have played before, offer to run your old solve alongside this one. A quiet marker under the clock, never a scoreboard."
+        >
+          <Switch
+            label="Offer a race"
+            checked={settings.raceOffers}
+            onChange={v => updateSettings({ raceOffers: v })}
           />
         </Row>
         <Row label="Sound" hint="Synthesised, not sampled. Nothing to download.">
