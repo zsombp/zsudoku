@@ -978,3 +978,77 @@ first, for a saving nobody can perceive.
 Also decided: **the ghost reports the gap in cells and the gap on the clock.**
 Cells are not equal, level on cells is often five seconds down, and the clock
 half is the one that still moves while both players are stuck on the same cell.
+
+### A league is one file per player, and nobody merges anybody else's
+
+Added at v2.12.0. The game log needs a union merge with tombstones because two
+devices write the same months. A league does not: a player writes only
+`league/<name>.json`, so no two people ever touch the same path and there is
+nothing to reconcile. The only collision left is one player on two devices,
+which is a union by day rather than by game id.
+
+It is also not sharded, and that is measured rather than assumed. A league entry
+is 128 bytes at its widest against 7KB for a game record, so a year is 47KB and
+the 1MB the contents API returns in one read lasts about a decade. The reason
+`games/` is sharded is the move log, and a league file does not carry one.
+
+The rule that keeps a published result honest: **a result that has been
+published stands, and the only thing that can replace it is finishing a day that
+was published unfinished.** Otherwise a second device could improve a time on a
+puzzle it had already seen. The same rule picks between several local attempts
+at one day: the first completed attempt counts, never the fastest.
+
+Rules out: a shared results file anyone can write, best-of-several-attempts, and
+any merge that lets a later attempt at a seen puzzle overwrite an earlier time.
+
+### Comparing two people means proving they played the same puzzle
+
+The daily is derived from the date, so everyone gets the same grid with nothing
+sent anywhere. That is the whole reason a league works with no server, and it is
+an assumption rather than a fact: a friend on an older build, or one from before
+the boards rotated through the week, plays a different puzzle on the same date.
+
+So an entry carries the seed, the board and the tier the grader gave, and a day
+where those disagree is excluded and reported instead of compared. Only the
+fields actually present are compared, so a client that records less than this
+one does not make a day uncomparable.
+
+This is the same class of failure as a code that rebuilds a different puzzle:
+every number still computes and every one of them is meaningless. Nothing fails,
+and nothing looks wrong.
+
+Also stated rather than left implied: **nothing here can verify a time.**
+Everyone writes their own file and there is no referee. That is the price of no
+server, and the interface should not pretend otherwise.
+
+### A missed day is not a loss, and a raw median is not a ranking
+
+Two people in a league almost never play the same set of days, and both halves
+of that need handling.
+
+**Missing a day costs nothing.** It appears in no denominator: wins, days
+contested and days finished all count only days you turned up for. A day only
+one person played is not a win, since winning a race you were the only entrant
+in is not winning, and a day two people played where only one finished is a win,
+since the other player was there.
+
+**A median over different days compares nothing.** Measured across three weeks
+of real dailies, Monday's Gentle scores 0 and Sunday's Diabolical a p50 of 1830,
+the full width of the scale. Played out over a generated week with three
+players, the one who skipped the two hardest days had the best median in the
+league at 360s against the winner's 420s, having lost every day they contested.
+So the comparable column is `pace`: your time against what that day cost
+everyone else, median over the days you contested. The raw median stays, because
+it is the number people want, and it decides nothing.
+
+**A streak belongs to a player, not to a window.** It is computed over the whole
+history even when the table shows seven days, and it is judged against the
+player's own last day when that is ahead of ours. The daily is keyed on the
+local date, so a friend six hours ahead publishes a day before we reach it, and
+the existing "today or yesterday" grace reads a future day as no streak at all.
+Measured: the same three day run scores 0 against our today and 3 against
+theirs.
+
+Rules out: ranking on a raw median, any denominator that includes days a player
+was absent for, and any statistic in a league table that is silently truncated
+by the period being viewed.

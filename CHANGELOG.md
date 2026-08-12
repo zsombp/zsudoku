@@ -2,6 +2,77 @@
 
 Newest first.
 
+## v2.12.0 - 2026-08-12 - a private league on a shared repository
+
+Point the GitHub sync at a repository a few friends can write to and the daily
+becomes a race. No server, no accounts, nothing anyone but you can switch off.
+Everyone publishes `league/<name>.json` beside the game shards, and the table is
+computed from whatever files are there.
+
+A league file carries daily results only: the day, the tier, the time, mistakes,
+hints and whether it was finished. Measured at 128 bytes an entry and 47KB a
+year, which is why it is one file per player rather than sharded by month the
+way the game log has to be. A game record is 7KB on its own because it carries a
+move log, and a move log is a recording of somebody thinking. It has no business
+travelling with a finishing time.
+
+This is the layer underneath: the pure functions in `src/stats/league.js` and
+their tests. The screen and the transport come separately.
+
+### The table cannot be ranked on the obvious number
+
+Measured across three weeks of real dailies: Monday's Gentle scores 0 every
+week, Sunday's Diabolical a p50 of 1830, which is the full width of the tier
+scale. So a median over "the days you played" compares nothing between two
+people who played different days. Played out over a real generated week with
+three players, the one who skipped the two hardest days finished with the best
+median in the league, 360s against the winner's 420s, having lost every single
+day they turned up for.
+
+So there is a **pace** column: your time against what that day cost everyone
+else, taken as a median over the days you contested. 0.93 means you are
+typically 7% inside the field. The raw median is still reported, because it is
+the number people want to see, and it is not what anything is decided on.
+
+### A day you missed is not a day you lost
+
+It appears in no denominator. Wins, the days you contested and the days you
+finished all count only days you were there for, so someone who plays twice a
+week is ranked on those two days rather than punished for the other five.
+
+Two rules follow, and both are stated because neither is the only possible
+answer. A day only one person played is not a win, because winning a race you
+were the only entrant in is not winning. A day two people played and only one
+finished is a win, because the other player was there and did not get to the
+end.
+
+### The bug this found: a friend in a timezone ahead had no streak
+
+The daily is keyed on the local date, so somebody six hours ahead publishes a
+day before you have reached it. The streak function counts a run as current only
+if it ends today or yesterday, so judged against your calendar their last day is
+in the future and the run reads as zero. Measured directly: the same three day
+run scores 0 against our today and 3 against theirs, and it would have hit the
+most consistent player in the league.
+
+A streak is now measured against the player's own last day whenever that is
+further along than ours. It is also computed over their whole history rather
+than the window on screen, so showing the last seven days cannot report a forty
+day streak as seven. Both of those produce a perfectly plausible number when
+they are wrong, which is why both have a test.
+
+### Nothing here can verify a time
+
+Everyone writes their own file and there is no referee. That is the price of
+having no server, and a league between friends is honest for the same reason a
+pub quiz is.
+
+What can be checked is that two people played the same puzzle. An entry carries
+the seed, the board and the tier the grader gave, and a day where those disagree
+is left out of the table and reported rather than compared. A friend on an older
+build racing a different grid is the kind of wrong answer where every number
+still computes and every one of them is meaningless.
+
 ## v2.11.0 - 2026-08-12 - ghost racing
 
 Race the game you played last week, or race the engine, on the same grid. A
