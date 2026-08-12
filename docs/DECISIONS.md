@@ -1212,3 +1212,63 @@ Two consequences for anything that embeds it:
   attribute is not reliably parsed as a CSS value everywhere, and an SVG
   `<style>` block is document-scoped rather than scoped to the SVG, so its rules
   would leak into the app.
+
+### Flow is a fact about the clock, not about the grid
+
+Added at v2.16.0. The natural way to detect flow in this codebase is to ask the
+ladder, which is the only thing that knows what a board offered: a placement is
+easy when no elimination work stood in front of it, so a run of easy placements
+is a run of flow. Measuring killed it before any interface existed. Across 24
+real puzzles, 96% to 100% of the placements in a game are easy by that
+definition at every tier, and 93% sit inside a run of eight or more even on
+Diabolical. The definition is true and it describes every game identically.
+
+What actually separates a Diabolical from a Gentle is a handful of hard moments,
+not the texture of the solve. So flow has to be read off the cadence, and the
+thresholds have to be calibrated against cadence planted at known positions
+rather than against anything the grader can say.
+
+Rules out: any future reading of flow, fatigue or engagement that infers a
+mental state from what the puzzle required rather than from what the player did.
+
+### The share of the clock is the wrong headline for anything quick
+
+The same feature reported flow as a share of the game's minutes, which is what
+the phrase "how much of the game" sounds like it means. Tested against a null of
+games with no cadence structure at all, a cutoff on the clock share catches 14%
+of games that genuinely had flow in them, where the same cutoff on the share of
+placements catches 83%.
+
+The cause is arithmetic and it generalises: flow is quick by definition, so a
+stretch holding a quarter of the digits holds a twelfth of the minutes, and one
+slow patch elsewhere outweighs it. Any statistic about a fast thing, measured in
+time, is mostly a statistic about the slow things around it.
+
+Both numbers are reported, each named for what it is, and every derived claim is
+keyed to the count rather than the clock.
+
+### A null is worth building before a threshold is chosen
+
+The permutation test at v1.11.0 was validated by simulating its own null, and
+the same move paid again here. Running the detector over games with no rhythm in
+them at all is what set the cutoff for reporting anything, and it is what
+revealed that the clock share could not carry a claim.
+
+It also produced the caveat that keeps the feature honest: a null is only a null
+for a player whose cadence is uneven. A featureless game whose gaps vary by a
+factor of 1.8 clears the cutoff 1% of the time; one varying by only 1.35 clears
+it 27% of the time, and that is not a false positive, because a player whose
+whole game runs that evenly is flowing.
+
+### Two knobs turned together measure the pair, not either one
+
+The rolling window was chosen twice. The first sweep moved the window and the
+minimum run length together, found that a window of five beat a window of three,
+and recorded it as a fact about the window. Held at a fixed run of eight the
+result reverses: three gives recall 0.75 against five's 0.69, and finds flow in
+3% of a structureless game against 6%.
+
+Worth keeping as a shape of mistake rather than for the parameter. A sweep over
+two things that move together produces a result that is true of the pair and
+gets written down as a property of one of them, and nothing about the number
+looks wrong afterwards.
