@@ -2,6 +2,62 @@
 
 Newest first.
 
+## v3.0.0 - 2026-08-12 - six boards, seventeen rungs, and everything explains itself
+
+The release the last two days were building toward. Nothing here is new work in
+itself: it is the point at which the whole run stops being a pile of commits and
+becomes a version, with the two bugs that only playing the app could find fixed
+first.
+
+**A killer game never stored its cages.** `makeVariantPuzzle` returns them and
+every layer between it and storage dropped them, so the stored-cage branch of
+`topologyFromRecord` could not fire for a real game. Nothing looked wrong,
+because `killerLayout` is a pure function of the seed and rebuilt the identical
+board every time. The whole cost sat in the future: the day that builder
+changed, every saved killer game would quietly have become a different puzzle
+with the same digits in it. Cages travel with the record now, exactly as jigsaw
+shapes do, and a test asserts the whole trip including that the stored list is
+the one the single solution depends on.
+
+**The review's tab strip left the tab you had just picked half off the screen.**
+Six tabs are wider than a 375px phone. The strip already scrolled, so nothing
+was broken, but tapping "Picture" selected a label that then sat under the right
+bezel. It scrolls itself into view now, and deliberately without smooth
+scrolling: `scroll-behavior: smooth` turned the working jump into nothing
+happening at all in the browser it was verified in, and an animation that cannot
+be tested is not worth breaking the behaviour it decorates.
+
+**Voice input is mounted, and only where the audio stays on the device.**
+v2.20.0 shipped the machinery and wired it to nothing, which by this project's
+own rule is not shipping. `App.jsx` now renders the button without
+`allowOffDevice`, so it appears where the browser can recognise speech locally
+and nowhere else. Safari reports `remote`, so there is no button on the iPhone
+and the off-device path is unreachable rather than merely switched off. With
+backup off the app still makes no network request at all. `CLAUDE.md` said
+"nothing mounts it" and now says what is actually true.
+
+**The tags catch up.** v2.11.0 through v2.23.1 had entries here and no git tag,
+which is the same failure as v2.5.0 in reverse: the convention is a tag plus an
+entry, and half of it went missing once the work moved to parallel agents. Each
+of those versions has been tagged retroactively on the commit that delivered it,
+identified by matching commit message to entry title. They are pointers applied
+after the fact, not a claim that they were cut at the time. `package.json` also
+moves off `0.1.0`, where it had sat since the first commit.
+
+### What the version actually contains
+
+Six boards: classic, jigsaw, X-Sudoku, Windoku, anti-knight and killer.
+Seventeen rungs on the technique ladder, five of them arithmetic and reachable
+only on a caged board. A post-game review that draws its own evidence, a
+narrator, belief archaeology, self-experiments with a permutation test, a
+curriculum scheduled against your own failures, flashcards, Socratic questions
+as the rung below the hint, ghost racing, a private league over the sync
+repository, the solve path as a saveable picture, handwritten digit entry,
+spoken moves where speech never leaves the device, and a glossary every screen
+reads from.
+
+671 tests across 38 files.
+
 ## v2.23.1 - 2026-08-12 - the documentation catches up with the app
 
 No behaviour changed. Forty commits landed across 2026-08-11 and 2026-08-12, and

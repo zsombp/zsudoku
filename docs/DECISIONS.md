@@ -1611,3 +1611,67 @@ pre-generated cache, both of which are recoverable in seconds.
 What the ladder change did not need was a recalibration of the bands, and that
 too was measured rather than assumed: the before-and-after comparison is the
 evidence, and it is the comparison that decides, not the bump.
+
+### The cages travel with the record, even though the seed could rebuild them
+
+Resolved at v3.0.0. `makeVariantPuzzle` returns a killer puzzle's cage list, and
+every layer between it and storage was dropping it: the reducer copied `regions`
+and not `cages`, and so did the in-progress save and the finished record. The
+branch of `topologyFromRecord` that reads a stored cage list could therefore
+never fire for a real game.
+
+Nothing was visibly wrong, and that is the whole reason it survived a full day of
+work on killer. `killerLayout` is a pure function of the seed, so every killer
+board was rebuilt correctly from the record, every time, and the second line of
+defence was quietly doing all the work while the comments described a first line
+that did not exist.
+
+**Storing them is the decision, and the seed rebuild stays as the fallback it was
+meant to be.** A derived value is only as stable as the function that derives it,
+and that function is ours to change. The failure it prevents is not a crash: it
+is a saved game that opens one day with different cages over the same digits, a
+board that is wrong in a way nothing can detect and the player cannot even
+describe. The stored list costs about 700 bytes on a record that already carries
+two 81-cell arrays.
+
+Rules out: deriving the cages at read time as the primary path, and trusting a
+comment that describes an invariant no test asserts. `src/state/cages.test.js`
+walks the list from generator to reducer to record to rebuilt topology, and
+checks that the stored cages are the ones the single solution depends on rather
+than merely a well-formed list.
+
+### An animation that cannot be tested does not get to break the behaviour
+
+Resolved at v3.0.0. The review's six tabs are wider than a 375px phone. The strip
+scrolls, so nothing was broken, but selecting "Picture" left the label under the
+right bezel, which reads as a broken layout rather than a scrollable row. It
+scrolls the selected tab into view now.
+
+The first attempt asked for `behavior: 'smooth'` and did nothing at all: smooth
+scrolling is a no-op in the browser this was verified in. Moving the motion into
+CSS as `scroll-behavior: smooth` broke it the same way, because `behavior: 'auto'`
+resolves to whatever the stylesheet says.
+
+So the scroll is instant, and the stylesheet says so in a comment rather than
+leaving the next person to rediscover it. **The rule this settles: where a piece
+of polish cannot be verified in the browser it will be verified in, and its
+failure mode is to disable the behaviour underneath it, the behaviour wins.** The
+jump is slightly less pleasant than a glide and it is always correct.
+
+### Voice is mounted where the audio stays put, and nowhere else
+
+Resolved at v3.0.0. v2.20.0 built voice input, tested it and wired it to nothing,
+which by the rule at "A shipped feature that never reaches the device did not
+ship" means it had not shipped.
+
+It is mounted now, with `allowOffDevice` deliberately not passed. `VoiceButton`
+returns null unless `voiceMode()` is `local`, so the button exists in Chrome on
+the Mac, where the recogniser is told to process on the device and has to refuse
+rather than send audio anywhere, and does not exist in Safari at all. The iPhone
+therefore has no voice input, which is the cost of the promise and is worth it.
+
+**The off-device path stays unreachable rather than merely switched off.**
+`voiceOffDevice` remains false, no screen offers it, and nothing passes
+`allowOffDevice`. Turning it on is Zsomb's decision and nobody else's, and it
+needs the second switch and the copy that says the audio leaves the device in
+those words. With backup off, the app still makes no network request at all.
