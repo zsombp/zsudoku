@@ -2,6 +2,88 @@
 
 Newest first.
 
+## v2.23.1 - 2026-08-12 - the documentation catches up with the app
+
+No behaviour changed. Forty commits landed across 2026-08-11 and 2026-08-12, and
+the four documents that are supposed to explain this project were describing a
+smaller, older one. Six things were wrong rather than merely thin, and each is
+the kind of wrong that reads as correct.
+
+**v2.5.0 did not exist.** The file jumped from v2.4.0 to v2.6.0 because the
+commit that shipped time prediction and the tailored puzzle never wrote an entry,
+so a version number pointed at nothing and one of the run's features was
+invisible. It is written up now, and since nobody had ever measured the tailored
+search, it was measured: a pointing pair is found in 257ms, an X-Wing in 5 of 8
+seeds, a naked quad in 1 of 8, and a swordfish in none of eight full twelve
+second searches. The honest failure that feature was built around is not a
+theoretical case, it is what happens on the two rarest rungs every time.
+
+**`DECISIONS.md` said "Newest first" and had been appended to at the bottom by
+every agent that ever wrote in it.** The habit was right and the sentence was
+wrong, so the sentence changed. Appending never has to guess where an entry
+belongs, and a reader walking down the file walks forward through the argument.
+The four most recent entries were also at `##` where their neighbours are `###`,
+which nested them under the wrong section.
+
+**It also said killer was "deliberately still not built"**, in the v2.0.0
+decision that a variant is a topology, which killer contradicted eighteen
+versions later without anyone going back to it. That paragraph now records that
+its estimate held: a topology variant cost zero new technique code, and killer
+cost its own solver, its own generator and five rungs.
+
+**Ten decisions from this run existed only in code.** Written up from the
+modules and their measurements rather than from memory: the prediction range and
+the tailored puzzle's honest failure, why a shared code names the requested tier
+and not the graded one, why the in-progress game merges on move count and never
+automatically, the three killer decisions (cages ride on the topology, the layout
+is a pure function of the seed, clues make a killer gentle rather than unique),
+voice as a second exception that does not clear the first one's bar, why the
+handwriting pad asks before it writes, the glossary rule, and the amended
+`GRADER_VERSION` rule.
+
+**`VISION.md` was still a list of proposals.** Counted against the twenty-six
+ideas it listed: sixteen shipped outright, four in part, six untouched. It is now
+a record of what was built and the version that built it, and a remainder holding
+only what is genuinely left: five that were never started, two smaller ones
+deliberately deferred, and voice, which is written and not wired.
+
+**`CLAUDE.md` described an app with twelve techniques, five boards, no
+`src/stats/`, no glossary, and two hooks that do not exist.** `useGame` and
+`useTheme` were both in the layout diagram and neither is in the repository.
+
+### The two non-negotiables that actually changed
+
+**`GRADER_VERSION` now says to bump even when you have proved nothing moved.**
+The old rule tied the stamp to a change in a technique, a cost or a band, and
+killer met that rule while leaving the classic scale byte identical across 168
+puzzles. It bumped to 3 anyway, and the reason is worth being explicit about: a
+version that only changes when a number changes is a version nobody can trust
+when one does. Recalibration is now stated as the separate question it is, and it
+is settled by generating fixed seeds before and after and diffing, not by whether
+the stamp moved.
+
+**The no-network non-negotiable now names voice, because voice can send audio to
+Apple.** The Web Speech API is server-based unless the browser offers
+`processLocally`, and WebKit does not, so on the iPhone listening at all means
+the speech leaves the device. That is a second exception and it does not clear
+the bar the GitHub backup clears: a repository Zsomb owns is useless to anyone
+else and a recording of his voice is not. So the rule now says it needs its own
+switch, off by default, with copy that says the audio leaves the device in those
+words.
+
+And it says accurately what is true today: **nothing mounts the voice button.**
+`src/lib/voice.js` and `src/components/VoiceButton.jsx` are written and tested,
+`SettingsView.jsx` has no rows for the two settings keys, and no file imports the
+component. With backup off the app still makes no network request at all, because
+there is no way to turn voice on. Stating the exception unconditionally would
+have been the easy sentence and a false one.
+
+### Also
+
+Four em-dashes removed from entries written before the rule against them, in
+v1.0.2 and v0.4.1. The house style says anywhere, and a changelog is not exempt
+because it is old.
+
 ## v2.23.0 - 2026-08-12 - every screen explains itself, out of the one glossary
 
 `src/logic/glossary.js` landed with 153 terms and nothing reading it. Every
@@ -1391,6 +1473,49 @@ something occurred.
 All of it sits behind `prefers-reduced-motion` and the sound switch, as
 everything already did.
 
+## v2.5.0 - 2026-08-11 - how long it will take you, and a game built on your weak spots
+
+Written up on 2026-08-12 by the documentation pass. It shipped in the commit
+"Time prediction, and a game built around your weak spots" and was the one
+feature of this run that never got an entry, so the file jumped from v2.4.0 to
+v2.6.0 and the release it named did not exist.
+
+**The new game sheet says what each tier is likely to cost you.** A range from
+your own middle 50%, never a single number, because a point estimate for
+something this variable is a lie with a decimal place on it. A consistent player
+gets a tight range and an erratic one gets an honest wide one, out of the same
+arithmetic. Five finished games at that tier before it will say anything, and it
+is kept per board, so a jigsaw Hard never predicts from classic Hards.
+
+**The dashboard offers a whole game built around what you keep needing hints
+on**, as opposed to drilling one rung the way practice does. `makeTailoredPuzzle`
+takes a list of techniques in preference order and a time budget, and returns
+null rather than an ordinary puzzle when the budget runs out.
+
+### The honest failure is not hypothetical, and it was never measured until now
+
+Eight seeds per rung, one rung asked for each time, 12 second budget:
+
+| rung | found | gave up | mean ms | mean attempts |
+|---|---|---|---|---|
+| pointing pair | 8 of 8 | 0 | 257 | 3.0 |
+| naked pair | 8 of 8 | 0 | 857 | 10.1 |
+| hidden pair | 8 of 8 | 0 | 1502 | 19.6 |
+| XY-Wing | 8 of 8 | 0 | 2248 | 34.3 |
+| X-Wing | 5 of 8 | 3 | 8676 | 107.2 |
+| naked quad | 1 of 8 | 7 | 11447 | 105.0 |
+| swordfish | 0 of 8 | 8 | 12073 | |
+
+The cliff is the same fact v2.14.0 measured from the other end: a swordfish
+turns up in none of 72 generated puzzles and a naked quad in one. A search that
+returned something for those two would be returning a puzzle that does not
+contain the pattern it promised, and the player would go looking for a swordfish
+that was never there. It says it could not find one instead.
+
+That also sets the budget honestly. Twelve seconds is not a timeout that
+occasionally trips, it is the whole of the search for the two rarest rungs, and
+they use every millisecond of it before failing.
+
 ## v2.4.0 - 2026-08-11 - four things the coach can now tell you
 
 - **Tilt.** Whether a mistake makes the next five minutes worse, measured for
@@ -2197,7 +2322,7 @@ Now persisted, capped at the last 50 states: a full stack of board and mark
 snapshots runs to a few hundred KB, which is not worth writing every ten seconds
 for undos nobody reaches.
 
-**Pause did not survive a reload** — it came back running, with the clock going.
+**Pause did not survive a reload.** It came back running, with the clock going.
 Now persisted, and verified: blurred board, resume button, clock stopped.
 
 **No redo.** Unlimited undo and no way forward, so over-undoing cost you
@@ -2243,8 +2368,8 @@ The marks grid declared `grid-template-columns` but not rows, so the rows were
 implicit and auto-sized. An empty row collapsed to nothing and the occupied rows
 absorbed the free space, which moved every digit in the cell.
 
-This is not cosmetic. A pencil mark's **position is information** — you learn to
-read "4 is left-of-centre" without counting — and that only works if the
+This is not cosmetic. A pencil mark's **position is information**: you learn to
+read "4 is left-of-centre" without counting, and that only works if the
 position never moves. Fixed with `grid-template-rows: repeat(3, 1fr)`. Verified:
 1/2/3 at 0px, 4/5/6 at 18.2px, 7/8/9 at 36.4px, in every cell regardless of
 which marks are present.
@@ -2256,7 +2381,7 @@ have highlighted".
 
 He is right, and the reason is that recolouring only works when the accent sits
 far from `--sub` in both hue and lightness. Measured in Nord, the highlighted
-mark against a plain one was **1.07:1** — two light blue-greys at 9px, which is
+mark against a plain one was **1.07:1**, two light blue-greys at 9px, which is
 invisible by any standard.
 
 Highlighted marks now swap figure and ground: `--accent` background,
@@ -2601,8 +2726,8 @@ emit carries a sample size.
 In the browser: empty state, then 46 synthetic games to exercise every chart
 (the mistake-timing insight correctly identified the endgame clustering that had
 been seeded into the data), then the synthetic games were deleted and a real
-game played through — hand placement, deliberate mistake, correction, hint,
-finish — and checked end to end. Export/import round-tripped: clear to 0, import
+game played through, with a hand placement, a deliberate mistake, a correction,
+a hint and a finish, and checked end to end. Export/import round-tripped: clear to 0, import
 46, import again added 0 and skipped 46, foreign file rejected. Zero console
 errors.
 

@@ -1,6 +1,15 @@
 # Zsudoku decisions log
 
-Newest first. Every entry records what was decided, why, and what it rules out. Open questions live at the bottom until they are answered, then they move up here.
+Every entry records what was decided, why, and what it rules out.
+
+**The order is not newest first, whatever this line used to claim.** The phased
+build sits at the top as dated sections, newest phase first. Everything after
+the phases is appended at the end, in the order it was decided, so the newest
+decision in the project is the last one in the file. That was the actual habit
+of every agent that has written here, and it is worth keeping: appending never
+has to guess where a new entry belongs, and a reader walking down the file walks
+forward through the argument. There is no separate section for open questions;
+where one is open, the entry says so.
 
 ---
 
@@ -885,8 +894,13 @@ of them without knowing which it got.
 The line this draws is worth keeping. **A variant expressible as different units
 and peers is nearly free. A variant needing arithmetic is a project.** Killer
 cages and thermometer orderings are not sets of nine cells holding nine digits,
-so they need new constraint types and new techniques, and they are deliberately
-still not built.
+so they need new constraint types and new techniques.
+
+Killer was built at v2.18.0 and v2.19.0 and the estimate held: it took its own
+solver, its own generator and five new rungs, against zero new code for the four
+topology variants. Thermometers, arrows, kropki dots and sandwich sums are still
+unbuilt and are each the same size of job. Read the killer entries below before
+starting one.
 
 Rules out: any per-variant copy of a technique, and any rendering that decides
 where the heavy rules go by its own arithmetic rather than by asking the
@@ -1273,7 +1287,7 @@ two things that move together produces a result that is true of the pair and
 gets written down as a property of one of them, and nothing about the number
 looks wrong afterwards.
 
-## A hint is a ladder, and every rung is opt-in
+### A hint is a ladder, and every rung is opt-in
 
 Agreed 2026-08-12, wiring the Socratic questions.
 
@@ -1294,7 +1308,7 @@ the game rather than of the interface. It is cleared by the same rule
 `KEEPS_EXPLAIN` applies to the explanation: any move at all, but not selecting a
 cell, because looking around the unit is what the question asked for.
 
-## Two modules agreeing is a measurement, not an assumption
+### Two modules agreeing is a measurement, not an assumption
 
 Agreed 2026-08-12.
 
@@ -1307,7 +1321,7 @@ a test rather than as a comment, because a comment cannot fail.
 The general shape: when a feature depends on two independent modules agreeing,
 the test belongs with the feature, not with either module.
 
-## An opponent is set from the player, not from the engine
+### An opponent is set from the player, not from the engine
 
 Agreed 2026-08-12, wiring ghost racing.
 
@@ -1323,7 +1337,7 @@ compares the two runs at the same point on the clock, which is the only honest
 comparison available, and that means one joined late opens with the ghost already
 gone. The fix is to not offer it late, never to bend the clock.
 
-## The league is opt in twice, and reads nothing until both
+### The league is opt in twice, and reads nothing until both
 
 Agreed 2026-08-12.
 
@@ -1337,3 +1351,263 @@ which does not export a general helper. The right home for it is next to
 `readShard` and `writeShard`, and folding it in is a tidy-up for the next time
 that file is open. It is written down here so the duplication is a known debt
 rather than a discovery.
+
+---
+
+## Written up on 2026-08-12, closing the run
+
+Ten decisions that were made in code and never written down here. Ordered by the
+version they belong to rather than by when this page was typed, because the
+argument only reads in that order. Everything below is taken from the modules and
+their measurements, not from memory.
+
+### A prediction is a range, and a tailored puzzle that was not tailored is a failure
+
+Shipped at v2.5.0. `predictTime` reports your own middle 50% for that tier on
+that board and refuses to answer at all under five finished games. A point
+estimate for a quantity this variable is a lie with a decimal place on it, and
+the spread is the useful half: a consistent player gets a tight range and an
+erratic one gets an honest wide one out of the same arithmetic.
+
+`makeTailoredPuzzle` returns null when its budget runs out. That is not defensive
+coding, it is the feature: measured over eight seeds a rung, a pointing pair is
+found in 257ms and three attempts, an X-Wing in 5 of 8 tries, a naked quad in 1
+of 8, and a swordfish in none of eight full twelve second searches. v2.14.0
+measured the same fact from the other end, that a swordfish appears in none of 72
+generated puzzles. A search that returned an ordinary puzzle rather than nothing
+would send the player hunting for a pattern that is not on the board, which is
+the exact failure the Socratic questions were also built to avoid.
+
+Rules out: a single predicted time anywhere in the interface, a prediction that
+pools boards, and any "tailored" or "practice" puzzle that quietly falls back to
+an ordinary one.
+
+### A shared code names the tier that was asked for, not the one that came back
+
+Fixed at v2.7.0. A puzzle here is a seed, a requested tier and a board, and
+generation takes the request. A code built from `graded` therefore rebuilds a
+different puzzle on the other device: it round-tripped the board correctly, the
+grid was valid, the tier label was right, and the puzzle was not the one that was
+shared. Producing the wrong answer confidently is worse than failing.
+
+The same rule is why practice and tailored puzzles get no code at all. They come
+out of a different search, so a seed and a tier cannot rebuild them, and a code
+that looked authoritative and produced something else would be the same bug
+wearing a nicer interface.
+
+### The in-progress game merges on move count, and never on its own
+
+Shipped at v2.10.0. Finished games union safely because they never change again.
+A position in progress is the one record both devices rewrite, so a union means
+nothing and last-write-wins silently discards moves: a phone left open in a
+pocket writes a newer save holding fewer moves than the Mac.
+
+The rule is that the longer move log wins and a tie goes to the more recently
+touched, which is sound only because both logs start from the same puzzle, so the
+longer one contains the shorter. Two different puzzles are not merged at all,
+they are offered as a choice.
+
+**And it is never applied automatically.** The rule is right nearly always, and
+nearly always is not the standard when being wrong means overwriting a game
+somebody is in the middle of. The dashboard offers it with how far along it is
+and how much clock is on it, and the player decides.
+
+### Cages ride on the topology, so nothing above the ladder had to learn about killer
+
+Resolved at v2.19.0, and it is the whole of the wiring. `createState` already
+carried `topo` into every technique, so five functions reading `topo.cages` gave
+the grader, the hint button, `explain.js`, the Socratic questions, the post-game
+review, the move classifier and belief archaeology a killer board with no change
+to any of them.
+
+That is the payoff of the Phase 2 rule that one function grades and explains, and
+of the v2.0.0 rule that a variant is data. The cost of breaking either would have
+been seven surfaces that can disagree with each other about a caged board.
+
+The five arithmetic rungs were priced by measuring, not by taste, and the danger
+they posed has a name in this file already. On an empty board of 32 cages, cage
+combination and cage sum fire 22 and 28 times, about once per cage: they are the
+pass everybody makes before starting. Priced like a pointing pair they would have
+contributed 1300 of a 2100 score, which is the naked-singles disease of Phase 2
+returning in a new costume, where the score measures how many cages the grid has
+rather than how much deduction it needs. They sit just above a hidden single, and
+the tier comes from the 45 rule, the cage lock and the ordinary patterns.
+
+Rules out: a killer-only copy of any technique, a second explanation path for
+caged boards, and pricing a rung by how clever it feels rather than by how often
+it fires.
+
+### The cage layout is a pure function of the seed, and that is worth a tier
+
+Resolved at v2.19.0, and it is the decision to argue with if killer is revisited.
+Redrawing the cages on each generation attempt would give tier targeting another
+knob, and it was refused, because the seed alone would then no longer rebuild the
+board. That property is what makes a saved killer safe: verified in the browser, a
+killer game saved without its cages reloads with all thirty redrawn and their
+totals adding to 405. A record whose cage list did not survive a round trip is
+recoverable rather than lost.
+
+The price is paid in the top tier. Within a seed the layout is the hardest of four
+deterministic candidates, ranked by what the ladder scores on the empty board,
+because a layout can be made easier by giving clues and never harder. Four is the
+knee: over 30 seeds, one candidate reaches Diabolical on 7 of them, four reaches
+it on 21 and five on 21 as well, at 43ms against 55ms. Five Diabolical requests in
+25 still land Expert, and the interface says so under the existing `requested` and
+`graded` rule.
+
+### Clues make a killer gentle; they are not what makes it unique
+
+Resolved at v2.18.0 and v2.19.0, and it inverts the classic intuition badly
+enough to be worth stating on its own.
+
+The classic `dig` is not slow on a killer, it is wrong: it asks `countSolutions`,
+which knows nothing about cages, so on a caged board with no givens it reports
+many answers and refuses to remove anything. Uniqueness comes from the cages, and
+a layout is only accepted once the empty board has exactly one answer under it, so
+every subset of the solution is unique too and digging pays no uniqueness check at
+all. That is why a killer is the cheapest board this app makes: a Diabolical
+killer generates in a mean 59ms against 2645ms for a classic Diabolical and
+8451ms for a Windoku one.
+
+What clues buy instead is gentleness. Score against clue count, p50 over 16
+layouts: 1295 at zero givens, 226 at four, 151 at twelve, 15 at forty. The whole
+scale lives between zero and about eight, and a Gentle killer carries 44 givens,
+which looks absurd until you remember that Gentle here means every step forced,
+which on a caged board means never having to reason about a cage at all.
+
+Two failures from the same work, both silent. Growing cages while ignoring the
+digits underneath put a repeated digit in 57 of 915 cages across 30 grids, and 26
+of those 30 layouts held at least one: nothing throws, the sums are right, the
+grid is a legal sudoku solution, and the puzzle breaks its own stated rules. And
+a flat lookup table keyed the sum into six bits, so a one-cell cage summing 70
+collided with one summing 6 and answered "no combinations" for the life of the
+process, which meant puzzles with a 6 in a one-cell cage simply had no solutions.
+The table was measured and removed; recomputing at 0.033us beats a Map at 0.046us.
+
+### Voice input is a second exception, and it does not clear the bar the first one did
+
+Resolved at v2.20.0. The Web Speech API is not local. MDN is explicit that
+recognition is server-based by default and will not work offline; in Safari the
+service is Apple's and in Chrome it is Google's. Chromium has grown a
+`processLocally` flag that must make recognition local or fail rather than fall
+back; WebKit has neither it nor the static that gates it, and the iPhone is the
+device this app is played on.
+
+So there are two modes and the app never guesses which it is in. Where
+`processLocally` exists it is set, and a browser that cannot manage local
+recognition must refuse. Where it does not, listening at all means the speech
+leaves the device.
+
+**That second case does not clear the bar `CLAUDE.md` sets for an exception.** The
+GitHub backup goes to infrastructure Zsomb owns and is useless to anyone else; a
+recording of a voice sent to Apple or Google is neither. So it is not folded into
+the voice switch. It gets its own, off by default, on top of the switch that turns
+voice on at all, and the copy says what happens in words rather than in a
+euphemism. On an iPhone voice does not work until the second switch is thrown, and
+the settings screen has to say so. The strip says which mode it is in while the
+microphone is open, because a setting read once months ago is not the same as a
+statement on screen at the moment it is true.
+
+`SpeechRecognition.available()` is never called: it hung the renderer for a full
+30 second probe once, unreproduced, and setting the flag and letting the recogniser
+refuse is the same answer with no call. `install()` is never called either,
+because it downloads a model, which is a network request nobody asked for.
+
+**As of this entry the feature is not mounted.** `src/lib/voice.js`,
+`src/components/VoiceButton.jsx` and the two settings keys exist and are tested;
+nothing imports the button and `SettingsView.jsx` has no rows for the switches, so
+there is no way to turn it on. By the rule at "A shipped feature that never
+reaches the device did not ship", voice input has not shipped, and `CLAUDE.md`
+states the exception as conditional for exactly that reason.
+
+Rules out: one switch covering both modes, any copy that says "processed
+elsewhere" instead of naming what leaves, a wake word, restarting the recogniser
+when it ends, and listening while the app is in the background.
+
+### The recogniser asks before it writes, because it cannot know when it is wrong
+
+Resolved at v2.21.0. Handwriting recognition here is 400 lines of arithmetic over
+the stroke, no model file, no dependency, no network. It is right 83.6% of the
+time at the messier end of the honest guess and 93.7% at the tidier end, and
+nobody knows where a real thumb sits between them: synthetic ink is tidier than a
+finger, and the author of the recogniser wrote the test set.
+
+**There is no cheap way to detect "that is not a digit", and this was measured
+rather than assumed.** Gating on how close the best match got cannot work: a
+circle matches its nearest digit at 0.218 and a zigzag at 0.171, while real
+strokes from an unsteady hand run to a median of 0.181 and a p90 of 0.283. The two
+populations sit on top of each other. So the confidence number is a margin, how
+far ahead the winner is, and not a distance, and drawing a circle on the pad will
+get you a fairly confident 8.
+
+Every path therefore ends at a button: the reading, three ranked near misses, and
+clear. A misread written straight onto the board would be a mistake against the
+player's record that the player did not make, and this app's whole position is
+that the record is honest. Where the margin is thin the guess goes grey and a
+sentence says so, which is the same two-channel rule a wrong digit on the board
+already follows. The 55% of strokes offered without a caveat are right 96.6% of
+the time, so the caveat is doing real work rather than covering for the feature.
+
+**It is not on the board, and that is not a compromise.** A cell on a 350px phone
+board is 39px across and a fingertip covers about 40px, so there is nowhere to
+draw, and ink on a cell would have to share the gesture space with tap-to-select
+and hold-to-tint. The cell is chosen the way it always was and the digit is
+written large underneath.
+
+Also recorded, because each is the obvious thing to try next and each measured
+worse than nothing: endpoint positions cost 2.5 points and overfit visibly,
+helping prototyped forms by 1.6 and hurting held-out ones by 4.6; net turning is
+worth 0.2 at best; aspect ratio costs 0.9 overall and costs the digit 1 itself 5.3
+points, because a bare 1 leans and the feature then argues against the right
+answer.
+
+### A term the app coins is defined once, in the glossary, and read from there
+
+Resolved at v2.22.0 and v2.23.0, delivering the requirement `VISION.md` recorded
+on 2026-08-11. `src/logic/glossary.js` holds 153 terms and every screen reads it,
+label as well as sentence, so a tile headed one thing and explaining another is
+not expressible. Where a definition already lived somewhere true, the glossary
+derives from it rather than copying: techniques keep their sentence in
+`techniques.js`, tiers in `difficulty.js`, variants in `variants.js`, and every
+entry carries `source` saying where its sentence lives. Copying would have broken
+the rule on day one.
+
+Wiring it up found four terms that were already explained twice in different
+words, which is what the rule exists to prevent, and one number reported under a
+label that did not describe it: the recent-games legend said "wrong digits" over
+`mistakes`, the wrong digits left standing. Over 32 generated games driven through
+the real reducer the two differ in 20 of them.
+
+**Which surface gets subtext and which gets a tap was measured, not judged.**
+Printing the median, the 90th percentile and the longest definition into each real
+container at 375px: a definition costs three to four times the height of the thing
+it explains in any grid cell, and six statistics tiles would go from 136px of
+screen to 375px. The widest grid cell on the phone is 170px and the full-width
+column is 347px, and nothing in this app is between the two, so there is no
+judgment call and no third case. A full-width container carries its definition
+outright; a cell in a grid or a table carries a dotted underline and one shared
+line underneath the group, which holds the prompt while nothing is open and the
+definition when something is. Growing the tapped tile instead reflows the grid and
+moves it out from under your thumb.
+
+Rules out: a separate help page, an explanation reachable only by hover, a second
+place any term is defined, and a per-trigger expansion inside a grid.
+
+### The grader version moves even when no number moves
+
+Amended at v2.19.0. The original rule was to bump `GRADER_VERSION` when a
+technique, a cost or a band changes, and to recalibrate. Killer added five rungs
+and bumped the stamp to 3 while the classic scale did not move at all: 168 puzzles
+at twelve fixed seeds for classic and four each for the other four boards, over
+all six tiers, generated before and after, and the JSON is byte identical. Same
+boards, same scores, same tiers, same hardest technique, same clue counts.
+
+That is not luck. Every arithmetic rung returns null the moment it finds no cages,
+so a classic grid pays one property read per rung. But the stamp moved anyway,
+because **a version that only changes when a number changes is a version nobody
+can trust when one does.** The stamp is cheap: it regrades saves and drops the
+pre-generated cache, both of which are recoverable in seconds.
+
+What the ladder change did not need was a recalibration of the bands, and that
+too was measured rather than assumed: the before-and-after comparison is the
+evidence, and it is the comparison that decides, not the bump.
