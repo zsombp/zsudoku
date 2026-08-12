@@ -68,15 +68,14 @@ requirement is recorded below because the rule outlives the delivery.
 
 ## What remains
 
-One thing that is written and not wired, five that were never started, and two
-smaller ones after them.
-
-- **Voice input is built and not mounted.** `src/lib/voice.js` and
-  `src/components/VoiceButton.jsx` exist and are tested, and nothing imports the
-  button; `SettingsView.jsx` has no rows for its two switches, so there is no way
-  to turn it on. About six lines of wiring in `App.jsx` and two settings rows.
-  Read the voice entry in `DECISIONS.md` first: the second switch, the one that
-  admits the audio leaves the device, is not optional and is not a detail.
+Five that were never started, and two smaller ones after them. As of v3.0.0
+nothing on this page is written-but-unwired: voice input was the last of those
+and is now mounted, in Chrome on the Mac only, where the recogniser is required
+to work on the device. Safari reports remote recognition, so there is no voice
+input on the iPhone, and the off-device path stays unreachable rather than
+merely switched off. Read the voice entry in `DECISIONS.md` before touching it:
+the second switch, the one that admits the audio leaves the device, is not
+optional and is not a detail.
 - **Variants that need new constraint types**: thermometers, arrows, kropki
   dots, sandwich sums, chess constraints beyond the knight. Killer proved the
   estimate on this page was right. A topology variant is nearly free; an
