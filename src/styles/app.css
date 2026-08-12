@@ -2735,6 +2735,11 @@ h3.statHeading { margin-top: 20px; }
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  /* Deliberately not `scroll-behavior: smooth`. GameReview scrolls the selected
+     tab into view, and smooth scrolling is a no-op in the browser this was
+     verified in, so declaring it here turned a working jump into nothing
+     happening at all. An animation that cannot be tested is not worth breaking
+     the behaviour it decorates. */
 }
 .segTabs::-webkit-scrollbar { display: none; }
 .segTab { flex: 1 0 auto; white-space: nowrap; }

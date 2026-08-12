@@ -294,9 +294,19 @@ function reduce(state, action) {
         experiment: action.experiment || null,
         variant: action.made.variant || 'classic',
         regions: action.made.regions || null,
+        // Carried for the same reason `regions` is. `makeVariantPuzzle` hands
+        // the cages over and this is where they were being dropped, so no
+        // killer game ever reached storage with the list it was built from and
+        // the stored-cage branch of `topologyFromRecord` could not fire for a
+        // real save. Nothing broke, because `killerLayout` is a pure function of
+        // the seed and rebuilt the identical cages, which is exactly why it went
+        // unnoticed: the safety net the comments describe was the only thing
+        // holding the board up.
+        cages: action.made.cages || null,
         topo: topologyFromRecord({
           variant: action.made.variant,
           regions: action.made.regions,
+          cages: action.made.cages,
           seed: action.made.seed,
         }),
         dayKey: action.dayKey || null,
@@ -328,7 +338,8 @@ function reduce(state, action) {
         experiment: s.experiment || null,
         variant: s.variant || 'classic',
         regions: s.regions || null,
-        topo: topologyFromRecord({ variant: s.variant, regions: s.regions, seed: s.seed }),
+        cages: s.cages || null,
+        topo: topologyFromRecord({ variant: s.variant, regions: s.regions, cages: s.cages, seed: s.seed }),
         dayKey: s.dayKey || null,
         score: s.score ?? 0,
         hardest: s.hardest ?? null,

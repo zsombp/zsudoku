@@ -172,6 +172,7 @@ export default function App() {
       mode: s.mode,
       variant: s.variant,
       regions: s.regions,
+      cages: s.cages,
       practice: s.practice,
       experiment: s.experiment,
       dayKey: s.dayKey,
@@ -598,7 +599,12 @@ export default function App() {
     // label nothing can reproduce.
     if (saved?.puzzle && saved.graderVersion !== GRADER_VERSION) {
       const re = gradePuzzle(saved.puzzle, {
-        topo: topologyFromRecord({ variant: saved.variant, regions: saved.regions, seed: saved.seed }),
+        topo: topologyFromRecord({
+          variant: saved.variant,
+          regions: saved.regions,
+          cages: saved.cages,
+          seed: saved.seed,
+        }),
       })
       saved.score = re.score
       saved.hardest = re.hardest

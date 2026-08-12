@@ -53,6 +53,12 @@ function baseRecord(state, { completed, durationMs, endedAt }) {
     // Jigsaw shapes travel with the game: they cannot be re-derived if the
     // layout builder ever changes.
     regions: state.regions || null,
+    // Killer cages travel for the same reason. They can be re-derived, because
+    // `killerLayout` is a pure function of the seed, which is why leaving them
+    // out cost nothing visible and hid itself: every killer record written
+    // before this line rebuilds its board from the seed and would quietly
+    // become a different puzzle the day that builder changes.
+    cages: state.cages || null,
     puzzle: state.puzzle,
     solution: state.solution,
 

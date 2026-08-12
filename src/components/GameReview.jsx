@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { rowOf, colOf } from '../logic/topology.js'
 import { VARIANTS, topologyFromRecord } from '../logic/variants.js'
 import { fmtMs } from '../lib/format.js'
@@ -53,6 +53,27 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
    */
   const topo = useMemo(() => topologyFromRecord(game), [game])
   const [mode, setMode] = useState('replay')
+
+  /**
+   * Keep the selected tab on screen.
+   *
+   * Six tabs are wider than a 375px phone, so the strip scrolls, which is fine
+   * until you tap the last one: "Picture" was selected and left half cut off at
+   * the edge, and a label you have just chosen sitting under the bezel reads as
+   * a broken layout rather than a scrollable row. Nothing was wrong with it,
+   * which is why it survived: it only looks wrong at the width it is used at.
+   */
+  const tabStrip = useRef(null)
+  useEffect(() => {
+    const on = tabStrip.current?.querySelector('[aria-selected="true"]')
+    // `auto` means "use the scroll-behavior this element was given", which is
+    // smooth in app.css and off under prefers-reduced-motion. Asking for
+    // 'smooth' here instead looks equivalent and is not: it overrides the
+    // stylesheet, so reduced motion stops being honoured, and it silently did
+    // nothing at all in the browser this was verified in.
+    on?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })
+  }, [mode])
+
   const steps = useMemo(() => replaySteps(game), [game])
   const [pos, setPos] = useState(steps.length ? steps.length - 1 : 0)
   const [playing, setPlaying] = useState(false)
@@ -270,7 +291,7 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
         </p>
       ) : (
         <>
-          <div className="segTabs" role="tablist">
+          <div className="segTabs" role="tablist" ref={tabStrip}>
             <button role="tab" aria-selected={mode === 'replay'}
               className={'segTab' + (mode === 'replay' ? ' on' : '')} onClick={() => setMode('replay')}>
               Replay
