@@ -2,6 +2,172 @@
 
 Newest first.
 
+## v2.19.0 - 2026-08-12 - killer on the ladder and on the screen
+
+Five arithmetic rungs in `techniques.js`, killer registered as a variant, and
+cages drawn on both boards. The engine from v2.18.0 could build a killer and
+prove it had one answer; it had no way to say what a human should do next, so
+nothing could grade one, hint at one or explain a move on one.
+
+The whole of the wiring is one decision: **the cages ride on the topology.**
+`createState` already carries `topo` into every technique, so five functions
+reading `topo.cages` gave the grader, the hint button, `explain.js`, the socratic
+questions, the post-game review, the move classifier and belief archaeology a
+killer board with no change to any of them. `GRADER_VERSION` goes to 3.
+
+### The rungs, and what they cost
+
+| rung | first / repeat | what it says |
+|---|---|---|
+| cage combination | 15 / 4 | the total can be made one way only: 17 in two cells is 8 and 9 |
+| cage sum | 25 / 6 | what every way of making the total leaves out |
+| cage single | 60 / 20 | a digit every total needs, with one cell of the cage left to take it |
+| the 45 rule | 140 / 45 | a unit totals 45, so the cages over it name the one cell they do not settle |
+| cage lock | 170 / 55 | a digit the cage needs, confined to one row, column or box |
+
+The prices are the important part and they were set by measuring, not by taste.
+On an empty board of 32 cages the first two fire 22 and 28 times, roughly once
+per cage: they are the routine motion of killer, the pass everybody makes before
+starting. Priced like a pointing pair they would contribute 1300 of a 2100
+score, which is exactly the disease naked singles had in Phase 2, where the
+score ended up measuring how many blank cells the grid had. So the routine two
+sit just above a hidden single and the tier comes from the 45 rule, the cage
+lock and the ordinary patterns.
+
+Innies and outies are one rung rather than two. They are the same equation read
+from opposite ends, and splitting them would put two prices on one idea. The
+other direction of cage-and-unit interaction needed no rung at all: a cage lying
+inside a unit whose digits are pinned down is a naked subset of that unit, so
+`cageCombo` narrows the cells and `nakedPair` and friends finish the job.
+
+Deliberately left out: the 45 rule across a band of two or three units, which is
+stronger and is how a hard killer is really cracked. It is a search over subsets
+of units rather than a scan, and single-unit 45 is enough for every puzzle the
+generator ships, so it would be a rung nobody could price honestly.
+
+### The classic scale did not move, measured rather than claimed
+
+168 puzzles at twelve fixed seeds for classic and four each for jigsaw, X,
+Windoku and anti-knight, over all six tiers, generated before and after. The
+JSON is **byte identical**: same boards, same scores, same tiers, same hardest
+technique, same clue counts, same per-technique counts. Zero rows differ.
+
+That is not luck. Every arithmetic rung returns null the moment it finds no
+cages, so a classic grid pays one property read per rung and nothing else. The
+version stamp still moves, because a stamp that only changes when a number
+changes is a stamp nobody can trust when one does.
+
+### Generation, and why a killer is the cheapest board this app makes
+
+25 seeds at each tier, every puzzle checked for a unique answer under its cages
+and for the ladder finishing it unaided:
+
+| tier | in band | ms mean / p50 / max | clues p50 | score p50 | unique | ladder |
+|---|---|---|---|---|---|---|
+| Gentle | 25/25 | 46 / 41 / 151 | 44 | 0 | 25/25 | 25/25 |
+| Easy | 25/25 | 44 / 39 / 147 | 24 | 111 | 25/25 | 25/25 |
+| Medium | 25/25 | 45 / 39 / 146 | 8 | 179 | 25/25 | 25/25 |
+| Hard | 25/25 | 48 / 41 / 151 | 4 | 592 | 25/25 | 25/25 |
+| Expert | 25/25 | 46 / 38 / 152 | 2 | 927 | 25/25 | 25/25 |
+| Diabolical | 20/25 | 59 / 42 / 207 | 0 | 1455 | 25/25 | 25/25 |
+
+Against classic Diabolical at 2645ms and Windoku Diabolical at 8451ms, a killer
+is the fastest board here by two orders of magnitude, and the reason is that the
+expensive half is already done: a cage layout is only accepted once the empty
+board has exactly one answer under it, so every subset of the solution is unique
+too and digging pays no uniqueness check at all.
+
+The five Diabolical misses land Expert and the interface says so, which is the
+existing rule about `requested` and `graded`. They are a real limit rather than
+a budget: the cages are fixed by the seed, and a layout that says too much
+cannot be made harder by taking clues away.
+
+### Clues are how a killer is made gentle, not how it is made unique
+
+The classic `dig` is not slow here, it is wrong: it asks `countSolutions`, which
+knows nothing about cages, so on a killer with no givens it reports many answers
+and refuses to remove anything. Killer digs by choosing which cells to give.
+
+Score against clue count, over 16 layouts, p50:
+
+| clues | 0 | 4 | 8 | 12 | 20 | 30 | 40 | 45 |
+|---|---|---|---|---|---|---|---|---|
+| score | 1295 | 226 | 175 | 151 | 131 | 75 | 15 | 0 |
+
+The whole scale lives between zero and about eight givens, and from twelve up
+every layout measured graded Easy or Medium. That is the shape worth knowing
+about killer: a cage layout is a hard puzzle, and clues are the only lever that
+makes it gentle. A Gentle killer therefore carries 44 givens, which looks odd
+until you remember what Gentle means here: every step forced, nothing to hunt
+for, which on a caged board means never having to reason about a cage at all.
+
+### The layout is a pure function of the seed, and is the hardest of four
+
+This is the decision to argue with if any of this is revisited. Redrawing the
+cages on each generation attempt would give tier targeting another knob. It was
+refused because the seed alone then no longer rebuilds the board, and that
+property is what makes a saved killer game safe: a record whose cage list did
+not survive a round trip is recoverable rather than a puzzle wearing the wrong
+outlines. Verified end to end, in the browser: a killer game saved without its
+cages reloads with all thirty of them redrawn, and their totals add to 405.
+
+Within that, the layout is the hardest of four deterministic candidates, ranked
+by what the ladder scores on the empty board. A layout can be made easier by
+giving clues and never harder, so one candidate leaves most seeds unable to
+reach the top tier at all. Over 30 seeds:
+
+| candidates | ceiling p50 | reach Diabolical | layout ms mean / max |
+|---|---|---|---|
+| 1 | 750 | 7 of 30 | 8.6 / 69 |
+| 2 | 1050 | 11 of 30 | 19.5 / 84 |
+| 3 | 1370 | 17 of 30 | 35.9 / 141 |
+| 4 | 1455 | 21 of 30 | 43.4 / 142 |
+| 5 | 1468 | 21 of 30 | 55.0 / 146 |
+
+Four is the knee. The gentle end is unaffected, since a harder layout simply
+needs a few more givens.
+
+### Drawing the cages, and the mark that vanished under a sum
+
+Dashed and inset, from `cageEdges` rather than from any arithmetic in the
+components: the same rule the region outlines already follow, so an outline
+cannot disagree with the constraint being enforced. The inset applies only on
+the sides that are actually a boundary, which is the whole trick. Inset on all
+four and every dash stops short at each shared cell edge, so a cage three cells
+wide draws as three little rectangles with gaps punched through its own top
+line.
+
+Two things found by looking at it on a 375px board rather than by reasoning
+about it:
+
+- **The sum hid the pencil mark for 1.** A two-digit total at 8px covers that
+  whole slot on a 39px cell, in every cage's top-left cell. A halo behind the
+  sum made the sum readable and still hid the mark, so the fix is room: on a
+  caged board the marks move down, in all 81 cells rather than only the thirty
+  that carry a number, because a mark's position is information and can only be
+  read at a glance if it means the same thing everywhere. Costs mark height,
+  66% of the cell against 88%.
+- **The candidate ring swamped the cage outlines.** Both are a thin rounded
+  rectangle a couple of pixels inside the cell, and a killer starts with two or
+  three givens, so almost every cell shows a ring at once. The cage is the
+  puzzle, so the ring gives way and moves inside it.
+
+A dashed outline says nothing to a screen reader, so every cell's label now
+carries the cage it is in and what that cage adds to, not only the cell that
+prints the number.
+
+### Also
+
+- `makeVariantPractice` and `makeVariantTailored` work on killer, and a cage
+  rung asked for on a classic board is refused in 0ms instead of after thirty
+  seconds of searching for something that cannot exist.
+- `makePracticePuzzle` never used the grid it was handed: the test was
+  `attempts === 0` against a counter incremented just above it, so it was never
+  true. Harmless for jigsaw, which can refill any layout, and fatal for killer,
+  where the sums were read off one particular grid.
+- `scripts/variantcheck.mjs` asks `countKillerSolutions` on a caged board. With
+  the classic solver it reported 0/3 unique on puzzles that are perfectly sound.
+
 ## v2.18.0 - 2026-08-12 - the killer engine
 
 `src/logic/killer.js`. Every variant so far was a topology, and the twelve

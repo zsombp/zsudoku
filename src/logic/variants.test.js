@@ -1,11 +1,38 @@
 import { describe, it, expect } from 'vitest'
-import { VARIANT_LIST, VARIANTS, topologyFor, jigsawLayout, makeVariantPuzzle, topologyFromRecord } from './variants.js'
-import { makeTopology, CLASSIC, regionEdges } from './topology.js'
+import {
+  VARIANT_LIST,
+  VARIANTS,
+  topologyFor,
+  jigsawLayout,
+  killerLayout,
+  killerTopology,
+  cageEdges,
+  makeVariantPuzzle,
+  topologyFromRecord,
+} from './variants.js'
+import { makeTopology, CLASSIC, regionEdges, range } from './topology.js'
 import { gradePuzzle } from './grader.js'
 import { countSolutions } from './solver.js'
+import { countKillerSolutions, cageProblems } from './killer.js'
 
 const topoOf = made =>
-  made.regions ? makeTopology({ id: 'jigsaw', name: 'Jigsaw', regions: made.regions }) : topologyFor(made.variant, made.seed)
+  made.regions
+    ? makeTopology({ id: 'jigsaw', name: 'Jigsaw', regions: made.regions })
+    : made.cages
+      ? killerTopology(made.cages)
+      : topologyFor(made.variant, made.seed)
+
+/**
+ * How many answers a board has, asked the right way for the board it is.
+ *
+ * `countSolutions` knows nothing about cages, so on a killer with three givens
+ * it reports thousands and the assertion below would fail on a puzzle that is
+ * perfectly sound. Getting this wrong in the other direction is the dangerous
+ * one: a killer checked with the classic solver and found unique would be a
+ * puzzle far more constrained than it needs to be.
+ */
+const answers = (made, topo) =>
+  made.cages ? countKillerSolutions(made.puzzle, made.cages, 2, topo) : countSolutions(made.puzzle, 2, topo)
 
 describe('every topology is a legal board', () => {
   for (const v of VARIANT_LIST) {
@@ -111,7 +138,7 @@ describe('generating a variant', () => {
       const topo = topoOf(made)
       // Unique, and finishable by pure logic: the promise that holds for every
       // board this app ships, whatever shape it is.
-      expect(countSolutions(made.puzzle, 2, topo)).toBe(1)
+      expect(answers(made, topo)).toBe(1)
       expect(gradePuzzle(made.puzzle, { topo }).solved).toBe(true)
       // And it lands in the band it was asked for.
       expect(made.graded).toBe('Medium')
@@ -127,6 +154,69 @@ describe('generating a variant', () => {
   })
 })
 
+describe('killer boards', () => {
+  it('hands back a cage list that covers the grid and matches the answer', () => {
+    // Every failure `cageProblems` looks for is one that leaves a board looking
+    // completely normal: a lost cell, a cage in two pieces, a sum that its own
+    // solution does not add up to.
+    for (const seed of [1, 77, 4242]) {
+      const layout = killerLayout(seed)
+      expect(layout, `seed ${seed}`).toBeTruthy()
+      expect(cageProblems(layout.cages, layout.solution)).toEqual([])
+      expect(layout.cages.flatMap(c => c.cells)).toHaveLength(81)
+    }
+  })
+
+  it('rebuilds the identical board from the seed alone', () => {
+    // What makes a saved killer game safe. The cages travel with the record so
+    // nothing has to be re-derived, and if they ever fail to arrive the seed is
+    // still enough, which is only true because `killerLayout` takes nothing else.
+    for (const seed of [3, 900]) {
+      const a = killerLayout(seed)
+      const b = killerLayout(seed)
+      expect(JSON.stringify(a.cages)).toBe(JSON.stringify(b.cages))
+      expect(a.solution).toEqual(b.solution)
+    }
+  })
+
+  it('carries cages with the puzzle, and prefers the stored list to a rebuild', { timeout: 60000 }, () => {
+    const made = makeVariantPuzzle('killer', 'Easy', { seed: 808 })
+    expect(made.cages.length).toBeGreaterThan(20)
+    expect(cageProblems(made.cages, made.solution)).toEqual([])
+
+    const stored = topologyFromRecord({ variant: 'killer', cages: made.cages, seed: made.seed })
+    expect(stored.cages).toBe(made.cages)
+    // The seed-only path has to agree, or a record that lost its cages would
+    // come back as a different puzzle wearing the same digits.
+    const rebuilt = topologyFromRecord({ variant: 'killer', seed: made.seed })
+    expect(JSON.stringify(rebuilt.cages)).toBe(JSON.stringify(made.cages))
+  })
+
+  it('refuses a damaged cage list rather than playing a board it cannot solve', () => {
+    // A cage that lost a cell in transit produces a grid that looks fine and has
+    // no answer. Falling back to the seed is the honest repair.
+    const made = killerLayout(55)
+    const broken = made.cages.map((c, i) => (i === 0 ? { ...c, cells: c.cells.slice(1) } : c))
+    const topo = topologyFromRecord({ variant: 'killer', cages: broken, seed: 55 })
+    expect(topo.cages).not.toBe(broken)
+    expect(cageProblems(topo.cages)).toEqual([])
+  })
+
+  it('is uniquely solvable and finishable by the ladder at every tier', { timeout: 120000 }, () => {
+    // The two promises this app makes about any board it ships, checked on the
+    // variant where they are hardest to take on trust: killer uniqueness comes
+    // from the cages rather than from the givens, and a killer with three clues
+    // looks impossible until the ladder finishes it.
+    for (const tier of ['Gentle', 'Medium', 'Diabolical']) {
+      const made = makeVariantPuzzle('killer', tier, { seed: 20260812 })
+      expect(made, tier).toBeTruthy()
+      const topo = killerTopology(made.cages)
+      expect(countKillerSolutions(made.puzzle, made.cages, 2, topo), tier).toBe(1)
+      expect(gradePuzzle(made.puzzle, { topo }).solved, tier).toBe(true)
+    }
+  })
+})
+
 describe('drawing a board', () => {
   it('gives classic exactly the 3x3 rules it always had', () => {
     const edges = regionEdges(CLASSIC)
@@ -135,6 +225,49 @@ describe('drawing a board', () => {
     expect(edges[1].right).toBe(false)  // r1c2, inside it
     expect(edges[9].bottom).toBe(false) // r2c1, box continues below
     expect(edges[18].bottom).toBe(true) // r3c1, bottom of the box
+  })
+
+  it('outlines a cage on the sides that face another cage, and on the board edge', () => {
+    // Both boards draw from this and nothing else, so a wrong edge is a cage
+    // drawn around cells it does not contain: a puzzle that reads as a
+    // different puzzle while every number on it is right.
+    const edges = cageEdges([
+      { cells: [0, 1], sum: 9 },
+      { cells: [2, 11], sum: 7 },
+      ...range(81).slice(3).filter(i => i !== 11).map(i => ({ cells: [i], sum: 5 })),
+    ])
+    // r1c1 and r1c2 are one cage: no line between them, lines everywhere else.
+    expect(edges[0]).toMatchObject({ top: true, left: true, bottom: true, right: false })
+    expect(edges[1]).toMatchObject({ top: true, left: false, bottom: true, right: true })
+    // r1c3 and r2c3 are one cage bending down the board, so the line opens
+    // between them and closes around the outside.
+    expect(edges[2]).toMatchObject({ top: true, left: true, right: true, bottom: false })
+    expect(edges[11]).toMatchObject({ top: false, left: true, right: true, bottom: true })
+    // The total is on every cell of the cage, and printed by the first.
+    expect(edges[0]).toMatchObject({ sum: 9, size: 2, head: true })
+    expect(edges[1]).toMatchObject({ sum: 9, size: 2, head: false })
+    expect(edges[11]).toMatchObject({ sum: 7, head: false })
+  })
+
+  it('draws no cages at all rather than most of them, on a list with a hole', () => {
+    // The review reads its cage list off a stored game and nothing on that path
+    // checks it. Half a set of outlines is a picture of a puzzle nobody played,
+    // and reading the missing cell would throw and blank the whole screen.
+    const { cages } = killerLayout(2468)
+    expect(cageEdges(cages.slice(1))).toBeNull()
+    expect(cageEdges(cages)).not.toBeNull()
+  })
+
+  it('prints every cage total exactly once, on a real layout', () => {
+    const { cages } = killerLayout(2468)
+    const edges = cageEdges(cages)
+    expect(edges.filter(e => e.head)).toHaveLength(cages.length)
+    for (const cage of cages) {
+      // Reading order, so the number lands in the cage's top-left cell and
+      // never floats in the middle of one.
+      expect(edges[Math.min(...cage.cells)].head).toBe(true)
+      expect(edges[Math.min(...cage.cells)].sum).toBe(cage.sum)
+    }
   })
 
   it('outlines a jigsaw on all four sides, which squares never needed', () => {

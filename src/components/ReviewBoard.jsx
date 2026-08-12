@@ -1,5 +1,7 @@
 import { rowOf, colOf, range, UNITS, UNIT_META } from '../logic/topology.js'
+import { cageEdges } from '../logic/variants.js'
 import { hasMark } from '../logic/marks.js'
+import { cageClass } from './Board.jsx'
 
 /**
  * The board, read-only, with everything the review knows drawn onto it.
@@ -22,6 +24,10 @@ export default function ReviewBoard({
   puzzle,
   board,
   solution,
+  // A killer game's cage list. Optional, and null on every other board: a
+  // review that could not draw the cages would be describing moves nobody can
+  // check, which is the one thing a review must not do.
+  cages = null,
   cands = null,
   marks = null,
   settled = null,
@@ -57,13 +63,15 @@ export default function ReviewBoard({
     killed.get(e.cell).add(e.digit)
   }
 
+  const cageAt = cages?.length ? cageEdges(cages) : null
+
   // A derived pattern carries the candidate state it was found in. Showing the
   // raw set instead would draw a pattern over cells that contradict it.
   const shown = pattern?.cands || cands
   const source = showing === 'marks' ? marks : showing === 'none' ? null : shown
 
   return (
-    <div className="reviewBoard rbFull">
+    <div className={'reviewBoard rbFull' + (cageAt ? ' caged' : '')}>
       {range(81).map(i => {
         const given = puzzle[i] !== 0
         const v = board[i]
@@ -96,6 +104,8 @@ export default function ReviewBoard({
                 }
               : {})}
           >
+            {cageAt && <span className={'cageBox' + cageClass(cageAt[i])} aria-hidden="true" />}
+            {cageAt?.[i].head && <span className="cageSum">{cageAt[i].sum}</span>}
             {v !== 0 ? (
               <span className="rvVal">{v}</span>
             ) : (

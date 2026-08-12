@@ -2040,6 +2040,89 @@ button.rvCell:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 .cell.overlaid { background: color-mix(in srgb, var(--accent) 7%, transparent); }
 .cell.overlaid.sel { background: var(--sel); }
 
+/* ---- killer cages ----
+ *
+ * Dashed and inset, so a cage reads as a second layer over the grid rather
+ * than competing with the heavy region rules, which are solid and sit on the
+ * cell edge. Which sides get a line comes from `cageEdges`, never from
+ * arithmetic here: the same rule the region outlines follow.
+ *
+ * The inset is applied only on the sides that are a boundary, and that is the
+ * whole trick. Inset on all four and every dash stops short at every shared
+ * cell edge, so a cage three cells wide draws as three little rectangles with
+ * gaps punched through the middle of its own top line. Leaving the other sides
+ * at 0 makes the neighbouring segments meet.
+ *
+ * One border width at every board size on purpose. A cage line that scaled
+ * would be sub-pixel on a phone, where it matters most. */
+.cageBox {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 0 dashed var(--sub);
+}
+.cageBox.cT { top: 7%; border-top-width: 1px; }
+.cageBox.cR { right: 7%; border-right-width: 1px; }
+.cageBox.cB { bottom: 7%; border-bottom-width: 1px; }
+.cageBox.cL { left: 7%; border-left-width: 1px; }
+
+/* The total, in the corner of the cage's top-left cell.
+ *
+ * It lands exactly where the pencil mark for 1 is drawn, and neither may move.
+ * A mark's position is information, which is why `.marks` pins its rows and
+ * columns; and the sum is the puzzle, so it cannot be nudged out of the corner
+ * that says which cage it belongs to. The halo in the board colour is the way
+ * out: both stay legible and neither is hidden.
+ *
+ * 2.3cqw lands at 8px on a 351px phone board, which is the same proportion the
+ * pencil marks already ship at, and is legible against 39px cells. */
+/* The candidate ring moves inside the cage line rather than sitting on top of
+ * it. Both are a thin rounded rectangle a couple of pixels inside the cell, and
+ * on a killer board that is not a small clash: a killer starts with two or three
+ * givens, so almost every cell shows a ring at once and the cage outlines
+ * disappeared into them entirely at 375px. The cage is the puzzle and has to
+ * win, so the ring gives way. */
+.board.caged .cell.canGo::before {
+  inset: 13%;
+  border-radius: 3px;
+}
+
+.cageSum {
+  position: absolute;
+  top: 7%;
+  left: 9%;
+  font-family: var(--mono);
+  font-size: clamp(7px, 2.3cqw, 15px);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--sub);
+  pointer-events: none;
+}
+
+/* The pencil marks move down to make room, on every cell of a caged board.
+ *
+ * The first attempt put the sum in the corner and left the marks where they
+ * were, and the mark for 1 vanished underneath it in every cage's top-left
+ * cell: a two-digit sum at 8px covers the whole of that slot on a 39px phone
+ * cell. A halo behind the sum made the sum readable and still hid the mark, so
+ * the answer is room rather than contrast.
+ *
+ * The shift applies to the whole board rather than only to the thirty-odd cells
+ * that carry a number. A mark's position is information (see the `.marks`
+ * comment) and it can only be read at a glance if it means the same thing in
+ * all 81 cells.
+ *
+ * Costs mark height: 66% of the cell against 88%, so at a 351px phone board the
+ * three rows sit in 26px instead of 34px. The digits are unchanged at 7.7px and
+ * still clear each other, because the row only has to be as tall as the glyph. */
+.board.caged .marks {
+  position: absolute;
+  inset: 26% 6% 8% 6%;
+  width: auto;
+  height: auto;
+}
+.reviewBoard.caged .rvMarks { inset: 27% 7% 7% 7%; }
+
 /* ---- variant picker ---- */
 
 .variantRow { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 6px; }

@@ -15,6 +15,7 @@
 import { CLASSIC, range } from './topology.js'
 import { countSolutions } from './solver.js'
 import { gradePuzzle } from './grader.js'
+import { TECHNIQUES } from './techniques.js'
 import { TIERS, tierByName, tierForScore } from './difficulty.js'
 import { mulberry32, randomSeed, shuffle } from '../lib/prng.js'
 
@@ -157,12 +158,96 @@ function restoreOne(puzzle, solution, rng) {
   return next
 }
 
+// ---- killer digs differently, because uniqueness is already settled ----
+//
+// A cage layout is only shipped once the empty board has exactly one answer
+// under it, so every subset of the solution is unique too and there is no
+// uniqueness check to pay for. Digging is then just choosing which cells to
+// give away, and the classic `dig` is not merely slower here but wrong: it asks
+// `countSolutions`, which knows nothing about cages, so on a killer with no
+// givens it reports many answers and refuses to remove anything at all.
+//
+// Where each tier starts, measured over 16 layouts sweeping clue counts, and
+// over 6 layouts with 40 random subsets at each of ten counts:
+//
+//   clues     0      4      8     12     20     30     40     45
+//   p50    1295    226    175    151    131     75     15      0
+//
+// The whole scale lives between zero and about eight givens; from twelve up
+// every layout measured graded Easy or Medium. That is the shape to know about
+// killer: a cage layout is a hard puzzle, and clues are how it is made gentle.
+const KILLER_CLUES = { Gentle: 44, Easy: 24, Medium: 8, Hard: 4, Expert: 2, Diabolical: 1 }
+
+/** `n` givens taken at random from the solution. */
+function killerClues(solution, n, rng) {
+  const b = new Array(81).fill(0)
+  for (const i of shuffle(range(81), rng).slice(0, n)) b[i] = solution[i]
+  return b
+}
+
+/** One clue out, no uniqueness check needed. Raises difficulty. Null if stuck. */
+function dropOne(puzzle, rng) {
+  const given = range(81).filter(i => puzzle[i] !== 0)
+  if (!given.length) return null
+  const next = puzzle.slice()
+  next[shuffle(given, rng)[0]] = 0
+  return next
+}
+
+/**
+ * The same adjustment loop as `shapeToBand`, over clue subsets rather than over
+ * a symmetric dig, and starting from a fresh random subset every call so the
+ * attempts in `makePuzzle` explore different boards rather than the same one.
+ *
+ * `maxAdjust` is larger than the classic 30 because one clue moves a killer
+ * score by hundreds near the bottom of the range, so the walk overshoots and
+ * has to come back.
+ */
+function shapeKillerToBand(solution, tier, rng, topo, { maxAdjust = 40 } = {}) {
+  let puzzle = killerClues(solution, KILLER_CLUES[tier.name] ?? tier.clues, rng)
+  let grade = gradePuzzle(puzzle, { topo })
+
+  for (let n = 0; n < maxAdjust; n++) {
+    // Too few clues to finish by logic is the same failure the classic dig has,
+    // and the same answer: give one back rather than ship a guess.
+    if (!grade.solved) {
+      const back = restoreOne(puzzle, solution, rng)
+      if (!back) break
+      puzzle = back
+      grade = gradePuzzle(puzzle, { topo })
+      continue
+    }
+    if (grade.score >= tier.min && grade.score < tier.max) break
+
+    const next = grade.score < tier.min ? dropOne(puzzle, rng) : restoreOne(puzzle, solution, rng)
+    if (!next) break
+    puzzle = next
+    grade = gradePuzzle(puzzle, { topo })
+  }
+
+  return { puzzle, grade }
+}
+
+/**
+ * The grid an attempt works from.
+ *
+ * Every topology up to killer could be refilled on each attempt, and that
+ * refilling is where the search gets its variety. A caged board cannot: the
+ * sums were read off one particular grid, so a fresh grid under the same cages
+ * is a puzzle whose own answer breaks its stated totals. Nothing throws and the
+ * board looks completely normal, which is exactly why it is stated here rather
+ * than left to each caller.
+ */
+const gridFor = (topo, rng, given, first) =>
+  topo.cages ? given : (first && given) || generateFull(rng, topo)
+
 /**
  * Digs a single grid toward the target band, then reports where it landed.
  * The adjustment loop is what lifts the hit rate: without it, a fixed clue
  * count scatters across two or three tiers.
  */
 function shapeToBand(solution, tier, rng, { maxAdjust = 30, topo = CLASSIC } = {}) {
+  if (topo.cages) return shapeKillerToBand(solution, tier, rng, topo)
   let puzzle = dig(solution, tier.clues, rng, { symmetric: tier.symmetric !== false, topo })
   let grade = gradePuzzle(puzzle, { topo })
 
@@ -248,6 +333,10 @@ const TIERS_FOR = {
  * saying so is better than spinning.
  */
 export function makePracticePuzzle(technique, { seed = randomSeed(), budgetMs = 20000, topo = CLASSIC, solution: given = null } = {}) {
+  // A cage rung cannot appear on a board with no cages, so say so at once. The
+  // alternative is thirty seconds of searching followed by the same answer,
+  // which reads as a slow app rather than an impossible request.
+  if (TECHNIQUES[technique]?.cages && !topo.cages) return null
   const search = TIERS_FOR[technique] || TIERS.map(t => t.name)
   const rng = mulberry32(seed)
   const t0 = Date.now()
@@ -259,7 +348,7 @@ export function makePracticePuzzle(technique, { seed = randomSeed(), budgetMs = 
       attempts++
       const tier = tierByName(tierName)
       // generateFull gives up rather than hanging, so it can return null.
-      const solution = attempts === 0 && given ? given : generateFull(rng, topo)
+      const solution = gridFor(topo, rng, given, attempts === 1)
       if (!solution) continue
       const { puzzle, grade } = shapeToBand(solution, tier, rng, { topo })
       if (!grade.solved) continue
@@ -297,8 +386,9 @@ export function makePuzzle(wanted, opts = {}) {
 
   for (let attempt = 0; attempt < attempts; attempt++) {
     // A variant may arrive with a grid already in hand, because for jigsaw the
-    // shapes and a grid that fills them are built together.
-    const solution = attempt === 0 && opts.solution ? opts.solution : generateFull(rng, topo)
+    // shapes and a grid that fills them are built together, and for killer the
+    // sums are read off one particular grid and cannot outlive it.
+    const solution = gridFor(topo, rng, opts.solution, attempt === 0)
     if (!solution) continue
     const { puzzle, grade } = shapeToBand(solution, tier, rng, { topo })
 
@@ -365,7 +455,7 @@ export function makeTailoredPuzzle({
       if (Date.now() - t0 > budgetMs) break
       tries++
       const tier = tierByName(tierName)
-      const solution = tries === 1 && given ? given : generateFull(rng, topo)
+      const solution = gridFor(topo, rng, given, tries === 1)
       if (!solution) continue
       const { puzzle, grade } = shapeToBand(solution, tier, rng, { topo })
       if (!grade.solved) continue

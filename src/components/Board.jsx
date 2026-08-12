@@ -1,7 +1,20 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { CLASSIC, rowOf, colOf, range, UNITS, UNIT_META, regionEdges } from '../logic/topology.js'
+import { cageEdges } from '../logic/variants.js'
 import { hasMark } from '../logic/marks.js'
 import { isWrong, highlightDigit } from '../state/gameReducer.js'
+
+/**
+ * The dashed-outline classes for one cell's cage boundary.
+ *
+ * Exported so the review board draws cages in the same vocabulary as the
+ * playable one, the same reason the pattern highlights share their class names.
+ * Two copies of this mapping would be two drawings free to drift apart, and a
+ * cage outlined a cell out of place is a different puzzle with every number on
+ * it still right.
+ */
+export const cageClass = e =>
+  (e.top ? ' cT' : '') + (e.right ? ' cR' : '') + (e.bottom ? ' cB' : '') + (e.left ? ' cL' : '')
 
 export default function Board({ state, checkErrors, canGo, revealWrong, onCellTap, onCellTint, blurred, reveal }) {
   const { board, puzzle, marks, selected, activeDigit, hintCell, flash, flashSeq, status, tints, solution, explain } = state
@@ -9,6 +22,10 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
   // Drawn from the same regions the rules are enforced from, so the outline
   // can never disagree with the puzzle.
   const edges = useMemo(() => regionEdges(topo), [topo])
+  // Killer cages, the same way: read off the cage list the arithmetic rungs
+  // reason about, never from the picture. Null on every other board, and every
+  // line below it is skipped.
+  const cages = useMemo(() => (topo.cages ? cageEdges(topo.cages) : null), [topo])
   const flashSet = flash?.length ? new Set(flash) : null
   const ready = Boolean(board)
   const litDigit = ready ? highlightDigit(state) : 0
@@ -118,7 +135,12 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
     <div
       key={state.seed ?? 'empty'}
       ref={gridRef}
-      className={'board' + (blurred ? ' blurred' : '') + (status === 'won' ? ' isWon' : '')}
+      className={
+        'board' +
+        (cages ? ' caged' : '') +
+        (blurred ? ' blurred' : '') +
+        (status === 'won' ? ' isWon' : '')
+      }
     >
       {range(81).map(i => {
         const own = ready ? board[i] : 0
@@ -150,8 +172,16 @@ export default function Board({ state, checkErrors, canGo, revealWrong, onCellTa
             onPointerUp={endPress}
             onPointerLeave={endPress}
             onPointerCancel={endPress}
-            aria-label={`row ${rowOf(i) + 1} column ${colOf(i) + 1}${v ? `, ${v}` : ', empty'}`}
+            aria-label={
+              `row ${rowOf(i) + 1} column ${colOf(i) + 1}${v ? `, ${v}` : ', empty'}` +
+              // A dashed outline says nothing to a screen reader, and on a
+              // killer the cage is most of what a cell means. Every cell of a
+              // cage carries it, not only the one that prints the number.
+              (cages ? `, in a cage of ${cages[i].size} adding to ${cages[i].sum}` : '')
+            }
           >
+            {cages && <span className={'cageBox' + cageClass(cages[i])} aria-hidden="true" />}
+            {cages?.[i].head && <span className="cageSum">{cages[i].sum}</span>}
             {v !== 0 ? (
               <span className="val">{v}</span>
             ) : (

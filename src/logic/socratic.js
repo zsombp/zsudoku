@@ -166,6 +166,22 @@ const ASK = {
     const [x, y, z] = step.digits
     return `Somewhere a cell holds just ${x} and ${y}, and it sees two cells that each hold ${z}. Whichever way that cell falls, what happens to ${z}?`
   },
+
+  // The cage rungs. They name a total and never the cage's position, for the
+  // same reason the rest name a unit and never the cell: the finding stays
+  // yours. A killer board has thirty-odd cages and only a handful share a total,
+  // so "the cage adding to 17" is a search rather than an answer.
+  cageCombo: () => `One cage on this board can be made in only one way. Which total is it, and what has to go in it?`,
+
+  cageSum: () => `Every way of making one cage's total leaves the same digits out. Which cage, and which digits?`,
+
+  cageSingle: () =>
+    `One digit turns up in every way of making its cage, and the cage has only one cell left that will take it. Which digit?`,
+
+  sum45: step => `${unitName(step.unit)} adds to 45, and the cages over it almost settle it. What is left over?`,
+
+  cageLocked: (step, topo) =>
+    `${step.digits[0]} has to appear in one particular cage. If every place left for it in that cage sits in one row, column or ${regionWord(topo)}, what does that rule out?`,
 }
 
 /**

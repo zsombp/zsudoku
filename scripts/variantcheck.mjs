@@ -1,9 +1,10 @@
 // Does each variant generate, is the result sound, and does the difficulty
 // scale calibrated for classic still land where it claims?
-import { makeVariantPuzzle, topologyFor, jigsawLayout, VARIANT_LIST } from '../src/logic/variants.js'
+import { makeVariantPuzzle, topologyFor, killerTopology, VARIANT_LIST } from '../src/logic/variants.js'
 import { makeTopology } from '../src/logic/topology.js'
 import { gradePuzzle } from '../src/logic/grader.js'
 import { countSolutions } from '../src/logic/solver.js'
+import { countKillerSolutions } from '../src/logic/killer.js'
 
 const tier = process.argv[2] || 'Hard'
 const N = Number(process.argv[3] || 3)
@@ -11,7 +12,17 @@ const N = Number(process.argv[3] || 3)
 const topoOf = made =>
   made.regions
     ? makeTopology({ id: 'jigsaw', name: 'Jigsaw', regions: made.regions })
-    : topologyFor(made.variant, made.seed)
+    : made.cages
+      ? killerTopology(made.cages)
+      : topologyFor(made.variant, made.seed)
+
+// Asked the right way for the board it is. `countSolutions` knows nothing about
+// cages, so on a killer with three givens it reports thousands and the column
+// would read 0/3 on puzzles that are perfectly sound.
+const answers = (made, topo) =>
+  made.cages
+    ? countKillerSolutions(made.puzzle, made.cages, 2, topo)
+    : countSolutions(made.puzzle, 2, topo)
 
 process.stdout.write(`${tier}, ${N} each\n`)
 process.stdout.write('variant       made   ms/ea   clues   score   landed          unique  ladder\n')
@@ -28,7 +39,7 @@ for (const v of VARIANT_LIST) {
     score += p.score
     landed[p.graded] = (landed[p.graded] || 0) + 1
     const topo = topoOf(p)
-    if (countSolutions(p.puzzle, 2, topo) === 1) unique++
+    if (answers(p, topo) === 1) unique++
     if (gradePuzzle(p.puzzle, { topo }).solved) solved++
   }
   process.stdout.write(
