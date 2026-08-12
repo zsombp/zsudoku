@@ -10,6 +10,7 @@
 // on the stats screen, so tooltips enhance rather than gate.
 
 import { fmtMs } from '../../lib/format.js'
+import { TermButton, termLabel } from '../Term.jsx'
 
 /** Column with a rounded top and a square baseline. */
 function columnPath(x, y, w, h, r = 4) {
@@ -26,14 +27,48 @@ function columnPath(x, y, w, h, r = 4) {
   ].join(' ')
 }
 
-export function StatTile({ label, value, sub }) {
-  return (
-    <div className="tile">
-      <div className="tileLabel">{label}</div>
-      <div className="tileValue">{value}</div>
-      {sub && <div className="tileSub">{sub}</div>}
-    </div>
+/**
+ * A number with a label, and the label says what it counts.
+ *
+ * `term` names the glossary entry, which supplies the label as well as the
+ * sentence: a tile headed "Win rate" that explains "Median solve" is the exact
+ * failure this whole exercise is against, and reading both from one id makes it
+ * unrepresentable. Passing `label` alongside `term` overrides the word on screen
+ * and is for the few places where the figure is a summary of the term rather
+ * than the term itself, such as the median of a game's dwell; Term.test.js keeps
+ * that list short.
+ *
+ * Measured at 375px: printing the definition inside the tile takes it from 68px
+ * to 187px, so the tile is a trigger and the answer appears under the grid.
+ */
+export function StatTile({ label, value, sub, term }) {
+  const body = (
+    <>
+      <span className="tileLabel">{label ?? termLabel(term)}</span>
+      <span className="tileValue">{value}</span>
+      {sub && <span className="tileSub">{sub}</span>}
+    </>
   )
+  if (!term) return <div className="tile">{body}</div>
+  return <TermButton id={term} className="tile">{body}</TermButton>
+}
+
+/**
+ * The smaller version, for the row of figures under a review.
+ *
+ * Lived twice, in GameReview and in SolveArt, which is one definition of a fact
+ * too many now that they all carry an explanation.
+ */
+export function Fact({ label, value, sub, term }) {
+  const body = (
+    <>
+      <span className="factValue">{value}</span>
+      <span className="factLabel">{label ?? termLabel(term)}</span>
+      {sub && <span className="factSub">{sub}</span>}
+    </>
+  )
+  if (!term) return <div className="fact">{body}</div>
+  return <TermButton id={term} className="fact">{body}</TermButton>
 }
 
 /**

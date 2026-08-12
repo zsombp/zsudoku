@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import ReviewBoard from './ReviewBoard.jsx'
 import { cardLabel, isCorrect } from '../logic/flashcards.js'
-import { TECHNIQUES } from '../logic/techniques.js'
 import * as sound from '../lib/sound.js'
+import { Explain, Term, TermGroup } from './Term.jsx'
+import { define, techniqueTerm } from '../logic/glossary.js'
 
 /**
  * Find the pattern, as fast as you can.
@@ -74,7 +75,11 @@ export default function Flashcards({ technique, deck, onClose, onAgain }) {
                 ? `${cardLabel(technique)} is coming, but not yet automatic.`
                 : `${cardLabel(technique)} is not landing yet. Worth a full puzzle rather than more cards.`}
           </p>
-          <p className="dataNote">{TECHNIQUES[technique]?.about}</p>
+          {/* The rung's sentence, through the glossary like everywhere else.
+              No fallback to `TECHNIQUES.about`: a second source that only
+              appears when the first one fails is a second source, and
+              glossary.test.js already fails if a rung has no entry. */}
+          <p className="dataNote">{define(techniqueTerm(technique))?.definition}</p>
           <div className="dataRow">
             <button className="newBtn" onClick={onAgain}>Another deck</button>
             <button className="newBtn" onClick={onClose}>Done</button>
@@ -91,14 +96,26 @@ export default function Flashcards({ technique, deck, onClose, onAgain }) {
         <button className="newBtn" onClick={onClose}>Back</button>
       </header>
 
-      <div className="cardHead">
-        <div className="cardAsk">
-          Find the <strong>{cardLabel(technique)}</strong>
+      {/* The pattern being asked for is the one thing you may not know, and
+          the card is timed, so it has to be one press away rather than
+          somewhere else. The deck's own definition sits under the head, where
+          there is the full column for it. */}
+      <TermGroup>
+        <div className="cardHead">
+          <div className="cardAsk">
+            Find the{' '}
+            <Term id={techniqueTerm(technique)} className="cardAskTerm">
+              <strong>{cardLabel(technique)}</strong>
+            </Term>
+          </div>
+          <div className="cardProgress">
+            {at + 1} of {deck.length} · {score.right} right
+          </div>
         </div>
-        <div className="cardProgress">
-          {at + 1} of {deck.length} · {score.right} right
-        </div>
-      </div>
+      </TermGroup>
+      {/* Once, on the first card. The same line under all twenty would be
+          twenty copies of a thing you read in the first three seconds. */}
+      {at === 0 && <Explain id="flashcards" />}
 
       <div className="moveStage">
         <ReviewBoard

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { StatTile, Calendar, Histogram, HourBars, TierTrend } from './stats/charts.jsx'
+import { Explain, Term, TermButton, TermGroup, termLabel } from './Term.jsx'
+import { achievementTerm } from '../logic/glossary.js'
 import * as compute from '../stats/compute.js'
 import { insights, needed } from '../stats/coach.js'
 import { achievements } from '../stats/achievements.js'
@@ -14,6 +16,25 @@ import * as gameLog from '../lib/gameLog.js'
 import { fmtMs } from '../lib/format.js'
 
 const pct = n => `${Math.round(n * 100)}%`
+
+/**
+ * Which coach insight rests on which term.
+ *
+ * Written out rather than derived from the id, because the two do not line up
+ * and guessing would be confidently wrong. The insight called `earned` in
+ * `timeShape` is about a long think, while the glossary's `earned` is a colour
+ * in the solve picture; and `justified` and `guess-rate` are two readings of the
+ * same lucky share, so both point at `guessRate`. Insights with no coined term
+ * behind them get no line, which is most of them.
+ */
+export const INSIGHT_TERM = {
+  justified: 'guessRate',
+  'guess-rate': 'guessRate',
+  'missed-easy': 'missedEasier',
+  'scanning-stalls': 'slowEasy',
+  tilt: 'tilt',
+  'tilt-steady': 'tilt',
+}
 
 function shortDuration(ms) {
   const h = ms / 3600000
@@ -168,38 +189,71 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
           {o.completed === 1 ? 'puzzle solved' : 'puzzles solved'}
           {o.played > o.completed && ` · ${o.played} started`}
         </div>
+        {/* The one figure with room under it, so it says outright what it
+            counts rather than waiting to be asked. */}
+        <Explain id="puzzlesSolved" className="explain heroExplain" />
       </div>
 
-      <div className="tiles">
-        <StatTile label="Win rate" value={pct(o.winRate)} sub={`${o.completed}/${o.played}`} />
-        <StatTile label="Current streak" value={o.currentStreak} sub={`best ${o.longestStreak}`} />
-        <StatTile
-          label="Time played"
-          value={shortDuration(o.totalMs)}
-          sub={`${o.daysPlayed} ${o.daysPlayed === 1 ? 'day' : 'days'}`}
-        />
-        <StatTile label="Median solve" value={fmtMs(o.medianMs)} sub={`fastest ${fmtMs(o.fastest)}`} />
-        <StatTile label="Mistakes" value={o.mistakesPerGame.toFixed(1)} sub="per solve" />
-        <StatTile
-          label="Daily streak"
-          value={derived.daily.current}
-          sub={derived.daily.total ? `${derived.daily.total} done` : 'none yet'}
-        />
-      </div>
+      {/* Six tiles, and every one of them is a definition nothing on this
+          screen used to state. A tile is 112px wide on the phone and printing
+          the sentence inside it takes it from 68px to 187px, so the tile is the
+          trigger and the answer lands under the grid. */}
+      <TermGroup>
+        <div className="tiles">
+          <StatTile term="winRate" value={pct(o.winRate)} sub={`${o.completed}/${o.played}`} />
+          <StatTile term="currentStreak" value={o.currentStreak} sub={`best ${o.longestStreak}`} />
+          <StatTile
+            term="timePlayed"
+            value={shortDuration(o.totalMs)}
+            sub={`${o.daysPlayed} ${o.daysPlayed === 1 ? 'day' : 'days'}`}
+          />
+          <StatTile term="medianSolve" value={fmtMs(o.medianMs)} sub={`fastest ${fmtMs(o.fastest)}`} />
+          {/* "Mistakes / per solve" split a label across a label and a subtext.
+              The glossary calls it one thing, so the tile does too. */}
+          <StatTile term="mistakesPerSolve" value={o.mistakesPerGame.toFixed(1)} />
+          <StatTile
+            term="dailyStreak"
+            value={derived.daily.current}
+            sub={derived.daily.total ? `${derived.daily.total} done` : 'none yet'}
+          />
+        </div>
+        {/* The smaller figure on three of the tiles is a different statistic
+            with its own definition, and a tile can only carry one. This row is
+            where they are reachable, and it doubles as the visible sign that
+            the labels above can be pressed at all. */}
+        <p className="termHint">
+          Tap a tile for what it counts. The smaller figures: <Term id="longestStreak" />
+          {' · '}<Term id="daysPlayed" />{' · '}<Term id="fastest" />
+        </p>
+      </TermGroup>
 
       <Section title="What the numbers say">
         {coach.length ? (
           coach.map(c => (
-            <div className="insight" key={c.id}>
-              <div className="insightTitle">{c.title}</div>
-              <div className="insightBody">{c.body}</div>
-              <div className="insightSample">based on {c.sample}</div>
-              {c.practice && onPractice && (
-                <button className="newBtn insightAct" onClick={() => onPractice(c.practice, 'classic')}>
-                  Practise this now
-                </button>
-              )}
-            </div>
+            <TermGroup key={c.id}>
+              <div className="insight">
+                <div className="insightTitle">{c.title}</div>
+                <div className="insightBody">{c.body}</div>
+                <div className="insightSample">based on {c.sample}</div>
+                {/* Several insights are built on a term the body never names:
+                    a guess that worked, an easier move that was available, a
+                    run of mistakes after a mistake. The insight already states
+                    its own sample, so this adds the definition and nothing
+                    else. Only the insights whose measure is a glossary term
+                    get a line, which is why the map is explicit rather than a
+                    guess from the id. */}
+                {INSIGHT_TERM[c.id] && (
+                  <p className="termHint">
+                    What is being counted: <Term id={INSIGHT_TERM[c.id]} />
+                  </p>
+                )}
+                {c.practice && onPractice && (
+                  <button className="newBtn insightAct" onClick={() => onPractice(c.practice, 'classic')}>
+                    Practise this now
+                  </button>
+                )}
+              </div>
+            </TermGroup>
           ))
         ) : (
           <div className="insightBody">{needed(games)}</div>
@@ -207,22 +261,33 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
       </Section>
 
       <Section title={`Achievements · ${derived.badges.filter(b => b.earned).length}/${derived.badges.length}`}>
-        <div className="badges">
-          {derived.badges.map(b => (
-            <div className={'badge' + (b.earned ? ' earned' : '')} key={b.id}>
-              <div className="badgeTop">
-                <span className="badgeName">{b.name}</span>
-                {b.detail && <span className="badgeDetail">{b.detail}</span>}
-              </div>
-              <div className="badgeDesc">{b.description}</div>
-              {!b.earned && b.progress > 0 && (
-                <div className="badgeTrack">
-                  <div className="badgeFill" style={{ width: `${Math.round(b.progress * 100)}%` }} />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        {/* The badge's own line says how to earn it; the glossary says what the
+            rule actually checks, and the two are not always the same sentence.
+            "Play seven days in a row" is finishing a game on seven consecutive
+            days, and opening the app does not count. A badge is 170px wide and
+            the rule would take it from 33px to 123px, so the rule is a tap. */}
+        <TermGroup hint="Tap a badge for the rule it actually checks.">
+          <div className="badges">
+            {derived.badges.map(b => (
+              <TermButton
+                id={achievementTerm(b.id)}
+                className={'badge' + (b.earned ? ' earned' : '')}
+                key={b.id}
+              >
+                <span className="badgeTop">
+                  <span className="badgeName">{b.name}</span>
+                  {b.detail && <span className="badgeDetail">{b.detail}</span>}
+                </span>
+                <span className="badgeDesc">{b.description}</span>
+                {!b.earned && b.progress > 0 && (
+                  <span className="badgeTrack">
+                    <span className="badgeFill" style={{ width: `${Math.round(b.progress * 100)}%` }} />
+                  </span>
+                )}
+              </TermButton>
+            ))}
+          </div>
+        </TermGroup>
       </Section>
 
       <Section title="Recent games">
@@ -239,28 +304,38 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
               </span>
               <span className="grTime">{fmtMs(g.durationMs)}</span>
               <span className="grFlags">
-                {g.mistakes > 0 && <em title="mistakes">{g.mistakes}✕</em>}
-                {g.hints > 0 && <em title="hints">{g.hints}?</em>}
+                {g.mistakes > 0 && <em>{g.mistakes}✕</em>}
+                {g.hints > 0 && <em>{g.hints}?</em>}
                 {g.mistakes === 0 && g.hints === 0 && <em className="clean">clean</em>}
               </span>
             </button>
           ))}
         </div>
         {/* The glyphs were explained by hover, which is nothing at all on a
-            phone. A legend costs one line and works everywhere. */}
-        <p className="legend">
-          <span>✕ wrong digits</span>
-          <span>? hints used</span>
-          <span>clean: neither</span>
-          <span>tap a row for the full review</span>
-        </p>
+            phone. The legend was the fix and it carried its own wording, which
+            made it a second answer: it read "wrong digits" over a count that is
+            `mistakes`, the ones left standing, not every wrong digit ever
+            placed. The words come from the glossary now and the row cannot say
+            one thing while the number counts another. The legend cannot sit
+            inside the rows, which are buttons themselves. */}
+        <TermGroup hint="Tap a word here for what the mark on a row counts.">
+          <p className="legend">
+            <span><Term id="mistakes">✕ mistakes</Term></span>
+            <span><Term id="hints">? hints</Term></span>
+            <span><Term id="clean">clean</Term></span>
+            {/* Lower case, like its neighbours: this legend describes marks on
+                a row rather than headings. */}
+            <span><Term id="unfinished">unfinished</Term></span>
+            <span>tap a row for the full review</span>
+          </p>
+        </TermGroup>
       </Section>
 
-      <Section title="Last 17 weeks">
+      <Section term="calendarHeatmap">
         <Calendar days={derived.calendar} />
       </Section>
 
-      <Section title="Solve times by tier">
+      <Section term="tierTrend">
         <div className="trends">
           {tiers.map(t => (
             <TierTrend key={t.tier} label={t.tier} values={t.recent} best={t.best} />
@@ -269,12 +344,12 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
       </Section>
 
       {derived.histogram.length > 0 && (
-        <Section title="How long solves take">
+        <Section term="durationHistogram">
           <Histogram bins={derived.histogram} />
         </Section>
       )}
 
-      <Section title="When you play">
+      <Section term="byHour">
         <HourBars hours={derived.hours} />
       </Section>
 
@@ -287,7 +362,7 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
               className={'variantChip' + (variant === 'all' ? ' on' : '')}
               onClick={() => setVariant('all')}
             >
-              All boards
+              {termLabel('boardFilter', 'All boards')}
             </button>
             {played.map(v => (
               <button
@@ -301,12 +376,13 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
               </button>
             ))}
           </div>
+          {/* This used to carry its own paragraph saying the same thing the
+              glossary says, which is two answers to one question. The filter
+              governs every number on the screen, so its definition is always on
+              rather than waiting for the "all boards" case. */}
+          <Explain id="boardFilter" />
           {variant === 'all' && (
-            <p className="dataNote">
-              Every number below covers all of these together. A jigsaw and a classic are not the
-              same puzzle, so a median across both sits between two things rather than describing
-              either. Pick one to see figures that mean something on their own.
-            </p>
+            <p className="dataNote">Pick one to see figures that mean something on their own.</p>
           )}
         </div>
       )}
@@ -331,32 +407,40 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
         </label>
 
         {showNumbers && (
-          <div className="tableWrap">
-          <table className="statTable">
-            <thead>
-              <tr>
-                <th>Tier</th>
-                <th>Played</th>
-                <th>Done</th>
-                <th>Best</th>
-                <th>Median</th>
-                <th>Mistakes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tiers.map(t => (
-                <tr key={t.tier}>
-                  <td>{t.tier}</td>
-                  <td>{t.played}</td>
-                  <td>{t.completed}</td>
-                  <td>{t.best ? fmtMs(t.best) : '–'}</td>
-                  <td>{t.medianMs ? fmtMs(t.medianMs) : '–'}</td>
-                  <td>{t.completed ? t.mistakes.toFixed(1) : '–'}</td>
+          /* Five of these six words mean something different here from what
+             they mean elsewhere on the screen: Median is per tier rather than
+             over everything, Mistakes is per finished game at this tier. A cell
+             is 62px wide on the phone and the definition would take the header
+             row from 21px to 91px, so the heads are triggers and the answer
+             lands under the table, outside the horizontal scroller. */
+          <TermGroup hint="Tap a column head for what it counts at that tier.">
+            <div className="tableWrap">
+            <table className="statTable">
+              <thead>
+                <tr>
+                  <th><Term id="tier" /></th>
+                  <th><Term id="tierPlayed" /></th>
+                  <th><Term id="tierDone" /></th>
+                  <th><Term id="tierBest" /></th>
+                  <th><Term id="tierMedian" /></th>
+                  <th><Term id="tierMistakes" /></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+              </thead>
+              <tbody>
+                {tiers.map(t => (
+                  <tr key={t.tier}>
+                    <td>{t.tier}</td>
+                    <td>{t.played}</td>
+                    <td>{t.completed}</td>
+                    <td>{t.best ? fmtMs(t.best) : '–'}</td>
+                    <td>{t.medianMs ? fmtMs(t.medianMs) : '–'}</td>
+                    <td>{t.completed ? t.mistakes.toFixed(1) : '–'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </div>
+          </TermGroup>
         )}
 
         <div className="dataRow">
@@ -382,10 +466,21 @@ function StatsHeader({ onClose }) {
   )
 }
 
-function Section({ title, children }) {
+/**
+ * A heading and, where the heading names a term, its definition under it.
+ *
+ * Full width, so this is the subtext case and the definition is simply always
+ * on: measured at 375px a heading plus its longest definition is 72.5px against
+ * 13px bare, which is three lines of a column that has 347px to spend.
+ *
+ * The heading text comes from the glossary as well, so a chart headed one thing
+ * and defined as another is not expressible.
+ */
+function Section({ title, term, children }) {
   return (
     <section className="statSection">
-      <h2 className="statHeading">{title}</h2>
+      <h2 className="statHeading">{term ? termLabel(term, title) : title}</h2>
+      {term && <Explain id={term} />}
       {children}
     </section>
   )

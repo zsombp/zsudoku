@@ -2,6 +2,86 @@
 
 Newest first.
 
+## v2.23.0 - 2026-08-12 - every screen explains itself, out of the one glossary
+
+`src/logic/glossary.js` landed with 153 terms and nothing reading it. Every
+screen reads it now: the statistics tiles, the tier and league and experiment
+tables, the coach insights, the achievements, the eight figures under a game
+review and every one of its six tabs, the status bar during play, the dashboard,
+the practice list, the flashcards, the flow strip, the solve picture, the race,
+the new game sheet and two settings rows. The label comes from the glossary as
+well as the sentence, so a tile headed one thing and explaining another is not
+expressible.
+
+### Which surfaces get subtext and which get a tap, measured rather than judged
+
+`docs/VISION.md` says subtext under the label where there is room, tap to reveal
+where there is not, never hover alone. "Where there is room" was measured in the
+running app at 375px, printing the median, the 90th percentile and the longest
+definition the glossary holds into each real container:
+
+| surface | width | bare | +p50 | +p90 |
+|---|---|---|---|---|
+| tile, 1 of 3 | 111.7 | 67.8 | 134.2 | 187.4 |
+| fact, 1 of 4 | 82.3 | 53.2 | 146.3 | 212.8 |
+| badge, 1 of 2 | 170.5 | 32.5 | 78.6 | 122.7 |
+| table cell, 6 cols | 61.9 | 20.5 | 55.6 | 90.7 |
+| full-width note | 347.0 | 16.5 | 33.0 | 49.5 |
+| heading and note | 347.0 | 13.0 | 56.0 | 72.5 |
+
+A definition costs three to four times the height of the thing it explains in
+any grid cell, and the widest cell on the phone is 170px: six tiles would go from
+136px of screen to 375px. So the cut is not a judgment call. A container that
+spans the 347px column carries its definition outright, and a cell in a grid or a
+table carries a dotted underline instead. Nothing in this app is between 171px
+and 347px wide, so there is no third case.
+
+### One line per group, holding either the prompt or the answer
+
+Each set of triggers shares one line underneath it. Growing the tile that was
+tapped reflows a three-column grid and moves it out from under your thumb, and at
+187px the two tiles beside it jump a row. The shared line also gives the
+affordance somewhere to live: it says "tap a tile for what it counts" while
+nothing is open and holds the definition when something is, so it costs exactly
+one line either way and there is never a dotted underline with nothing telling
+you to press it. `title` rides along on every trigger for a pointer and is the
+only route to nothing.
+
+### Four places were explaining the same term twice
+
+Found by wiring rather than by reading, and all four now read from the module:
+
+- The toolbar's hold-to-explain line for Auto and the glossary's `autoPencil`
+  made the same claim in different words.
+- The league table carried a four-line key defining played, won, pace and streak.
+- The move review printed `CLASSES.about` under a class the glossary also
+  defines, and carried the same sentence again as a `title`.
+- The statistics screen had its own paragraph about the board filter.
+
+`CLASSES.about` in `src/stats/analysis.js` is now read by nothing and should be
+deleted, which is what its own comment in the glossary asked for.
+
+### A bug found on the way
+
+The recent-games legend read "wrong digits" over a count that is `mistakes`, the
+wrong digits left standing, not every wrong digit ever placed. Measured over 32
+generated games driven through the real reducer, the two differ in 20 of them:
+one game shows Wrong 3 against mistakes 1 with two undos. The row now says
+mistakes and the definition says why the review's Wrong can be the larger number.
+
+### Tests
+
+`src/components/Term.test.js`, 17 of them, rendering the real components with
+`renderToStaticMarkup` so no DOM library is needed. Beyond the render behaviour
+they scan the component sources for three failures nothing else notices: a
+hardcoded term id the glossary no longer has, a component spelling out a
+definition instead of reading it, and a screen using `<Term>` or `<TermGroup>`
+without importing it. The last one is not hypothetical. `<TermGroup>` went into
+the new game sheet with no import, the build was clean, all 655 tests passed, and
+the sheet rendered a blank screen the moment it was opened, because an undefined
+component is a runtime error and every one of these screens sits behind a tap
+that no test performs.
+
 ## v2.22.0 - 2026-08-12 - every word the app invented, defined once
 
 153 terms in `src/logic/glossary.js`: every tier, every one of the seventeen

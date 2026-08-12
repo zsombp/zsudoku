@@ -2815,3 +2815,138 @@ h3.statHeading { margin-top: 20px; }
 .voiceNone { color: var(--sub); }
 .voiceErr { color: var(--error); }
 .voiceUndo { align-self: flex-start; font-size: 11px; padding: 2px 0; }
+
+/* ---- the glossary on screen ----
+ *
+ * One line of copy per term, out of src/logic/glossary.js, in one of two shapes.
+ * Which shape a surface gets was measured at 375px rather than chosen: a
+ * definition costs three to four times the height of a tile, a fact, a badge or
+ * a table cell, and only a container spanning the full 347px column can carry
+ * one as subtext. The numbers are in src/components/Term.jsx.
+ *
+ * Nothing here explains itself by hover. `title` rides along on every trigger
+ * for a pointer, and is never the only route. */
+
+/* The trigger, inline. Everything inherited except the dotted underline, so a
+ * pressable label looks like the label it replaced and not like a link. */
+.term {
+  appearance: none;
+  background: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2.5px;
+  /* The dots are the marker, so they must not thin out to nothing under the
+   * 9.5px labels this sits on. */
+  opacity: inherit;
+}
+.term:hover { color: var(--ink); }
+.term.on { text-decoration-style: solid; color: var(--accent); }
+.term:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* The trigger as a whole box: a tile, a fact, a badge. The 10px label inside is
+ * not a touch target, so the box is. */
+.termBox {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+/* Tiles and facts hold spans rather than divs now, because a div inside a
+ * button is not phrasing content and these boxes are buttons whenever they
+ * carry a term. Blocked here so both spellings lay out the same. */
+.termBox > span,
+.tile > span,
+.fact > span { display: block; }
+/* A fact centres its own text, so the button must not inherit the left the
+ * other triggers want. */
+.termBox.fact { text-align: center; }
+.termBox .tileLabel,
+.termBox .factLabel,
+.termBox .badgeName {
+  text-decoration: underline dotted currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.termBox.on { border-color: var(--accent); }
+.termBox:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* The answer, shared by a group and placed under it. Same shape as the tool
+ * explanation on the game screen, which is the idiom already in the app: a line
+ * you press to dismiss. */
+.termNote {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-top: 7px;
+  padding: 8px 11px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--ctl-radius);
+  color: var(--sub);
+  font-family: inherit;
+  font-size: 11.5px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.termNote b { color: var(--ink); font-weight: 600; }
+
+/* What that same line says while nothing is open. It reserves the space either
+ * way, so opening a definition never shifts the section under it. */
+.termHint {
+  margin: 7px 0 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--sub);
+  opacity: 0.75;
+}
+
+/* Subtext, the default wherever the container spans the column. */
+.explain {
+  margin: 4px 0 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--sub);
+}
+/* Under a heading it belongs to the heading, so it closes the 10px gap the
+ * heading leaves for the chart rather than adding a second one. */
+.statHeading + .explain { margin-top: -6px; }
+/* The hero is centred and its label is 12px, so its subtext follows it in and
+ * keeps a readable measure rather than running the full 347px. */
+.heroExplain { max-width: 34ch; margin: 6px auto 0; text-align: center; }
+
+/* A key for marks and colours, where there is no word to press. */
+.termLegend { margin: 8px 0 0; font-size: 11px; line-height: 1.5; color: var(--sub); }
+.termLegendRow { display: block; margin-bottom: 4px; }
+.termLegendRow:last-child { margin-bottom: 0; }
+.termLegend dt { display: inline; color: var(--ink); font-weight: 600; }
+.termLegend dt::after { content: ": "; }
+.termLegend dd { display: inline; margin: 0; }
+
+/* A pressable column head. The cell is 62px on the phone and cannot hold a
+ * definition, so it holds a dotted underline and the answer lands under the
+ * table, outside the horizontal scroller. */
+.statTable th .term { white-space: nowrap; }
+/* The dashboard figures become buttons the moment they carry a term, and they
+ * are centred where the other triggers are left-aligned. */
+.termBox.dashStat { text-align: center; }
+.dashStat > span, .dashStatValue, .dashStatLabel, .dashStatSub { display: block; }
+.termBox .dashStatLabel {
+  text-decoration: underline dotted currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+/* Badges hold spans now, for the same reason: a div is not phrasing content
+ * and a badge is a button whenever it carries a rule. */
+.badge > span { display: block; }
+.badge .badgeTop { display: flex; }

@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import * as ex from '../stats/experiments.js'
+import { Explain, Term, TermGroup } from './Term.jsx'
+import { outcomeTerm } from '../logic/glossary.js'
 
 /**
  * Experiments you run on yourself.
@@ -38,14 +40,17 @@ export default function Experiments({ games, onChange }) {
 
   return (
     <section className="statSection">
+      {/* The heading stays plural and the glossary's label stays singular: this
+          section holds several of a thing the glossary defines one of. */}
       <h2 className="statHeading">Experiments</h2>
+      {/* Full width, so what an experiment is does not wait to be asked. */}
+      <Explain id="experiment" />
 
       {!state ? (
         <>
           <p className="dataNote">
-            The defaults in this app are guesses. Pick one and it gets settled with evidence: the
-            assist is switched on and off at random behind the scenes, half your games each way, and
-            after thirty games the difference is measured properly.
+            The defaults in this app are guesses. Pick one and it gets settled with evidence, and
+            it decides on one measure declared before the first game: <Term id="decidesIt" />.
           </p>
           <div className="expList">
             {Object.values(ex.EXPERIMENTS).map(e => (
@@ -53,7 +58,10 @@ export default function Experiments({ games, onChange }) {
                 <div className="expTitle">{e.title}</div>
                 <div className="expBody">{e.question}</div>
                 <div className="expMeta">
-                  {e.games} games, judged on {ex.OUTCOMES[e.primary].label.toLowerCase()}
+                  {e.games} games, judged on{' '}
+                  <Term id={outcomeTerm(e.primary)}>
+                    {ex.OUTCOMES[e.primary].label.toLowerCase()}
+                  </Term>
                 </div>
                 <button className="newBtn" onClick={() => begin(e.id)}>Run this</button>
               </div>
@@ -90,35 +98,54 @@ export default function Experiments({ games, onChange }) {
           ) : (
             <>
               <p className="verdict">{ex.verdictFor(run.exp, run.primary)}</p>
-              <table className="statTable expTable">
-                <thead>
-                  <tr>
-                    <th>Measure</th>
-                    <th>On</th>
-                    <th>Off</th>
-                    <th>Chance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {run.results.map(r => (
-                    <tr key={r.outcome} className={r.outcome === run.exp.primary ? 'primaryRow' : ''}>
-                      <td>
-                        {ex.OUTCOMES[r.outcome].label}
-                        {r.outcome === run.exp.primary && <span className="expTag">decides it</span>}
-                      </td>
-                      <td>{r.enough ? fmt(r.onMean, r.outcome) : '—'}</td>
-                      <td>{r.enough ? fmt(r.offMean, r.outcome) : '—'}</td>
-                      <td>{r.enough ? ex.pctShort(r.p) : '—'}</td>
+              {/* Every word in the header row is a term, and two of them are
+                  the ones that mislead: Chance is a p-value under a plainer
+                  name, and each Measure row means something different from the
+                  statistic of the same name on the tiles above. The table
+                  scrolls sideways on the phone, so the answer lands outside
+                  it. The row labels come from OUTCOMES, which glossary.test.js
+                  asserts against these same entries. */}
+              <TermGroup hint="Tap a heading or a measure for what it is.">
+                <div className="tableWrap">
+                <table className="statTable expTable">
+                  <thead>
+                    <tr>
+                      <th>Measure</th>
+                      {/* Both heads carry the same term on purpose, so pressing
+                          either lights both: On and Off are the two halves of
+                          one split, not two ideas. */}
+                      <th><Term id="experimentArm">On</Term></th>
+                      <th><Term id="experimentArm">Off</Term></th>
+                      <th><Term id="chance" /></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {run.results.map(r => (
+                      <tr key={r.outcome} className={r.outcome === run.exp.primary ? 'primaryRow' : ''}>
+                        <td>
+                          <Term id={outcomeTerm(r.outcome)}>{ex.OUTCOMES[r.outcome].label}</Term>
+                          {r.outcome === run.exp.primary && (
+                            <span className="expTag"><Term id="decidesIt">decides it</Term></span>
+                          )}
+                        </td>
+                        <td>{r.enough ? fmt(r.onMean, r.outcome) : '—'}</td>
+                        <td>{r.enough ? fmt(r.offMean, r.outcome) : '—'}</td>
+                        <td>{r.enough ? ex.pctShort(r.p) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                </div>
+              </TermGroup>
+              {/* What Chance is now lives in the glossary, so this says only
+                  the thing the glossary cannot: why the other rows do not
+                  count. It is also where the p-value gets its usual name, since
+                  nothing else on screen ever writes it. */}
               <p className="dataNote">
-                "Chance" is how often reshuffling which games were in which half produces a gap at
-                least this big. Ten thousand reshuffles, seeded, so the number does not move when
-                you look again. Only the row marked "decides it" was chosen in advance; the others
-                are worth a glance and nothing more, because testing four things and believing
-                whichever came out best is how noise gets mistaken for a finding.
+                Only the row marked "decides it" was chosen in advance; the others are worth a
+                glance and nothing more, because testing four things and believing whichever came
+                out best is how noise gets mistaken for a finding. Chance is a{' '}
+                <Term id="pValue">p-value</Term>.
               </p>
             </>
           )}

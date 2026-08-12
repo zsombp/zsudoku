@@ -3,6 +3,7 @@ import * as gameLog from '../lib/gameLog.js'
 import { dayKey } from '../logic/daily.js'
 import BackupSettings from './BackupSettings.jsx'
 import * as experiments from '../stats/experiments.js'
+import { Term, TermGroup } from './Term.jsx'
 
 export const THEMES = [
   { id: 'ink', name: 'Ink & Brass', desc: 'The original. Deep blue, warm brass.' },
@@ -206,6 +207,15 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
             onChange={v => updateSettings({ explainHints: v })}
           />
         </Row>
+        {/* Each row above says what its own switch does. Neither says what the
+            three rungs are or that only one of them costs a hint, which is the
+            thing that decides whether either switch is worth turning on. */}
+        <TermGroup>
+          <p className="termHint">
+            How the hint button is built: <Term id="hintRungs" />{' · '}
+            <Term id="socraticQuestion" />
+          </p>
+        </TermGroup>
         <Row
           label="Write digits by hand"
           hint="Adds a pad under the number keys. Tap a cell, draw the digit with a finger, and it shows you what it read before anything is placed. It gets a digit wrong roughly one time in twenty at best, so it always asks first, and it says when it is not certain. 1 against 7 and 9 against 5 are the pairs it muddles."

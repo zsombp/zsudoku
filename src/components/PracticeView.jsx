@@ -4,6 +4,8 @@ import * as gameLog from '../lib/gameLog.js'
 import { hintsByTechnique } from '../stats/compute.js'
 import { VARIANT_LIST } from '../logic/variants.js'
 import { schedule, nextUp, nothingDue, strengthLabel } from '../stats/curriculum.js'
+import { Explain, Term, TermGroup } from './Term.jsx'
+import { define, techniqueTerm } from '../logic/glossary.js'
 
 /**
  * Practice, and the technique reference the app never had.
@@ -48,10 +50,13 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
       {games && (
         soonest ? (
           <div className="dueCard">
-            <div className="dueKicker">Due now</div>
+            {/* "Due" is a claim about your games, not a timer: a rung is due
+                when its wait has run out and the record has something to say
+                about it. */}
+            <div className="dueKicker"><Term id="due">Due now</Term></div>
             <div className="dueTitle">{soonest.label}</div>
             <div className="dueStrength">
-              {strengthLabel(soonest.strength)}
+              <Term id="strengthBand">{strengthLabel(soonest.strength)}</Term>
               <span className="dueBar" aria-hidden="true">
                 <span className="dueFill" style={{ width: `${Math.round(soonest.strength * 100)}%` }} />
               </span>
@@ -88,11 +93,31 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
         )
       )}
 
-      <p className="dataNote">
-        Pick a pattern and get a puzzle that genuinely requires it. The grader
-        records what each puzzle needs, so this is a filter rather than a
-        promise: if a technique is in the list, the puzzle will contain it.
-      </p>
+      {/* This paragraph used to say what the glossary says, in different
+          words. One source, and there is a full column for it. */}
+      <Explain id="practice" />
+
+      {/* Six words the rows below use and nothing defines: what makes a rung
+          due, what the four strength words mean, and why a rung nothing knows
+          about is called thin rather than weak. A row is a button, so a trigger
+          cannot live inside one; they live here instead, above the list they
+          describe. */}
+      <TermGroup>
+        <p className="termHint">
+          The words on these rows: <Term id="spacedRepetition" />{' · '}<Term id="due" />
+          {' · '}<Term id="waiting" />{' · '}<Term id="thin" />{' · '}<Term id="strength" />
+          {' · '}<Term id="strengthBand" />{' · '}<Term id="interval" />{' · '}
+          <Term id="flashcards" />
+        </p>
+        {/* The vocabulary every technique below is written in. This screen is
+            the app's technique reference, so it is the one place where the
+            words the explanations lean on are worth having in reach. */}
+        <p className="termHint">
+          The words the patterns are written in: <Term id="candidate" />{' · '}<Term id="unit" />
+          {' · '}<Term id="peer" />{' · '}<Term id="given" />{' · '}<Term id="ladder" />
+          {' · '}<Term id="technique" />
+        </p>
+      </TermGroup>
 
       <div className="variantRow" role="tablist" aria-label="Which board">
         {VARIANT_LIST.map(v => (
@@ -143,7 +168,10 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
               </button>
               {isOpen && (
                 <div className="techBody">
-                  <p className="techAbout">{t.about}</p>
+                  {/* Through the glossary rather than off TECHNIQUES, so the
+                      review, the flashcards and this reference all go through
+                      one door to the same sentence. */}
+                  <p className="techAbout">{define(techniqueTerm(key))?.definition}</p>
                   {/* Why it is where it is in the schedule. Every claim states
                       the sample it rests on, the same bar the coach holds to. */}
                   {sched && <p className="techAbout dueReason">{sched.reason}</p>}

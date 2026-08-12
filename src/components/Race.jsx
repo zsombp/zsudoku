@@ -1,4 +1,5 @@
 import { fmtMs } from '../lib/format.js'
+import { Explain, Term, TermGroup } from './Term.jsx'
 
 /**
  * Racing a past run of this grid, or the engine.
@@ -40,6 +41,11 @@ export function RaceOffer({ mine, engine, onRace, onDismiss }) {
         )}
         <button className="linkBtn" onClick={onDismiss}>no thanks</button>
       </div>
+      {/* The offer is the only place with room to say what a race is, and it is
+          the only moment it can be taken: the comparison is at the same point
+          on the clock, so joining late is not offered rather than bent. */}
+      <Explain id="ghostRacing" className="explain raceExplain" />
+      {engine && !mine && <Explain id="enginePace" className="explain raceExplain" />}
     </div>
   )
 }
@@ -57,20 +63,30 @@ export function RaceStrip({ ghost, race, onStop }) {
   const level = race.diff === 0
   const state = level ? 'level' : race.ahead ? 'ahead' : 'behind'
   return (
-    <div className={'raceStrip ' + state}>
-      <span className="raceWho">{ghost.label}</span>
-      <span className="raceScore" aria-live="polite">
-        {level
-          ? 'level'
-          : `${race.by} ${race.by === 1 ? 'cell' : 'cells'} ${race.ahead ? 'up' : 'down'}`}
-        {race.byMs !== null && Math.abs(race.byMs) >= 1000 && (
-          <span className="raceClock">
-            {' · '}
-            {fmtMs(Math.abs(race.byMs))} {race.byMs > 0 ? 'up' : 'down'}
-          </span>
-        )}
-      </span>
-      <button className="raceStop" aria-label="Stop the race" onClick={onStop}>×</button>
-    </div>
+    /* Two numbers that often disagree, mid-game, with no room beside them for
+       a word of explanation. Both are triggers and the answer drops in under
+       the strip, which is the only shape that works here: this sits above the
+       board and a standing key would cost board space every game. */
+    <TermGroup>
+      <div className={'raceStrip ' + state}>
+        <span className="raceWho"><Term id="ghost">{ghost.label}</Term></span>
+        <span className="raceScore" aria-live="polite">
+          <Term id="raceCells">
+            {level
+              ? 'level'
+              : `${race.by} ${race.by === 1 ? 'cell' : 'cells'} ${race.ahead ? 'up' : 'down'}`}
+          </Term>
+          {race.byMs !== null && Math.abs(race.byMs) >= 1000 && (
+            <span className="raceClock">
+              {' · '}
+              <Term id="raceClock">
+                {fmtMs(Math.abs(race.byMs))} {race.byMs > 0 ? 'up' : 'down'}
+              </Term>
+            </span>
+          )}
+        </span>
+        <button className="raceStop" aria-label="Stop the race" onClick={onStop}>×</button>
+      </div>
+    </TermGroup>
   )
 }

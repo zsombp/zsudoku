@@ -4,6 +4,20 @@ import { TIERS, predictTime } from '../logic/difficulty.js'
 import { VARIANT_LIST, VARIANTS } from '../logic/variants.js'
 import { fmtMs } from '../lib/format.js'
 import { Calendar } from './Icons.jsx'
+import { Term, TermGroup } from './Term.jsx'
+import { define, tierTerm, variantTerm } from '../logic/glossary.js'
+
+/**
+ * The blurbs on this sheet come through the glossary rather than off `TIERS`
+ * and `VARIANT_LIST` directly.
+ *
+ * The sentence is the same either way; the point is that there is one door. A
+ * tier described here and defined on the statistics screen has to be the same
+ * description, and the only way to guarantee that is for both to ask the same
+ * question of the same module.
+ */
+const tierBlurb = name => define(tierTerm(name))?.definition
+const variantBlurb = id => define(variantTerm(id))?.definition
 
 export default function NewGameSheet({
   records, canRestart, daily, variant = 'classic', games = [], currentCode, onCode,
@@ -28,12 +42,15 @@ export default function NewGameSheet({
             <b>
               <Calendar size={14} /> {daily.weekday} puzzle
             </b>
+            {/* The daily's own line said "same puzzle on every device", which
+                is true and is a third of what the daily is. The glossary says
+                the whole of it, including that the week has a shape. */}
             <span className="tierBlurb">
               {daily.done
                 ? `Finished in ${fmtMs(daily.durationMs)}`
                 : daily.inProgress
                   ? 'In progress'
-                  : 'Same puzzle on every device, no server involved.'}
+                  : define('daily').definition}
             </span>
           </span>
           <span className="tierMeta">
@@ -60,13 +77,22 @@ export default function NewGameSheet({
             </button>
           ))}
         </div>
-        <p className="variantBlurb">{chosen.blurb}</p>
+        <p className="variantBlurb">{variantBlurb(chosen.id)}</p>
+        {/* Cage appears only for killer, which is the only board that has any,
+            and it is the one variant whose extra rule is a shape on the grid
+            rather than another set of nine cells. */}
+        <TermGroup>
+          <p className="termHint">
+            <Term id="variant" />
+            {chosen.id === 'killer' && <>{' · '}<Term id="cage" /></>}
+          </p>
+        </TermGroup>
 
         {TIERS.map(t => (
           <button key={t.name} className="sheetBtn tier" onClick={() => onPick(t.name, pickedVariant)}>
             <span className="tierMain">
               <b>{t.name}</b>
-              <span className="tierBlurb">{t.blurb}</span>
+              <span className="tierBlurb">{tierBlurb(t.name)}</span>
             </span>
             <span className="tierMeta">
               {t.tech}

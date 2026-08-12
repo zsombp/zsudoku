@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { toArt, toSvg, PALETTES } from '../stats/solveart.js'
 import { fmtMs } from '../lib/format.js'
+import { Fact } from './stats/charts.jsx'
+import { Explain, Term, TermGroup } from './Term.jsx'
+import { classTerm } from '../logic/glossary.js'
 
 /**
  * The game drawn as its own solve path.
@@ -91,6 +94,8 @@ export default function SolveArt({ game, analysis }) {
       <div className="artFrame" dangerouslySetInnerHTML={{ __html: svg }} />
 
       <p className="artLabel">{art.label}</p>
+      {/* What the drawing is, before what it is made of. Full width. */}
+      <Explain id="solveArt" />
 
       <div className="variantRow" role="tablist" aria-label="Palette">
         {PALETTE_NAMES.map(p => (
@@ -107,51 +112,54 @@ export default function SolveArt({ game, analysis }) {
       </div>
       <p className="dataNote">{PALETTE_ABOUT[palette]}</p>
 
-      <div className="artKey">
-        <span><i className="artSwatch earned" /> earned</span>
-        <span><i className="artSwatch sharp" /> needed a pattern</span>
-        <span><i className="artSwatch lucky" /> unproven</span>
-        <span><i className="artSwatch hint" /> hinted</span>
-        <span><i className="artSwatch mistake" /> wrong</span>
-      </div>
+      {/* Five colours, and four of them are the move classes the review uses.
+          A swatch has no word to press, so the word beside it is the trigger
+          and the key is a group. */}
+      <TermGroup hint="Tap a word for what that colour marks.">
+        <div className="artKey">
+          <span><i className="artSwatch earned" /> <Term id="earned">earned</Term></span>
+          <span><i className="artSwatch sharp" /> <Term id={classTerm('sharp')}>needed a pattern</Term></span>
+          <span><i className="artSwatch lucky" /> <Term id={classTerm('lucky')}>unproven</Term></span>
+          <span><i className="artSwatch hint" /> <Term id={classTerm('hint')}>hinted</Term></span>
+          <span><i className="artSwatch mistake" /> <Term id={classTerm('mistake')}>wrong</Term></span>
+        </div>
+      </TermGroup>
 
       <p className="dataNote">
-        Every bead is one placement, in the order you made them, and its size is how long you sat on
-        it: the thread swells where you stalled. The lattice underneath is the grid, the larger faint
-        dots are the clues you were given, and the path turns and swells as the game goes on so the
-        end is never drawn on top of the beginning.
+        Every <Term id="bead">bead</Term> is one placement, in the order you made them, and its size
+        is how long you sat on it: the <Term id="thread">thread</Term> swells where you stalled. The
+        lattice underneath is the grid, the larger faint dots are the clues you were given, and the
+        path turns and swells as the game goes on so the end is never drawn on top of the beginning.
         {art.stats.autoFilled > 0 &&
           ` The ${art.stats.autoFilled} cells auto-complete took are not here: the thread is a record of attention, and nobody attended to those.`}
       </p>
 
       {/* Placements and the longest pause are on the facts row at the foot of
           every tab. These two are about the drawing: what a typical bead means
-          and what the fattest one does. */}
-      <div className="reviewStats">
-        <Fact label="Typical dwell" value={`${(art.stats.medianDwellMs / 1000).toFixed(1)}s`} />
-        <Fact
-          label="Longest"
-          value={fmtMs(art.stats.longestDwellMs)}
-          sub={art.stats.longestCell >= 0
-            ? `r${Math.floor(art.stats.longestCell / 9) + 1}c${(art.stats.longestCell % 9) + 1}`
-            : ''}
-        />
-      </div>
+          and what the fattest one does. The label overrides the glossary's
+          because the figure is the middle of a game's dwell rather than a
+          dwell, which is what the definition itself says it is. */}
+      <TermGroup hint="Tap a figure for what it measures.">
+        <div className="reviewStats">
+          <Fact term="dwell" label="Typical dwell" value={`${(art.stats.medianDwellMs / 1000).toFixed(1)}s`} />
+          {/* Not a second `dwell` trigger: two boxes wired to one term both
+              light up when either is pressed, which reads as a bug. This one is
+              the longest of the same thing and the definition beside it says
+              so. */}
+          <Fact
+            label="Longest"
+            value={fmtMs(art.stats.longestDwellMs)}
+            sub={art.stats.longestCell >= 0
+              ? `r${Math.floor(art.stats.longestCell / 9) + 1}c${(art.stats.longestCell % 9) + 1}`
+              : ''}
+          />
+        </div>
+      </TermGroup>
 
       <div className="dataRow">
         <button className="newBtn" onClick={save}>Save as SVG</button>
       </div>
       {saved && <p className="dataNote notice">{saved}</p>}
-    </div>
-  )
-}
-
-function Fact({ label, value, sub }) {
-  return (
-    <div className="fact">
-      <div className="factValue">{value}</div>
-      <div className="factLabel">{label}</div>
-      {sub && <div className="factSub">{sub}</div>}
     </div>
   )
 }

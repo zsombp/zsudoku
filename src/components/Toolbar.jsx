@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Undo, Redo, Eraser, Pencil, Sparkles, Zap, Bulb, Check, Flag, FlagBack } from './Icons.jsx'
+import { define } from '../logic/glossary.js'
 
 /**
  * What each tool is for, in one line.
@@ -12,12 +13,19 @@ import { Undo, Redo, Eraser, Pencil, Sparkles, Zap, Bulb, Check, Flag, FlagBack 
  * already uses for tinting a cell, and the title stays so a pointer still gets
  * a hover for free. Never hover on its own.
  */
+/*
+ * `auto` is the one line here the glossary owns rather than this file. It had
+ * two copies, one here and one in src/logic/glossary.js under `autoPencil`,
+ * making the same claim in different words. The rest describe what a button
+ * does in this app and name no term a statistics screen also uses, so they stay
+ * where they are.
+ */
 const ABOUT = {
   undo: 'Steps back one move, including a whole auto-complete.',
   redo: 'Puts back a move you undid.',
   erase: 'Clears the selected cell, and restores the notes that digit displaced.',
   notes: 'Pencil mode: numbers go in as small candidates instead of an answer.',
-  auto: 'Fills every candidate from the board as it stands, replacing your notes. Worth pressing again later, since notes go stale as the grid fills.',
+  auto: define('autoPencil').definition,
   quick: 'Pick a number first, then tap cells to place it. Good for filling one digit everywhere.',
   hint: 'Fills in the easiest cell available. With "hints explain first" on, it points at the pattern instead and you press again for the digit.',
   mark: 'Saves this position before you guess, so you can come back to it.',

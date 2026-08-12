@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useLeague } from '../hooks/useLeague.js'
 import { cleanName, flatten, headToHead, period, standings, MAX_NAME } from '../stats/league.js'
 import { fmtMs, fmtWhen } from '../lib/format.js'
+import { Explain, Term, TermGroup, termLabel } from './Term.jsx'
 
 /**
  * A private league over the shared repository.
@@ -63,13 +64,18 @@ export default function League({ name, onName }) {
 
   return (
     <section className="statSection">
-      <h2 className="statHeading">League</h2>
+      <h2 className="statHeading">{termLabel('league', 'League')}</h2>
+      {/* Including the part nobody says out loud: there is no referee and no
+          way to verify a time. */}
+      <Explain id="league" />
 
+      {/* What the definition above does not cover, and only that. This opened
+          with its own version of "standings against whoever writes to the same
+          repository", which was the same sentence twice on one screen. */}
       <p className="dataNote">
-        Standings against whoever else writes to the same GitHub repository your backup points at.
-        It needs them to do that: this reads and writes files in <code>league/</code> in that one
-        repository and talks to nothing else. There is no server to join and nobody to invite, so if
-        their sync is pointed somewhere else, nothing here will ever show them.
+        It needs the others to point their own sync at that repository. This reads and writes files
+        in <code>league/</code> there and talks to nothing else, and there is nobody to invite, so
+        if their sync is pointed somewhere else nothing here will ever show them.
       </p>
 
       {!league.configured ? (
@@ -151,16 +157,22 @@ export default function League({ name, onName }) {
                 ))}
               </div>
 
+              {/* This table used to carry its own four-line key, which was a
+                  second set of definitions for four terms the glossary defines,
+                  and it covered four of the six columns. Every head is a
+                  trigger now and the answer lands under the table, outside the
+                  horizontal scroller. */}
+              <TermGroup hint="Tap a column head for what it counts.">
               <div className="tableWrap">
                 <table className="statTable leagueTable">
                   <thead>
                     <tr>
                       <th>Player</th>
-                      <th>Played</th>
-                      <th>Won</th>
-                      <th>Median</th>
-                      <th>Pace</th>
-                      <th>Streak</th>
+                      <th><Term id="leaguePlayed" /></th>
+                      <th><Term id="leagueWon" /></th>
+                      <th><Term id="leagueMedian" /></th>
+                      <th><Term id="leaguePace" /></th>
+                      <th><Term id="leagueStreak" /></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -180,20 +192,20 @@ export default function League({ name, onName }) {
                   </tbody>
                 </table>
               </div>
+              </TermGroup>
 
-              {/* Every column here carries a definition nothing else states, and
-                  two of them are easy to read as the opposite of what they are. */}
-              <p className="legend">
-                <span>played: days you turned up for, never days you missed</span>
-                <span>won: fastest on a day at least two of you played the same puzzle</span>
-                <span>pace: your time against the day median, under 1 is quicker</span>
-                <span>streak: your whole history, not this window</span>
+              {/* A win needs a contested day, and that word appears in no
+                  column. Reachable here rather than only inside the definition
+                  of Won. */}
+              <p className="termHint">
+                A win only comes from a <Term id="leagueContested">contested</Term> day.
               </p>
 
               {table.mismatched.length > 0 && (
                 <p className="timeNote warn">
                   {table.mismatched.length}{' '}
-                  {table.mismatched.length === 1 ? 'day is' : 'days are'} not comparable: the entries
+                  {table.mismatched.length === 1 ? 'day is' : 'days are'}{' '}
+                  <Term id="notComparable">not comparable</Term>: the entries
                   disagree about which puzzle was played, which happens when someone is on a
                   different version. Those days count for nobody rather than being dropped quietly.
                 </p>
@@ -201,7 +213,8 @@ export default function League({ name, onName }) {
 
               {name && table.rows.length > 1 && (
                 <>
-                  <h3 className="statHeading">Head to head</h3>
+                  <h3 className="statHeading">{termLabel('headToHead', 'Head to head')}</h3>
+                  <Explain id="headToHead" />
                   <div className="variantRow" role="tablist" aria-label="Against">
                     {table.rows
                       .filter(r => cleanName(r.name) !== cleanName(name))

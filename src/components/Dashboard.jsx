@@ -11,6 +11,7 @@ import { hintsByTechnique } from '../stats/compute.js'
 import { TECHNIQUES } from '../logic/techniques.js'
 import { Calendar, Chart, Gear, Play, Trophy } from './Icons.jsx'
 import ThemeMenu from './ThemeMenu.jsx'
+import { Term, TermButton, TermGroup, termLabel } from './Term.jsx'
 
 /**
  * The home screen.
@@ -121,15 +122,26 @@ export default function Dashboard({ handoff, inProgress, daily, records, theme, 
         </div>
 
         <div className="dashCol">
-          <div className="dashStats">
-            <Stat label="Streak" value={summary ? summary.currentStreak : '–'} sub="days" />
-            <Stat label="Solved" value={summary ? summary.completed : '–'} sub="puzzles" />
-            <Stat
-              label="Clean"
-              value={summary ? summary.cleanGames : '–'}
-              sub="no help"
-            />
-          </div>
+          {/* Three figures on the front door, and none of them said what it
+              counted. Clean is the surprising one: checks and pencil marks do
+              not spoil a game, and a wrong digit you undid does not count. The
+              daily is here too, because the card above is a button and cannot
+              hold a trigger. */}
+          <TermGroup hint={null}>
+            <div className="dashStats">
+              <Stat term="currentStreak" label="Streak" value={summary ? summary.currentStreak : '–'} sub="days" />
+              <Stat term="puzzlesSolved" label="Solved" value={summary ? summary.completed : '–'} sub="puzzles" />
+              <Stat
+                term="clean"
+                label={termLabel('clean', 'Clean')}
+                value={summary ? summary.cleanGames : '–'}
+                sub="no help"
+              />
+            </div>
+            <p className="termHint">
+              Tap a figure for what it counts. Also: <Term id="daily" />
+            </p>
+          </TermGroup>
 
           <button className="card cardPractice" onClick={onPractice}>
             <span className="cardKicker">Practice</span>
@@ -175,12 +187,20 @@ export default function Dashboard({ handoff, inProgress, daily, records, theme, 
   )
 }
 
-function Stat({ label, value, sub }) {
-  return (
-    <div className="dashStat">
-      <div className="dashStatValue">{value}</div>
-      <div className="dashStatLabel">{label}</div>
-      <div className="dashStatSub">{sub}</div>
-    </div>
+/**
+ * Labels here stay short rather than taking the glossary's, because three of
+ * them share a 105px column on the phone: "Puzzles solved" wraps to two lines
+ * where "Solved" does not, and the definition it opens says the same thing in
+ * full.
+ */
+function Stat({ label, value, sub, term }) {
+  const body = (
+    <>
+      <span className="dashStatValue">{value}</span>
+      <span className="dashStatLabel">{label}</span>
+      <span className="dashStatSub">{sub}</span>
+    </>
   )
+  if (!term) return <div className="dashStat">{body}</div>
+  return <TermButton id={term} className="dashStat">{body}</TermButton>
 }

@@ -13,6 +13,20 @@ import ReviewBoard from './ReviewBoard.jsx'
 import FlowStrip from './FlowStrip.jsx'
 import SolveArt from './SolveArt.jsx'
 import { Play, Pause } from './Icons.jsx'
+import { Fact } from './stats/charts.jsx'
+import { Explain, Term, TermGroup, termLabel } from './Term.jsx'
+import { classTerm, define, techniqueTerm } from '../logic/glossary.js'
+
+/**
+ * The move classes, out of the glossary rather than out of `CLASSES.about`.
+ *
+ * `analysis.js` carries a second sentence for each class, which this screen used
+ * to print, and a class explained one way here and another way in a legend is
+ * exactly what the glossary exists to stop. Labels still come from `CLASSES`,
+ * because that is where the classifier's own word for a class lives and
+ * glossary.test.js asserts the two agree.
+ */
+const classAbout = key => define(classTerm(key))?.definition
 
 /**
  * One finished game, read back out of its move log.
@@ -180,17 +194,36 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
 
       <div className="reviewHead">
         <div className="reviewTitle">
-          {game.graded}
+          {/* The grader's verdict on the puzzle, never the tier that was asked
+              for, which is the distinction the whole engine is built on. */}
+          <Term id="graded">{game.graded}</Term>
           {game.daily && <span className="reviewTag">daily</span>}
           {/* Walked away and gave up are both incomplete, and only one was a
               decision. The record knows which; say it. */}
+          {/* Both tags carry a rule nothing on this screen states: an
+              unfinished game is still in the win rate's denominator, and giving
+              up is recorded as a loss so that quitting tidily cannot improve
+              it. Pressable, because there is no room beside a title. */}
           {!game.completed && (
-            <span className="reviewTag warn">{game.forfeited ? 'gave up' : 'unfinished'}</span>
+            <span className="reviewTag warn">
+              <Term id={game.forfeited ? 'gaveUp' : 'unfinished'}>
+                {game.forfeited ? 'gave up' : 'unfinished'}
+              </Term>
+            </span>
           )}
         </div>
         <div className="reviewMeta">
           {new Date(game.endedAt).toLocaleString()} · {fmtMs(game.durationMs)}
-          {game.hardest && ` · needed ${TECHNIQUES[game.hardest]?.label || game.hardest}`}
+          {/* "needed X" describes the puzzle, not the player, and both halves
+              of it are terms: what hardest means, and what that rung is. */}
+          {game.hardest && (
+            <>
+              {' · '}<Term id="hardest">needed</Term>{' '}
+              <Term id={techniqueTerm(game.hardest)}>
+                {TECHNIQUES[game.hardest]?.label || game.hardest}
+              </Term>
+            </>
+          )}
         </div>
       </div>
 
@@ -245,6 +278,11 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
           {mode === 'beliefs' && beliefs && (
             <div className="moveReview">
               <p className="verdict">{beliefVerdict(beliefs)}</p>
+              {/* A stale note is a narrow and unobvious idea: a note that was
+                  true and stopped being true while you kept it, which is not
+                  the same as a note that is wrong. Full width, so it is said
+                  rather than waited for. */}
+              <Explain id="staleNote" />
               {!beliefs.stale.length ? (
                 <p className="dataNote">
                   A note counts here only if it was genuinely possible and then stopped being so
@@ -320,7 +358,7 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
                 <p className="timeNote warn">
                   {beliefs.misreads.length} {beliefs.misreads.length === 1 ? 'note was' : 'notes were'} impossible
                   the moment you wrote {beliefs.misreads.length === 1 ? 'it' : 'them'}, by a plain scan of the row,
-                  column and box. That is a misread rather than a belief going stale:{' '}
+                  column and box. That is a <Term id="misread">misread</Term> rather than a belief going stale:{' '}
                   {beliefs.misreads.slice(0, 4).map(m => `${m.digit} in ${m.cellName}`).join(', ')}.
                 </p>
               )}
@@ -362,7 +400,12 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
                         <span className="moveGap">{example.at}/81 filled</span>
                       </div>
                       <p className="stageWhy">{example.step.detail}</p>
-                      <p className="stageNote">{TECHNIQUES[example.technique]?.about}</p>
+                      {/* The rung's own sentence, reached through the glossary
+                          rather than off `TECHNIQUES` directly, so every screen
+                          that describes a technique goes through one door. */}
+                      <p className="stageNote">
+                        {define(techniqueTerm(example.technique))?.definition}
+                      </p>
                       <p className="stageNote">
                         This is the one from this grid, at the point it came up. The outlined cells
                         are the pattern; anything struck through is a candidate it rules out.
@@ -396,19 +439,40 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
           {mode === 'moves' && (
             <div className="moveReview">
               {line && <p className="verdict">{line}</p>}
+              {/* The verdict is a percentage of justified placements and never
+                  says what that share is over. Full width, so it says it. */}
+              {line && <Explain id="justifiedPlacements" />}
               {shape.map(o => (
                 <p className={'timeNote ' + o.tone} key={o.id}>{o.text}</p>
               ))}
+              {/* These three notes are time crossed with judgment, and all
+                  three thresholds are relative to this game rather than
+                  absolute. Attached to the group rather than to a paragraph,
+                  because two of the four notes rest on the same term and a
+                  trigger inside a note would vanish with it. */}
+              {shape.length > 0 && (
+                <TermGroup>
+                  <p className="termHint">
+                    Measured against this game's own rhythm: <Term id="longThink" />
+                    {' · '}<Term id="slowEasy" />{' · '}<Term id="fastGuess" />
+                  </p>
+                </TermGroup>
+              )}
 
-              <div className="clsRow">
-                {['sharp', 'solid', 'routine', 'lucky', 'mistake', 'hint']
-                  .filter(k => analysis.counts[k])
-                  .map(k => (
-                    <span className={'clsPip ' + k} key={k}>
-                      {analysis.counts[k]} {plural(k, analysis.counts[k])}
-                    </span>
-                  ))}
-              </div>
+              {/* Six words the app coined, sitting over six counts. They were
+                  explained by a `title` on one of them, which is nothing at all
+                  on a phone. */}
+              <TermGroup hint="Tap a class for what it means.">
+                <div className="clsRow">
+                  {['sharp', 'solid', 'routine', 'lucky', 'mistake', 'hint']
+                    .filter(k => analysis.counts[k])
+                    .map(k => (
+                      <Term id={classTerm(k)} className={'clsPip ' + k} key={k}>
+                        {analysis.counts[k]} {plural(k, analysis.counts[k])}
+                      </Term>
+                    ))}
+                </div>
+              </TermGroup>
               {/* The board the explanation is about, with the pattern drawn on
                   it. Without this the review asserted things about candidates
                   while showing a grid that had none. */}
@@ -453,33 +517,43 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
                     <div className="stageHead">
                       <span className="moveNo">{move.n}</span>
                       <span className="moveWhat">{move.value} to {move.cellName}</span>
-                      <span className={'moveCls ' + move.cls} title={CLASSES[move.cls].about}>
-                        {CLASSES[move.cls].label}
-                      </span>
+                      <span className={'moveCls ' + move.cls}>{CLASSES[move.cls].label}</span>
                       <span className="moveGap">{(move.gap / 1000).toFixed(1)}s</span>
                     </div>
                     <p className="stageWhy">{move.why}</p>
                     {/* What the class means, as opposed to why this move earned
-                        it. Was a hover, so it did not exist on a phone. */}
-                    <p className="stageNote">{CLASSES[move.cls].label}: {CLASSES[move.cls].about.toLowerCase()}</p>
+                        it. Was a hover, so it did not exist on a phone, and it
+                        was a second sentence about a class the glossary already
+                        defines. One source, always on: this line is full width
+                        and the definition is three lines at worst. */}
+                    <p className="stageNote">
+                      {CLASSES[move.cls].label}: {classAbout(move.cls)}
+                    </p>
                     {move.alternative && (
                       <p className="moveAlt">
-                        Easier was {move.alternative.digit} to r{Math.floor(move.alternative.cell / 9) + 1}
+                        <Term id="easierWas">Easier was</Term> {move.alternative.digit} to
+                        r{Math.floor(move.alternative.cell / 9) + 1}
                         c{(move.alternative.cell % 9) + 1}: {move.alternative.detail}
                       </p>
                     )}
+                    {/* The two hardest words on this screen, and the whole
+                        point of the review: what the board could prove against
+                        what you had written down. A tab cannot hold a trigger,
+                        so the definition of whichever one is showing sits under
+                        the strip, where there is the full column for it. */}
                     <div className="segTabs small" role="tablist">
                       <button role="tab" aria-selected={layer === 'cands'}
                         className={'segTab' + (layer === 'cands' ? ' on' : '')}
                         onClick={() => setLayer('cands')}>
-                        What the board proved
+                        {termLabel('boardProved', 'What the board proved')}
                       </button>
                       <button role="tab" aria-selected={layer === 'marks'}
                         className={'segTab' + (layer === 'marks' ? ' on' : '')}
                         onClick={() => setLayer('marks')}>
-                        Your notes
+                        {termLabel('yourNotes', 'Your notes')}
                       </button>
                     </div>
+                    <Explain id={layer === 'marks' ? 'yourNotes' : 'boardProved'} />
                     {layer !== 'marks' && move.pattern?.derived && (
                       <p className="stageNote">
                         These candidates include the eliminations the ladder can make first. On the
@@ -539,23 +613,27 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
           )}
 
           {mode === 'replay' && (
-            <div className="segTabs small" role="tablist">
-              <button role="tab" aria-selected={layer === 'cands'}
-                className={'segTab' + (layer === 'cands' ? ' on' : '')}
-                onClick={() => setLayer('cands')}>
-                What the board proved
-              </button>
-              <button role="tab" aria-selected={layer === 'marks'}
-                className={'segTab' + (layer === 'marks' ? ' on' : '')}
-                onClick={() => setLayer('marks')}>
-                Your notes
-              </button>
-              <button role="tab" aria-selected={layer === 'none'}
-                className={'segTab' + (layer === 'none' ? ' on' : '')}
-                onClick={() => setLayer('none')}>
-                Digits only
-              </button>
-            </div>
+            <>
+              <div className="segTabs small" role="tablist">
+                <button role="tab" aria-selected={layer === 'cands'}
+                  className={'segTab' + (layer === 'cands' ? ' on' : '')}
+                  onClick={() => setLayer('cands')}>
+                  {termLabel('boardProved', 'What the board proved')}
+                </button>
+                <button role="tab" aria-selected={layer === 'marks'}
+                  className={'segTab' + (layer === 'marks' ? ' on' : '')}
+                  onClick={() => setLayer('marks')}>
+                  {termLabel('yourNotes', 'Your notes')}
+                </button>
+                <button role="tab" aria-selected={layer === 'none'}
+                  className={'segTab' + (layer === 'none' ? ' on' : '')}
+                  onClick={() => setLayer('none')}>
+                  Digits only
+                </button>
+              </div>
+              {/* Nothing for "Digits only", which needs no definition. */}
+              <Explain id={layer === 'marks' ? 'yourNotes' : layer === 'cands' ? 'boardProved' : null} />
+            </>
           )}
 
           {mode === 'replay' && (
@@ -591,38 +669,41 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
               </div>
               {/* The grid above says where the time went. This says when. */}
               <h3 className="statHeading">Where the rhythm was</h3>
+              {/* The one thing flow and struggle are read from, and the reason
+                  neither of them asks the grader what the board offered. */}
+              <Explain id="cadence" />
               <FlowStrip summary={flow} />
             </>
           )}
 
-          <div className="reviewStats">
-            <Fact label="Placements" value={info.placements} />
-            <Fact label="Wrong" value={info.wrong} />
-            <Fact label="Undos" value={info.undos} />
-            <Fact label="Hints" value={game.hints} />
-            <Fact label="First move" value={fmtMs(info.timeToFirstMove)} />
-            <Fact
-              label="Longest pause"
-              value={fmtMs(info.longest.gap)}
-              sub={info.longest.cell >= 0
-                ? `r${rowOf(info.longest.cell) + 1}c${colOf(info.longest.cell) + 1}`
-                : ''}
-            />
-            <Fact label="Pencil marks" value={info.pencilMarks + (info.usedAutoPencil ? '+auto' : '')} />
-            <Fact label="Checks" value={game.checks ?? 0} />
-          </div>
+          {/* Eight bare numbers, and every one of them was a definition
+              nothing on the device stated. Three of them are actively
+              surprising: Wrong counts every wrong digit including the ones you
+              undid, so it can exceed the Mistakes the record carries; a note
+              pencilled in and rubbed out again is two pencil marks; and Hints
+              only moves when a digit lands. A fact is 82px wide on the phone
+              and the sentence would take it from 53px to 213px, so the fact is
+              the trigger and the answer lands under the row. */}
+          <TermGroup hint="Tap a figure for what it counts in this game.">
+            <div className="reviewStats">
+              <Fact term="placements" value={info.placements} />
+              <Fact term="wrong" value={info.wrong} />
+              <Fact term="undos" value={info.undos} />
+              <Fact term="hints" value={game.hints} />
+              <Fact term="firstMove" value={fmtMs(info.timeToFirstMove)} />
+              <Fact
+                term="longestPause"
+                value={fmtMs(info.longest.gap)}
+                sub={info.longest.cell >= 0
+                  ? `r${rowOf(info.longest.cell) + 1}c${colOf(info.longest.cell) + 1}`
+                  : ''}
+              />
+              <Fact term="pencilMarks" value={info.pencilMarks + (info.usedAutoPencil ? '+auto' : '')} />
+              <Fact term="checks" value={game.checks ?? 0} />
+            </div>
+          </TermGroup>
         </>
       )}
-    </div>
-  )
-}
-
-function Fact({ label, value, sub }) {
-  return (
-    <div className="fact">
-      <div className="factValue">{value}</div>
-      <div className="factLabel">{label}</div>
-      {sub && <div className="factSub">{sub}</div>}
     </div>
   )
 }

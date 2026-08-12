@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { fmtMs } from '../lib/format.js'
+import { Term, TermGroup } from './Term.jsx'
 
 /**
  * Where the flow and the struggle actually sat, along the game's own clock.
@@ -93,19 +94,28 @@ export default function FlowStrip({ summary }) {
         </p>
       )}
 
-      <div className="flowKey">
-        <span><i className="flowSwatch flow" /> flow</span>
-        <span><i className="flowSwatch struggle" /> struggle</span>
-        <span><i className="flowSwatch" /> ordinary</span>
-        {/* Two shares, and they are not the same number. Flow is quick by
-            definition, so a stretch holding a quarter of the digits holds a
-            twelfth of the minutes. Showing one without saying which it is would
-            be the misleading half. */}
-        <span className="flowShares">
-          {Math.round(summary.flowMoveShare * 100)}% of digits in flow ·{' '}
-          {Math.round(summary.flowShare * 100)}% of the clock
-        </span>
-      </div>
+      {/* Flow and struggle are both read off the cadence and neither is what
+          the words normally mean here: eight placements at a steady pace, and
+          four that were slow or wildly uneven. The bands are colours, so the
+          words in the key are what you press. */}
+      <TermGroup hint="Tap a word here for how it is measured.">
+        <div className="flowKey">
+          <span><i className="flowSwatch flow" /> <Term id="flow">flow</Term></span>
+          <span><i className="flowSwatch struggle" /> <Term id="struggle">struggle</Term></span>
+          <span><i className="flowSwatch" /> ordinary</span>
+          {/* Two shares, and they are not the same number. Flow is quick by
+              definition, so a stretch holding a quarter of the digits holds a
+              twelfth of the minutes. Showing one without saying which it is would
+              be the misleading half. */}
+          <span className="flowShares">
+            <Term id="flowShare">
+              {Math.round(summary.flowMoveShare * 100)}% of digits in flow
+            </Term>
+            {' · '}
+            {Math.round(summary.flowShare * 100)}% of the clock
+          </span>
+        </div>
+      </TermGroup>
     </div>
   )
 }
