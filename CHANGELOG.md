@@ -2,6 +2,42 @@
 
 Newest first.
 
+## v3.2.0 - 2026-08-13 - the Mac is not the phone with more room
+
+The tactile pass was decided by a thumb. This is the same work done for a mouse
+and a keyboard, on the machine that gets used least and was starting to show it.
+
+**The two-column layout starts at 900px instead of 1080.** At 1000px, which is an
+entirely ordinary size for a window that is not full screen, the app fell back to
+the phone layout: a 572px board with the number pad pushed below the fold, on the
+one device with room to spare. It now fits a 1000x760 window with no scrolling at
+all. `--app-w` was already capped at `100%`, so the grid simply takes what the
+window gives it and the board column shrinks with it. All four of the wide-screen
+blocks moved together, because they are one layout and separating them once put a
+nine-across pad into a 340px column.
+
+**The board answers a hover.** It did not before: 81 identical squares and no
+indication of which one was under the cursor until it had already been clicked.
+A cell you can play takes a quiet version of the selection ring and a pointer
+cursor; a given takes neither, so the affordance appears only where a digit can
+actually go. The tools and the number pad lift on hover like everything else now,
+rather than only changing their background, which had left the two halves of the
+same screen feeling like different applications.
+
+**The key that does something is printed on the thing that does it.** The
+shortcuts were real, and documented in one line of small grey text under the
+number pad, which is the least likely place to learn them. Each tool now carries
+its key in the corner, lit when the tool is armed and brightened on hover, and
+hidden entirely on anything without a fine pointer.
+
+That badge, the summary line and the handler all read from `src/logic/shortcuts.js`
+now. There were two lists before, and they had drifted: erase is bound to
+Backspace, Delete and 0, and the summary listed it under none of them, which is a
+feature nobody had. A test fails if a bound key has no row.
+
+Nothing here is new chrome on the phone: every rule is behind a fine-pointer or a
+900px query, and the phone renders exactly what it did at v3.1.0.
+
 ## v3.1.0 - 2026-08-13 - every control is a thing you can press
 
 The app worked and looked like a tool. Four directions were built as a live,

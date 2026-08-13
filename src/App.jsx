@@ -42,6 +42,7 @@ import PracticeView from './components/PracticeView.jsx'
 import Flashcards from './components/Flashcards.jsx'
 import * as sound from './lib/sound.js'
 import Companion from './components/Companion.jsx'
+import { PLAIN, shortcutLine } from './logic/shortcuts.js'
 
 export default function App() {
   const [state, rawDispatch] = useReducer(gameReducer, initialState)
@@ -823,11 +824,10 @@ export default function App() {
     else if (k === 'ArrowDown') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: 0, dy: 1 }) }
     else if (k === 'ArrowLeft') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: -1, dy: 0 }) }
     else if (k === 'ArrowRight') { e.preventDefault(); dispatch({ type: 'moveSelection', dx: 1, dy: 0 }) }
-    else if (k.toLowerCase() === 'n') dispatch({ type: 'toggleNotes' })
-    else if (k.toLowerCase() === 'a') dispatch({ type: 'autoPencil' })
-    else if (k.toLowerCase() === 'u') dispatch({ type: 'undo' })
-    else if (k.toLowerCase() === 'r') dispatch({ type: 'redo' })
-    else if (k.toLowerCase() === 'p') dispatch({ type: 'togglePause' })
+    // Every shortcut that is nothing more than "dispatch this action" comes off
+    // the same table the badges and the summary line are drawn from, so those
+    // three cannot disagree about what a key does.
+    else if (PLAIN[k.toLowerCase()]) dispatch({ type: PLAIN[k.toLowerCase()] })
     else if (k.toLowerCase() === 'c' && autoFills) dispatch({ type: 'autoComplete', fills: autoFills })
     else if (k.toLowerCase() === 'q') toggleQuick()
     // Hint moved off 'h' when hjkl arrived: movement is the whole point of
@@ -1250,9 +1250,11 @@ export default function App() {
         <div className="offMsg">All 81 filled, something is off. Keep looking.</div>
       )}
 
+      {/* Built from the shortcut table rather than typed out beside it. The
+          hand-written version listed erase under none of the three keys that
+          do it. */}
       <div className="hint">
-        keys: {settings.quickInput ? '1–9 pick · Enter place' : '1–9 place'} · N notes · A auto · U undo · R redo · P pause · Q quick · ? hint · B mark · arrows or hjkl move · Tab next empty
-        {autoFills && ' · C complete'}
+        keys: {shortcutLine({ quickInput: settings.quickInput, canComplete: Boolean(autoFills) })}
       </div>
       {settings.quickInput && (
         <div className="modeHint">

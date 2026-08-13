@@ -89,6 +89,16 @@ Every animation sits behind `prefers-reduced-motion`.
 - `touch-action: none` on anything that takes a drawn gesture, or the browser scrolls the page instead.
 - There is no hover. Anything reachable only by hovering is not reachable.
 
+## The Mac, which is not the phone with more room
+
+The app is played on a phone most of the time, which is exactly why this needs writing down: every decision above was made by a thumb, and a mouse and a keyboard want different things from the same screen.
+
+- **The two-column layout starts at 900px, not 1080.** A Mac window is very often not full screen, and at 1000px this used to fall back to the phone layout: a 572px board with the number pad pushed below the fold, on the one machine with room to spare. `--app-w` is capped at `100%`, so the grid just takes what the window gives it.
+- **All four wide-screen blocks in `app.css` share that number.** They are one layout. Moving one alone put a nine-across pad into a 340px column once already, which is why the comment on each says so.
+- **A pointer needs to know what it is about to hit.** The board answered a hover with nothing for a long time: 81 identical squares and no indication of which one was under the cursor until it was already selected. Non-given cells take a quiet version of the selection ring; givens take `cursor: default` and no ring, because the affordance may only appear where a digit can actually go.
+- **Hover is `(hover: hover) and (pointer: fine)`, never `hover` alone.** A stylus and some hybrid laptops report hover and are still being touched, where a lift fires on tap and reads as a bug.
+- **The keyboard is the primary input here, so the shortcut is printed on the control.** `src/logic/shortcuts.js` is the one table: the badges on the tools, the summary line under the pad, and the plain dispatch handlers all read from it. It exists because the handler and the hand-written summary had already drifted, with erase bound to three keys and listed under none of them. Adding a binding without a row is a test failure.
+
 ## Working conventions
 
 Milestone equals a git tag plus a CHANGELOG entry, newest first. Every commit that changes behaviour gets an entry; a version number with no entry is a release that did not happen, which is how v2.5.0 went missing for a day. Anything agreed in conversation gets written into `docs/DECISIONS.md` before the session ends, appended at the end, in the order it was decided. No emojis and no em-dashes in docs or UI copy.

@@ -1764,3 +1764,67 @@ Both were obvious on sight and invisible in the source. The test that now guards
 this asserts that no two emblems render identical markup, which is the only form
 of the check that would have caught Easy, since both shapes were valid SVG and
 both drew fine.
+
+### The desktop breakpoint was set for a maximised window, and nobody maximises
+
+Resolved at v3.2.0. The two-column play layout, the 3x3 keypad, the larger tools
+and the summary line all started at 1080px. At 1000px, which is an ordinary size
+for a window that is not full screen, the app fell back to the phone layout and
+put a 572px board on screen with the number pad below the fold.
+
+That is the worst of both: the board took the room a big screen offers and the
+controls paid for it. The breakpoint is 900px now, and a 1000x760 window fits
+with no scrolling. Nothing else had to change, because `--app-w` was already
+`min(var(--app-w), 100%)`, so the grid takes what the window gives it and the
+board column shrinks with it.
+
+**All four wide-screen blocks share the number and say so in a comment.** They
+are one layout expressed in four places, and the file already records what
+happens when they are separated: a nine-across pad squeezed into a 340px column.
+
+Rules out: a breakpoint chosen from a device width rather than from the width at
+which this particular layout stops fitting, and moving any one of the four blocks
+on its own.
+
+### A pointer has to know what it is about to hit
+
+Resolved at v3.2.0. The board answered a hover with nothing at all. On a phone
+that is correct and unavoidable, since there is no hover; on a Mac it meant 81
+identical squares with no indication of which one the cursor was on until it had
+already been selected.
+
+A playable cell now takes a quiet version of the ring the selection already uses,
+so the two read as one idea at two strengths rather than as two unrelated states,
+and it takes a pointer cursor. A given takes neither. **The affordance may only
+appear where the action is possible**, or it is a promise the board does not
+keep.
+
+All of it sits behind `(hover: hover) and (pointer: fine)`, matching the rest of
+the file rather than `hover` alone: a stylus and some hybrid laptops report hover
+while being touched, where a lift fires on tap and reads as a bug.
+
+### The shortcut belongs on the control, and there is one list of them
+
+Resolved at v3.2.0. The keyboard support was real and thorough and was documented
+in a single line of small grey text under the number pad, which is the least
+likely place anybody learns anything. Each tool carries its key in the corner
+now, lit when the tool is armed, brightened on hover, and hidden completely where
+there is no fine pointer.
+
+The reason this needed a module rather than eight string literals is that there
+were already two lists: the `else if` chain that handles keys and the sentence
+that claimed to describe it. They had drifted. Erase is bound to Backspace,
+Delete and 0, and the sentence listed it under none of them, so it was a feature
+nobody had. `src/logic/shortcuts.js` is now the source for the badges, the
+summary line, and the handler for every shortcut that is only ever "dispatch this
+action", which is most of them.
+
+The ones still written out in `App.jsx` are the ones that are not a plain
+dispatch: the hint, which goes through the hint engine; the bookmark, which means
+three things depending on shift and on whether one is set; auto-complete, which
+needs its fills computed first; and movement, which is eight keys onto one action
+with four arguments. Those are worth an explicit branch. A test asserts every
+bound plain key has a row, so the two lists cannot part company again.
+
+Rules out: a badge typed onto a button, a summary line maintained by hand, and
+inventing a shortcut for Check, which has none.

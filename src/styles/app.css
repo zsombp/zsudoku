@@ -44,8 +44,16 @@ body {
 }
 
 /* Two columns: board on the left at whatever size fits, controls parked on the
- * right instead of pushed below the fold. */
-@media (min-width: 1080px) {
+ * right instead of pushed below the fold.
+ *
+ * 900px, not 1080. A Mac window is very often not full screen, and at 1000px
+ * this fell back to the phone layout: a 572px board with the number pad pushed
+ * below the fold, on the one machine that has room to spare. `--app-w` is
+ * already capped at 100%, so the grid simply takes what the window gives it and
+ * the board column shrinks with it. All four of the wide-screen blocks in this
+ * file share this number: they are one layout, and moving one of them alone put
+ * a nine-across pad into a 340px column once already. */
+@media (min-width: 900px) {
   .app { --app-w: 1040px; }
   .app.wide { --app-w: 900px; }
   .play {
@@ -1114,7 +1122,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
  * breathe instead of staying phone-sized on a 27-inch display. The pad becomes
  * a 3x3 keypad, which is both the familiar shape and far bigger targets. */
 
-@media (min-width: 1080px) {
+@media (min-width: 900px) {
   .tools { gap: 7px; }
   .tool { padding: 13px 0 11px; }
   .tool span { font-size: 11.5px; }
@@ -1227,11 +1235,13 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .statSection:nth-of-type(3) { animation-delay: 0.1s; }
 .statSection:nth-of-type(4) { animation-delay: 0.15s; }
 
-/* Hover lift, pointer devices only: on touch this fires on tap and looks like
- * a bug. */
+/* Hover, pointer devices only: on touch this fires on tap and looks like a bug.
+ *
+ * The lifts that used to live here moved to the tactile block at the end of the
+ * file, where they are written together with the shadow that has to move with
+ * them. Two blocks each setting a hover transform meant the one that won was
+ * decided by source order rather than by intent. */
 @media (hover: hover) and (pointer: fine) {
-  .card:hover { transform: translateY(-2px); }
-  .tierChip:hover { transform: translateY(-1px); }
   .tool:not(:disabled):hover, .key:not(:disabled):hover { background: var(--panel2); }
   .iconBtn:hover { border-color: var(--line-strong); }
 }
@@ -1444,7 +1454,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
  * is two rows of four everywhere. Four across also gives bigger targets on a
  * phone than six ever did. */
 .tools { grid-template-columns: repeat(4, 1fr); }
-@media (min-width: 1080px) { .tools { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 900px) { .tools { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 379px) { .tools { grid-template-columns: repeat(4, 1fr); } }
 
 /* Cells the highlighted digit could still legally go in.
@@ -3041,8 +3051,10 @@ h3.statHeading { margin-top: 20px; }
 }
 
 /* Desktop only, because there is no hover on the phone and a lift that fires on
- * touch would fight the press. */
-@media (hover: hover) {
+ * touch would fight the press. `pointer: fine` as well as `hover`, matching the
+ * rest of the file: a stylus and some hybrid laptops report hover and are still
+ * being touched. */
+@media (hover: hover) and (pointer: fine) {
   .card:hover,
   .newBtn:hover,
   .tierChip:hover {
@@ -3166,4 +3178,96 @@ h3.statHeading { margin-top: 20px; }
 
 @media (prefers-reduced-motion: reduce) {
   .veil.win .companion { animation: none; }
+}
+
+/* ---- the Mac ----
+ *
+ * This is played on a phone most of the time, which is exactly why the desktop
+ * needs saying out loud: everything above is decided by a thumb, and a mouse and
+ * a keyboard want different things from the same interface.
+ *
+ * Three things a pointer needs and a thumb does not: to know what it is about to
+ * hit before it commits, to be answered when it hovers something pressable, and
+ * to be told which key does this without reading a paragraph of grey text.
+ * All of it is gated on a fine pointer, so the phone carries none of it. */
+
+@media (hover: hover) and (pointer: fine) {
+  /* A mouse hovers before it clicks, and the board answered with nothing at
+   * all: 81 identical squares and no indication of which one was under the
+   * cursor until it had already been selected. The ring is the same shape the
+   * selection uses, one step quieter, so the two read as the same idea at
+   * different strengths rather than as two different states.
+   *
+   * `:not(.sel)` because the selected cell already wears the loud version of
+   * this and hovering it should not swap it for the quiet one. */
+  .cell:not(.given):not(.sel):hover {
+    box-shadow: inset 0 0 0 1.5px var(--line-strong);
+    cursor: pointer;
+  }
+  .cell.given { cursor: default; }
+
+  /* The controls answer a hover the way they answer a press, one step smaller.
+   * Everything else in the app lifts now; leaving the tools and the pad on a
+   * background change made the two halves of the same screen feel like they
+   * came from different applications. */
+  .tool:not(:disabled):hover,
+  .key:not(:disabled):hover,
+  .iconBtn:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 var(--sheen),
+      0 2.5px 0 var(--lip),
+      0 6px 13px var(--cast-deep);
+  }
+  .tool:not(:disabled):hover:active,
+  .key:not(:disabled):hover:active,
+  .iconBtn:not(:disabled):hover:active { transform: translateY(1.5px); }
+
+  .tool.on:not(:disabled):hover {
+    box-shadow:
+      inset 0 0 0 1px var(--accent),
+      inset 0 1px 0 var(--sheen),
+      0 2.5px 0 var(--lip),
+      0 6px 13px var(--cast-deep);
+  }
+
+  /* The key that does this, on the thing it does. Mono here is correct and one
+   * of the few places left that it is: this is a key cap, and it should look
+   * like the thing printed on the keyboard rather than like prose. */
+  .toolKey {
+    position: absolute;
+    top: 4px;
+    right: 5px;
+    font-family: var(--mono);
+    font-size: 8.5px;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: var(--sub);
+    opacity: 0.55;
+    transition: opacity 0.14s ease, color 0.14s ease;
+    pointer-events: none;
+  }
+  .tool { position: relative; }
+  .tool:not(:disabled):hover .toolKey { opacity: 1; color: var(--accent); }
+  .tool:disabled .toolKey { opacity: 0.25; }
+  .tool.on .toolKey { color: var(--accent); opacity: 0.9; }
+}
+
+/* Hidden wherever there is no keyboard to press. Written as its own rule rather
+ * than by never rendering the element, so the markup is the same on both and
+ * only the medium decides. */
+@media not all and (hover: hover) and (pointer: fine) {
+  .toolKey { display: none; }
+}
+
+@media (min-width: 900px) {
+  /* The summary line under the pad is the fallback now rather than the only
+   * route: the badges carry the common ones. It keeps the movement and
+   * pause keys, which have no button to sit on. */
+  .hint { opacity: 0.75; }
+
+  /* The board and the controls should end at roughly the same place. The side
+   * column stopped short and left the composition hanging from the top of a
+   * tall window. */
+  .playSide { min-height: 0; }
 }

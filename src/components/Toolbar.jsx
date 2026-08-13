@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Undo, Redo, Eraser, Pencil, Sparkles, Zap, Bulb, Check, Flag, FlagBack } from './Icons.jsx'
 import { define } from '../logic/glossary.js'
+import { badgeFor } from '../logic/shortcuts.js'
 
 /**
  * What each tool is for, in one line.
@@ -72,19 +73,36 @@ export default function Toolbar({
     fn()
   }
 
+  /**
+   * The key that does this, printed on the thing it does.
+   *
+   * Only rendered at all; CSS hides it on anything without a fine pointer,
+   * because a keyboard shortcut on a phone is a decoration that costs a corner
+   * of a button. On the Mac it is the whole point: the shortcuts were real and
+   * documented in one small line of grey text under the number pad, which is
+   * the least likely place to learn them from.
+   */
+  const Key = ({ tool }) => {
+    const badge = badgeFor(tool)
+    return badge ? <span className="toolKey" aria-hidden="true">{badge}</span> : null
+  }
+
   return (
     <>
       <div className="tools">
         <button className="tool" disabled={disabled || !canUndo} onClick={act(onUndo)} {...hold('undo')}>
           <Undo size={19} />
+          <Key tool="undo" />
           <span>Undo</span>
         </button>
         <button className="tool" disabled={disabled || !canRedo} onClick={act(onRedo)} {...hold('redo')}>
           <Redo size={19} />
+          <Key tool="redo" />
           <span>Redo</span>
         </button>
         <button className="tool" disabled={disabled} onClick={act(onErase)} {...hold('erase')}>
           <Eraser size={19} />
+          <Key tool="erase" />
           <span>Erase</span>
         </button>
         <button
@@ -95,10 +113,12 @@ export default function Toolbar({
           {...hold('notes')}
         >
           <Pencil size={19} />
+          <Key tool="notes" />
           <span>Notes</span>
         </button>
         <button className="tool" disabled={disabled} onClick={act(onAutoPencil)} {...hold('auto')}>
           <Sparkles size={19} />
+          <Key tool="auto" />
           <span>Auto</span>
         </button>
         <button
@@ -109,10 +129,12 @@ export default function Toolbar({
           {...hold('quick')}
         >
           <Zap size={19} />
+          <Key tool="quick" />
           <span>Quick</span>
         </button>
         <button className="tool" disabled={disabled} onClick={act(onHint)} {...hold('hint')}>
           <Bulb size={19} />
+          <Key tool="hint" />
           <span>Hint</span>
         </button>
         {/* One slot, two states, so the flow reads mark, explore, return. A
@@ -124,6 +146,7 @@ export default function Toolbar({
           {...hold(hasBookmark ? 'return' : 'mark')}
         >
           {hasBookmark ? <FlagBack size={19} /> : <Flag size={19} />}
+          <Key tool={hasBookmark ? 'return' : 'mark'} />
           <span>{hasBookmark ? 'Return' : 'Mark'}</span>
         </button>
         {/* Redundant when "Show mistakes" is on: a wrong digit is already marked
