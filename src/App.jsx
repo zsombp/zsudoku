@@ -41,6 +41,7 @@ import ThemeMenu from './components/ThemeMenu.jsx'
 import PracticeView from './components/PracticeView.jsx'
 import Flashcards from './components/Flashcards.jsx'
 import * as sound from './lib/sound.js'
+import Companion from './components/Companion.jsx'
 
 export default function App() {
   const [state, rawDispatch] = useReducer(gameReducer, initialState)
@@ -1066,6 +1067,12 @@ export default function App() {
 
         {won && (
           <div className="veil win">
+            {/* One of the two places the companion is allowed to exist, the
+                other being an empty screen. It marks the end of a game and
+                never appears during one: see the note in Companion.jsx. The
+                rays only come out when a streak is actually running, so they
+                mean something instead of firing on every win. */}
+            <Companion mood={dailyInfo.streak > 1 ? 'streak' : 'solved'} size={62} />
             <Trophy size={34} className="trophy" />
             <div className="winTime">{fmtMs(timer.ms)}</div>
             <div className="winSub">

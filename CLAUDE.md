@@ -58,7 +58,17 @@ scripts/        measurement harnesses, run with node
 
 ## Design
 
-Dark by default: ink-blue `#14161d`, brass `#e2a63d`. IBM Plex Mono for every digit and the timer, system sans for UI chrome. Restrained. The win screen is a sweep and a trophy, not confetti.
+Dark by default: ink-blue `#14161d`, brass `#e2a63d`. Restrained. The win screen is a sweep and a trophy, not confetti.
+
+**Three faces, and mono has to earn it.** `--display` for numerals and anything that should read as an object, `--ui` for chrome and prose, `--mono` only where digits line up in a column or the text is literally engine output: the timer, pencil marks, share codes, the wordmark. Mono was on 56 selectors and the app read as a terminal; it is on 33 now and every one of those is a column or a code. Adding a 34th needs an answer to "what would misalign without it".
+
+**Every control is a physical object.** Light catches its top edge (`--sheen`), it stands on a hard lip (`--lip`), it casts (`--cast`), and a press collapses the lip so the thing travels down rather than merely getting smaller. Never `scale` on a press: that reads as a picture shrinking. Elevation is three tokens per theme and never literal rgba in `app.css`, because three themes are light, where a dark sheen reads as grime, and `contrast` gets a hard black lip and no blur at all.
+
+**Motion is transient, never ambient.** Every animation runs on an interaction, finishes, and lets the display drop back to idle; the only looping ones are the generating spinner and the microphone pulse, and both stop on their own. This is a battery rule, not a taste one, and a 120Hz screen held awake by a decorative loop is the thing it exists to prevent. Transform and opacity only, so it stays compositor work.
+
+**The drawn marks.** `src/components/Emblems.jsx` holds one emblem per tier, escalating in geometric complexity rather than ornament: Gentle is a circle with a centre, Diabolical is that centre buried in a lattice. They stroke in `currentColor` so they take any theme's accent. A tier with no emblem draws nothing rather than a placeholder, and a test asserts the set tracks `difficulty.js` and that no two are identical.
+
+**The companion appears on the win screen and on empty screens, and nowhere else.** `src/components/Companion.jsx`. Never during a solve and it never speaks. A character that reacts while you are thinking is a character that interrupts you, during the exact minutes you decided you did not want to be told how you are doing. `thinking` and `stuck` are drawn and mounted nowhere on purpose.
 
 Six themes as CSS custom properties driven by `data-theme` on ANY element (not just the root, so the theme picker can render real previews). Anything that hardcodes a colour outside `tokens.css` is a bug, including anything written into a saved SVG, which has to carry resolved values instead. Every sequential ramp is validated with the dataviz validator; re-run it if a ramp changes.
 

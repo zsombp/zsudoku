@@ -14,9 +14,30 @@
 :root {
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --ui: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  /* The display face, for numerals, headings and anything that should read as
+   * an object rather than as a caption. On the two devices this app runs on it
+   * resolves to SF Pro Display, which is a better face than anything that could
+   * be shipped for it and costs no bytes and no dependency. Named separately
+   * from `--ui` so the day it becomes a self-hosted face, one line changes. */
+  --display: -apple-system, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
 
   --board-radius: 12px;
   --ctl-radius: 10px;
+
+  /* ---- elevation ----
+   *
+   * A control is a physical thing: light from above catches its top edge, it
+   * sits on a hard lip, and it casts. Three tokens rather than raw shadows in
+   * app.css, because the same treatment has to read correctly on six themes and
+   * a dark sheen on a light panel looks like dirt.
+   *
+   * `--lip` is the hard bottom edge that the press collapses. It is what makes
+   * the control feel like it has height rather than a blur under it. */
+  --sheen: rgba(255, 255, 255, 0.07);
+  --lip: rgba(0, 0, 0, 0.55);
+  --cast: rgba(0, 0, 0, 0.38);
+  --cast-deep: rgba(0, 0, 0, 0.45);
+  --raise: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.05));
 
   /* Cell tints for tracking a chain by hand. Fixed rather than theme-derived:
    * they are the player's own marking, and a mark that changed meaning with the
@@ -60,6 +81,14 @@
 }
 
 [data-theme="paper"] {
+  /* Light theme elevation. The dark sheen a dark theme uses would read as
+   * grime here, and the dark theme's lip is far too heavy on white. */
+  --sheen: rgba(255, 255, 255, 0.9);
+  --lip: rgba(23, 27, 40, 0.16);
+  --cast: rgba(23, 27, 40, 0.13);
+  --cast-deep: rgba(23, 27, 40, 0.17);
+  --raise: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(23, 27, 40, 0.035));
+
   --bg: #f3f4f6;
   --panel: #ffffff;
   --panel2: #eaecf0;
@@ -142,6 +171,14 @@
 }
 
 [data-theme="newsprint"] {
+  /* Light theme elevation. The dark sheen a dark theme uses would read as
+   * grime here, and the dark theme's lip is far too heavy on white. */
+  --sheen: rgba(255, 255, 255, 0.9);
+  --lip: rgba(23, 27, 40, 0.16);
+  --cast: rgba(23, 27, 40, 0.13);
+  --cast-deep: rgba(23, 27, 40, 0.17);
+  --raise: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(23, 27, 40, 0.035));
+
   --bg: #ece3d2;
   --panel: #fbf7ee;
   --panel2: #e6dcc8;
@@ -167,6 +204,15 @@
  * is functional: a user-entered digit has to be tellable from a given one.
  * Light gives accent-vs-ink 2.62:1, the dark equivalent only 1.98:1. */
 [data-theme="contrast"] {
+  /* No cast. This theme exists so that every edge is unambiguous, and a blur is
+   * the opposite of that. The lip stays, as a solid black edge, so a control is
+   * still visibly a control that can be pressed. */
+  --sheen: rgba(255, 255, 255, 0);
+  --lip: #000000;
+  --cast: transparent;
+  --cast-deep: transparent;
+  --raise: none;
+
   --bg: #ffffff;
   --panel: #ffffff;
   --panel2: #e4e4e4;

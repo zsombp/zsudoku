@@ -1675,3 +1675,92 @@ therefore has no voice input, which is the cost of the promise and is worth it.
 `allowOffDevice`. Turning it on is Zsomb's decision and nobody else's, and it
 needs the second switch and the copy that says the audio leaves the device in
 those words. With backup off, the app still makes no network request at all.
+
+### A press moves the control, it does not shrink the picture of it
+
+Resolved at v3.1.0. Four visual directions were built as a live pressable
+comparison rather than argued about, because the difference between them is
+mostly in how they answer a touch and that does not survive being described.
+Tactile won: same palette, physical chrome.
+
+The mechanism is the lip. A blurred shadow under a control reads as a sticker; a
+solid two pixel edge beneath it reads as height, and pressing collapses that edge
+so the control travels. What was there before was `transform: scale(0.96)`, and
+the reason the whole interface read as a diagram of itself is that scaling says
+"here is a picture of a button, now smaller" while translation says "that moved".
+
+**Elevation is tokens, never literal shadows in `app.css`.** Three of the six
+themes are light, and the dark theme's white top sheen at 7% over a white panel
+is invisible while its 55% black lip is a bruise. Each theme states its own
+`--sheen`, `--lip` and `--cast`. `contrast` states no cast at all and a solid
+black lip: that theme exists so every edge is unambiguous, and a blur is exactly
+what it is for avoiding.
+
+Two levels, not one. The lip that reads correctly under a full-width card is far
+too heavy under six tool buttons sitting in a row, and a disabled control gets no
+elevation at all, which turned out to matter more than any of the rest: a greyed
+tool still standing on a lip made the entire row read as a picture of controls.
+
+Rules out: scale on press, one elevation for everything, hover lift on touch
+where it fights the press, and any shadow written as rgba outside `tokens.css`.
+
+### Mono has to earn its place, and it had not on 56 selectors
+
+Resolved at v3.1.0. IBM Plex Mono was applied by 56 rules, which is why an app
+about deduction read as a terminal emulator. It is applied by 33 now.
+
+The test a selector has to pass is "what would misalign without it". A column of
+times, a share code, pencil marks in a 3x3 grid inside a cell, the running clock:
+all real answers. A tier name, a heading, a button label and the digits on the
+board: not answers, they were just wearing the same coat.
+
+Digits moved to a display face at 700 and 800 with tabular figures, which is most
+of what makes the board feel like a game rather than a spreadsheet. **That face
+is the system face.** On the only two devices this app runs on it resolves to SF
+Pro Display, which is better than anything that could be shipped for it, and it
+costs no bytes, no request and no eighth dependency. It is named `--display`
+rather than used inline precisely so that swapping in a self-hosted face later is
+one line rather than an audit.
+
+### The companion is allowed on two screens
+
+Resolved at v3.1.0. A drawn character was wanted and is genuinely the biggest
+visual payoff available, and it is also the easiest thing here to get wrong.
+
+It appears on the win screen and on empty screens. It does not appear during a
+solve and it never says anything. The reason is the same one that keeps `flow.js`
+post-game: a thing that reacts while you are thinking is a thing that implies it
+is watching how you are doing, during the exact minutes you have decided you do
+not want to be told. The failure mode is not mild annoyance, it is that the app
+stops being somewhere quiet.
+
+It is built from the board cell's own rounded square at the same radius, so it
+belongs to the interface rather than visiting from another product, and it has no
+face beyond eyes and a mouth line. The moment it gets eyebrows it becomes a
+mascot and the rest of the app has to live with it.
+
+`thinking` and `stuck` are drawn and mounted nowhere. The set is only coherent as
+a set and redrawing them later from memory would produce a different character,
+but by the rule at "A shipped feature that never reaches the device did not ship"
+they have not shipped, and the CHANGELOG says so rather than implying five moods
+are in use.
+
+### Draw the mark at the size it will be seen
+
+Resolved at v3.1.0. The six tier emblems escalate in geometric complexity rather
+than in ornament, which is the idea that makes them a scale rather than six
+unrelated badges: Gentle is a circle with a centre and Diabolical is that same
+centre buried inside a lattice.
+
+Two of the six were wrong on first draw and both were only wrong at the size they
+actually render. Easy was an arc following the top of its circle, which at 22px
+sits exactly on the circle's own stroke, so Gentle and Easy were indistinguishable
+on the dashboard, which is the one thing a scale may not be. Medium was three
+radii at 90, 210 and 330 degrees, which is the Mercedes star, and a tier button is
+not the place to make somebody think about a car. Easy became a diameter, which
+crosses the shape rather than tracing it, and Medium an inscribed triangle.
+
+Both were obvious on sight and invisible in the source. The test that now guards
+this asserts that no two emblems render identical markup, which is the only form
+of the check that would have caught Easy, since both shapes were valid SVG and
+both drew fine.

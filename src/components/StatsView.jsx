@@ -10,6 +10,7 @@ import GameReview from './GameReview.jsx'
 import Experiments from './Experiments.jsx'
 import League from './League.jsx'
 import { VARIANT_LIST, VARIANTS } from '../logic/variants.js'
+import Companion from './Companion.jsx'
 
 const variantName = id => VARIANTS[id]?.name || id
 import * as gameLog from '../lib/gameLog.js'
@@ -166,7 +167,11 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
     return (
       <div className="statsView">
         <StatsHeader onClose={onClose} />
-        <div className="statsEmpty">
+        <div className="statsEmpty emptyState">
+          {/* The other place the companion is allowed: a screen with nothing on
+              it, where a drawn thing is the only thing to look at. It is not
+              apologising and it is not saying anything. */}
+          <Companion mood="idle" size={58} />
           <p>Nothing recorded yet.</p>
           <p className="statsEmptySub">
             Finish a game and it appears here. Nothing is uploaded anywhere; the history lives on this

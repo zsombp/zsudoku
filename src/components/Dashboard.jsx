@@ -5,6 +5,7 @@ import * as gameLog from '../lib/gameLog.js'
 import * as compute from '../stats/compute.js'
 import { dailyStreak } from '../logic/daily.js'
 import { VARIANTS } from '../logic/variants.js'
+import { TierEmblem } from './Emblems.jsx'
 
 const boardName = id => (id && id !== 'classic' ? ` · ${VARIANTS[id]?.name}` : '')
 import { hintsByTechnique } from '../stats/compute.js'
@@ -181,6 +182,12 @@ export default function Dashboard({ handoff, inProgress, daily, records, variant
             <div className="tierGrid">
               {TIERS.map(t => (
                 <button key={t.name} className="tierChip" onClick={() => onPick(t.name)}>
+                  {/* The emblem carries the tier's place on the scale as a
+                      shape, so the six buttons read as a ramp before the words
+                      are read at all. It is decoration only if it disagrees
+                      with the label, which is why it is keyed off the same
+                      name. */}
+                  <TierEmblem tier={t.name} size={22} className="tierChipMark" />
                   <span className="tierChipName">{t.name}</span>
                   <span className="tierChipMeta">
                     {/* Keyed on the board these buttons will actually deal.

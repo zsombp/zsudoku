@@ -103,7 +103,7 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-family: var(--mono);
+  font-family: var(--ui);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -156,7 +156,7 @@ body {
 }
 .dashStatValue { font-size: 26px; font-weight: 600; line-height: 1; color: var(--ink); }
 .dashStatLabel { font-size: 11px; color: var(--ink); margin-top: 5px; }
-.dashStatSub { font-family: var(--mono); font-size: 9px; color: var(--sub); }
+.dashStatSub { font-family: var(--ui); font-size: 9px; color: var(--sub); }
 
 .dashPick {
   background: var(--panel);
@@ -165,7 +165,7 @@ body {
   padding: 12px;
 }
 .dashPickHead {
-  font-family: var(--mono);
+  font-family: var(--ui);
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -195,7 +195,7 @@ body {
 .tierChip:active { transform: scale(0.97); }
 .tierChipName { font-size: 13px; font-weight: 600; }
 .tierChipMeta {
-  font-family: var(--mono);
+  font-family: var(--ui);
   font-size: 9.5px;
   color: var(--sub);
   white-space: nowrap;
@@ -259,11 +259,11 @@ body {
   min-width: 0;
 }
 .chip b { font-size: 13px; letter-spacing: 0.02em; }
-.chip .tech { font-family: var(--mono); font-size: 10.5px; color: var(--sub); white-space: nowrap; }
+.chip .tech { font-family: var(--ui); font-size: 10.5px; color: var(--sub); white-space: nowrap; }
 /* Shown when the grader disagreed with the requested difficulty. Saying so is
  * the whole point of grading honestly. */
 .chip .asked {
-  font-family: var(--mono);
+  font-family: var(--ui);
   font-size: 9px;
   color: var(--sub);
   border-left: 1px solid var(--line);
@@ -322,7 +322,7 @@ body {
 .cell.sel { background: var(--sel); box-shadow: inset 0 0 0 1.5px var(--accent); }
 
 .val {
-  font-family: var(--mono);
+  font-family: var(--display);
   /* 6.2cqw is about 56% of a cell, which holds at every board size. */
   font-size: clamp(16px, 6.2cqw, 42px);
   font-weight: 500;
@@ -444,7 +444,7 @@ body {
 
 .win .trophy { color: var(--accent); }
 .winTime {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: 34px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -464,7 +464,7 @@ body {
 }
 .hsRow { display: flex; align-items: baseline; justify-content: center; gap: 6px; }
 .hsCount {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-weight: 600;
   color: var(--accent);
   min-width: 12px;
@@ -513,7 +513,7 @@ body {
 }
 .autoDone:active { transform: scale(0.98); }
 .autoDoneSub {
-  font-family: var(--mono);
+  font-family: var(--ui);
   font-size: 10px;
   font-weight: 400;
   opacity: 0.72;
@@ -573,7 +573,7 @@ body {
   font-family: inherit;
 }
 .key .kv {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: 19px;
   font-weight: 500;
   color: var(--ink);
@@ -678,7 +678,7 @@ body {
   min-height: 34px;
 }
 .hwGuess {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: 26px;
   line-height: 1;
   font-weight: 500;
@@ -817,7 +817,7 @@ body {
   color: var(--ink);
   line-height: 1.25;
 }
-.tileSub { font-family: var(--mono); font-size: 9.5px; color: var(--sub); }
+.tileSub { font-family: var(--ui); font-size: 9.5px; color: var(--sub); }
 
 .statSection { margin-top: 22px; }
 .statHeading {
@@ -886,9 +886,9 @@ body {
   color: var(--ink);
   margin-bottom: 4px;
 }
-.trendMeta { font-family: var(--mono); font-size: 9px; font-weight: 400; color: var(--sub); }
+.trendMeta { font-family: var(--ui); font-size: 9px; font-weight: 400; color: var(--sub); }
 .trendEmpty {
-  font-family: var(--mono);
+  font-family: var(--ui);
   font-size: 9.5px;
   color: var(--sub);
   padding: 12px 0;
@@ -938,7 +938,7 @@ body {
 .badge.earned { opacity: 1; border-color: var(--accent); }
 .badgeTop { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
 .badgeName { font-size: 12px; font-weight: 600; color: var(--ink); }
-.badgeDetail { font-family: var(--mono); font-size: 9px; color: var(--sub); flex-shrink: 0; }
+.badgeDetail { font-family: var(--ui); font-size: 9px; color: var(--sub); flex-shrink: 0; }
 .badgeDesc { font-size: 10.5px; color: var(--sub); line-height: 1.4; margin-top: 2px; }
 .badgeTrack {
   height: 3px;
@@ -1049,7 +1049,7 @@ body {
   font-family: inherit;
 }
 .sheetBtn b { font-size: 14.5px; }
-.sheetBtn span { font-family: var(--mono); font-size: 10.5px; color: var(--sub); }
+.sheetBtn span { font-family: var(--ui); font-size: 10.5px; color: var(--sub); }
 
 /* Six tiers need more than a name and a technique, so the row grows a
  * one-line description of what the tier actually asks of you. */
@@ -1078,7 +1078,7 @@ body {
 .sheetBtn.dailyBtn b { display: inline-flex; align-items: center; gap: 6px; }
 .sheetBtn.dailyBtn.dailyDone { border-color: var(--line); opacity: 0.75; }
 .sheetDivider {
-  font-family: var(--mono);
+  font-family: var(--ui);
   font-size: 9.5px;
   color: var(--sub);
   text-align: center;
@@ -1476,7 +1476,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   color: var(--ink);
 }
 .reviewTag {
-  font-family: var(--mono);
+  font-family: var(--ui);
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1529,7 +1529,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .rvCell.bR { border-right: 2px solid var(--line-strong); }
 .rvCell.bB { border-bottom: 2px solid var(--line-strong); }
 .rvVal {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: clamp(11px, 5cqw, 26px);
   color: var(--accent);
   line-height: 1;
@@ -1669,7 +1669,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 }
 .techText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .techName { font-size: 13.5px; font-weight: 600; }
-.techShort { font-family: var(--mono); font-size: 10px; color: var(--sub); }
+.techShort { font-family: var(--ui); font-size: 10px; color: var(--sub); }
 .techHints {
   flex-shrink: 0;
   font-family: var(--mono);
@@ -1793,7 +1793,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   min-width: 2ch;
 }
 .moveWhat {
-  font-family: var(--mono);
+  font-family: var(--ui);
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ink);
@@ -2439,7 +2439,7 @@ button.rvCell:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 
 .cardDone { text-align: center; padding: 24px 0; }
 .cardScore {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-size: 48px;
   font-weight: 600;
   color: var(--accent);
@@ -2963,3 +2963,207 @@ h3.statHeading { margin-top: 20px; }
  * and a badge is a button whenever it carries a rule. */
 .badge > span { display: block; }
 .badge .badgeTop { display: flex; }
+
+/* ---- tactile ----
+ *
+ * Every control is a physical thing. Light catches its top edge, it stands on a
+ * hard lip, it casts onto what is behind it, and pressing it collapses the lip
+ * so the thing actually goes down rather than merely getting smaller.
+ *
+ * The lip is the whole trick. A blurred shadow alone reads as a sticker; a
+ * solid 2px edge under the control reads as height, and it is the edge that
+ * disappears under a press. Scaling, which is what these controls used to do,
+ * says "this is a picture that got smaller" rather than "this moved".
+ *
+ * Two levels, because the same lip that reads right under a full-width card is
+ * far too heavy under six tool buttons sitting in a row.
+ *
+ * Colours come from the elevation tokens, never from literal rgba here: three
+ * themes are light, where a dark top sheen reads as grime, and the contrast
+ * theme wants a hard black edge and no blur at all.
+ *
+ * All of it is transform and box-shadow on a press, so it is compositor work
+ * that runs once and settles. Nothing here animates on a resting screen. */
+
+.card,
+.newBtn,
+.sheetBtn,
+.tierChip {
+  background-image: var(--raise);
+  box-shadow:
+    inset 0 1px 0 var(--sheen),
+    0 2px 0 var(--lip),
+    0 5px 13px var(--cast);
+  transition:
+    transform 170ms cubic-bezier(0.2, 0.9, 0.3, 1.25),
+    box-shadow 170ms cubic-bezier(0.2, 0.9, 0.3, 1.25),
+    border-color 0.14s ease;
+}
+
+.tool,
+.key,
+.iconBtn {
+  background-image: var(--raise);
+  box-shadow:
+    inset 0 1px 0 var(--sheen),
+    0 1.5px 0 var(--lip),
+    0 3px 7px var(--cast);
+  transition:
+    transform 170ms cubic-bezier(0.2, 0.9, 0.3, 1.25),
+    box-shadow 170ms cubic-bezier(0.2, 0.9, 0.3, 1.25),
+    border-color 0.14s ease;
+}
+
+/* The press. `translateY` rather than `scale`, and the lip collapses with it,
+ * which is what sells the travel. 60ms down so it feels immediate, then the
+ * slower spring on the way back up. */
+.card:active,
+.newBtn:active,
+.sheetBtn:active,
+.tierChip:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 transparent,
+    0 0 0 var(--lip),
+    0 1px 3px var(--cast);
+  transition-duration: 60ms;
+}
+
+.tool:not(:disabled):active,
+.key:not(:disabled):active,
+.iconBtn:not(:disabled):active {
+  transform: translateY(1.5px);
+  box-shadow:
+    inset 0 1px 0 transparent,
+    0 0 0 var(--lip),
+    0 1px 2px var(--cast);
+  transition-duration: 60ms;
+}
+
+/* Desktop only, because there is no hover on the phone and a lift that fires on
+ * touch would fight the press. */
+@media (hover: hover) {
+  .card:hover,
+  .newBtn:hover,
+  .tierChip:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 var(--sheen),
+      0 3px 0 var(--lip),
+      0 8px 18px var(--cast-deep);
+  }
+  .card:hover:active,
+  .newBtn:hover:active,
+  .tierChip:hover:active { transform: translateY(2px); }
+}
+
+/* A control that cannot be pressed has no height. Leaving the lip on a disabled
+ * tool was the single thing that made the whole row read as fake. */
+.tool:disabled,
+.key:disabled,
+.iconBtn:disabled {
+  box-shadow: none;
+  background-image: none;
+}
+
+/* An armed tool keeps its accent ring AND its height. These have to be written
+ * together: `.tool.on` outranks `.tool`, so declaring the ring alone silently
+ * flattened every toggled tool. */
+.tool.on {
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    inset 0 1px 0 var(--sheen),
+    0 1.5px 0 var(--lip),
+    0 3px 7px var(--cast);
+}
+.tool.on:not(:disabled):active {
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 0 var(--lip),
+    0 1px 2px var(--cast);
+}
+
+/* The board is the heaviest object on the screen and should sit like it.
+ * `position: relative` so the win sweep below is clipped by this element's own
+ * `overflow: hidden`, and therefore by its corner radius. Positioned on the
+ * wrapper instead, the brass ran past the rounded corners. */
+.board {
+  position: relative;
+  box-shadow:
+    inset 0 1px 0 var(--sheen),
+    0 10px 28px var(--cast-deep);
+}
+
+/* Digits carry weight now rather than being set in a terminal face. Tabular
+ * figures so a column of them never shifts. */
+.val {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.cell.given .val { font-weight: 700; }
+.cell.user .val { font-weight: 800; }
+
+.key .kv {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* A placed digit arrives with mass: further to fall, a firmer landing, and a
+ * settle rather than a stop. */
+@keyframes digitLand {
+  0% { transform: translateY(-34%) scale(1.42); opacity: 0; }
+  52% { transform: translateY(0) scale(0.93); opacity: 1; }
+  78% { transform: translateY(0) scale(1.03); }
+  100% { transform: none; }
+}
+.cell.user .val { animation: digitLand 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.35); }
+
+/* The win. One pass of brass across the finished grid, then it is over: a
+ * gradient moved by transform, so it costs one composited layer for 0.8s and
+ * nothing at all afterwards. */
+@keyframes boardSweep {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(120%); }
+}
+.board.isWon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 36%,
+    color-mix(in srgb, var(--accent) 46%, transparent) 50%,
+    transparent 64%
+  );
+  animation: boardSweep 0.8s ease-out;
+}
+.boardWrap { position: relative; }
+
+@media (prefers-reduced-motion: reduce) {
+  .board.isWon::before { animation: none; content: none; }
+}
+
+/* The companion arrives rather than appearing, once, on a screen that is
+ * already finished. `backwards` so it holds its start frame through the win
+ * overlay's own delay instead of flashing at full size first. */
+@keyframes companionIn {
+  0% { transform: translateY(9px) scale(0.86); opacity: 0; }
+  62% { transform: translateY(0) scale(1.05); opacity: 1; }
+  100% { transform: none; }
+}
+.veil.win .companion {
+  animation: companionIn 0.5s 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.4) backwards;
+}
+.emptyState .companion { opacity: 0.85; }
+
+/* The tier emblem sits above its name, in the accent, and is the one thing on
+ * the button that says where this tier falls on the scale without words. */
+.tierChipMark { color: var(--accent); opacity: 0.9; margin-bottom: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .veil.win .companion { animation: none; }
+}

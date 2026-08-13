@@ -2,6 +2,56 @@
 
 Newest first.
 
+## v3.1.0 - 2026-08-13 - every control is a thing you can press
+
+The app worked and looked like a tool. Four directions were built as a live,
+pressable comparison rather than described, and the tactile one won: the palette
+stays, the chrome becomes physical.
+
+**Controls have height now.** Light catches the top edge, the control stands on
+a hard lip, and pressing it collapses that lip so the thing travels downward. The
+old press was `transform: scale(0.96)`, which is the difference between an object
+moving and a picture getting smaller, and it is most of why the interface felt
+like a diagram of itself. Two elevation levels, because the lip that reads right
+under a full-width card is far too heavy under six tool buttons in a row, and a
+disabled control has no height at all: leaving the lip on a greyed-out tool was
+the single thing that made the whole row read as fake.
+
+Elevation is three tokens per theme rather than literal shadows, because three
+of the six themes are light, where a dark top sheen reads as grime rather than as
+light. `contrast` gets a solid black lip and no blur whatsoever: that theme exists
+so every edge is unambiguous, and a soft shadow is the opposite of that.
+
+**Mono stopped being the whole voice of the app.** It was on 56 selectors, which
+is why everything read as a terminal. It is on 33 now, and every survivor is a
+column of figures, a code, or the wordmark: the timer, the pencil marks, the
+share word. Digits, tier names, headings and the number pad moved to a display
+face at 700 and 800 with tabular figures. That face is the system one, which on
+the two devices this runs on is SF Pro Display, so the whole change costs zero
+bytes and no eighth dependency. `--display` is named separately from `--ui` so the
+day a self-hosted face is worth it, one line changes.
+
+**Six tier emblems, four badges, an empty mark.** They escalate in geometric
+complexity rather than in ornament: Gentle is a circle with a centre and
+Diabolical is the same centre buried in a lattice, so the six buttons read as a
+ramp before the words are read. Drawn as inline SVG in `currentColor`, so they
+take the accent of any theme and add no file and no request. Two were redrawn
+after seeing them at the size they actually render: Easy traced the circle's own
+edge and was indistinguishable from Gentle at 22px, and Medium's three radii were
+the Mercedes star. A test now asserts no two emblems are identical.
+
+**A companion, on two screens only.** The win screen and the empty states. Never
+during a solve, and it never says anything: a character that reacts while you are
+thinking is a character that interrupts you, during the exact minutes you decided
+you did not want to be told how you are doing. Its rays only appear when a streak
+is genuinely running. `thinking` and `stuck` are drawn and deliberately mounted
+nowhere, and by this project's own rule that means they have not shipped.
+
+**Nothing here runs on a resting screen.** Every animation is one-shot and fires
+on an interaction; the only loops in the app remain the generating spinner and
+the microphone pulse, both of which stop on their own. All of it is transform and
+opacity, so it stays on the compositor. The bundle grew 7KB, all of it drawing.
+
 ## v3.0.0 - 2026-08-12 - six boards, seventeen rungs, and everything explains itself
 
 The release the last two days were building toward. Nothing here is new work in
