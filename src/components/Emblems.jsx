@@ -108,9 +108,50 @@ export function TierEmblem({ tier, size = 26, width = 1.6, className }) {
 
 export const TIER_EMBLEMS = Object.keys(TIERS)
 
-/* Shield for the two that are about restraint, and a different silhouette for
- * the two that are not, so the set is tellable apart without reading it. */
+/* Silhouette carries the category, so the set is tellable apart across a grid
+ * without reading any of it. There are fifteen achievements and eight marks,
+ * which is the point: the ones that are the same kind of thing look like it.
+ *
+ *   count     how many games, a stack of finished boards
+ *   clean     a shield, for finishing without a mistake
+ *   unaided   the hint, struck out
+ *   tiers     difficulty, as a rising ladder
+ *   streak    a shield again, for coming back
+ *   daily     a calendar, for the dailies specifically
+ *   fast      a stopwatch
+ *   night     a crescent
+ *
+ * Two shields on purpose. Spotless and Habit are both "kept a standard up", and
+ * the pair reads as a family next to the stopwatch and the moon.
+ */
 const BADGES = {
+  count: (
+    <>
+      <rect x="9" y="19" width="24" height="24" rx="3" />
+      <path d="M17 14h20a3 3 0 0 1 3 3v20" opacity="0.55" />
+      <path d="M24 9h16a3 3 0 0 1 3 3v16" opacity="0.3" />
+    </>
+  ),
+  tiers: (
+    <>
+      <path d="M13 39v-7M21 39v-13M29 39v-19M37 39v-25" strokeWidth="2.4" />
+      <path d="M9 43h34" opacity="0.5" />
+    </>
+  ),
+  daily: (
+    <>
+      <rect x="10" y="13" width="32" height="29" rx="3" />
+      <path d="M10 22h32" />
+      <path d="M19 9v7M33 9v7" strokeWidth="2.2" />
+      <path d="M20 31.5l4 4 8-9" strokeWidth="2.2" />
+    </>
+  ),
+  night: (
+    <>
+      <path d="M30 8a18 18 0 1 0 12 31A19 19 0 0 1 30 8z" />
+      <circle cx="41" cy="13" r="1.5" fill="currentColor" stroke="none" />
+    </>
+  ),
   clean: (
     <>
       <path d="M26 7l14 6v13c0 9.5-6 16-14 19-8-3-14-9.5-14-19V13z" />
@@ -139,8 +180,41 @@ const BADGES = {
   ),
 }
 
-export function BadgeMark({ kind, size = 30, className }) {
-  const art = BADGES[kind]
+/**
+ * Which mark belongs to which achievement.
+ *
+ * Keyed by the ids in `src/stats/achievements.js`, and a test fails if that file
+ * grows an achievement this map has not heard of. Same rule the glossary
+ * follows: the drawn set is not allowed to quietly fall behind the real one, and
+ * a badge with no mark would render as a hole in the grid rather than as an
+ * error anybody notices.
+ *
+ * The mapping lives here rather than as a field on each achievement, because
+ * which picture to draw is a question about this file and `src/stats/` is meant
+ * to stay free of anything presentational.
+ */
+const BADGE_ART = {
+  first: 'count',
+  ten: 'count',
+  fifty: 'count',
+  hundred: 'count',
+  clean: 'clean',
+  'clean-ten': 'clean',
+  'all-tiers': 'tiers',
+  diabolical: 'tiers',
+  'streak-7': 'streak',
+  'streak-30': 'streak',
+  'daily-7': 'daily',
+  'daily-30': 'daily',
+  'quick-medium': 'fast',
+  'no-pencil': 'unaided',
+  'night-owl': 'night',
+}
+
+export const BADGE_IDS = Object.keys(BADGE_ART)
+
+export function BadgeMark({ id, size = 30, className }) {
+  const art = BADGES[BADGE_ART[id]]
   if (!art) return null
   return (
     <Mark size={size} width={1.6} className={className}>

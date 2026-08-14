@@ -2,6 +2,43 @@
 
 Newest first.
 
+## v3.3.0 - 2026-08-13 - the audio stops, and every achievement has a face
+
+**The AudioContext now stops instead of going quiet.** It was created on the
+first sound and left running for the rest of the session. A running context
+holds a real-time audio thread at the device sample rate and keeps the audio
+hardware clocked whether or not anything is audible, so it blocks deeper CPU
+sleep even while silent. Neither the iPhone ring switch nor a volume of zero
+fixes that: both silence the output and leave the thread running.
+
+It suspends five seconds after the last scheduled sound finishes, immediately
+when sound is switched off, and immediately when the app is backgrounded. Five
+rather than something tighter because suspending and resuming has its own
+latency and a solve places a digit every few seconds; the cost being avoided is
+a context left running for hours on the dashboard, not one running for four
+seconds between two digits. The suspend waits for the longest *scheduled* sound
+rather than the call, or the win fanfare would cut itself off.
+
+**The achievement badges were drawn, tested and mounted nowhere.** That is the
+exact failure this project has a rule against, and it had been sitting in the
+tree since the marks were drawn. Fifteen achievements now carry one of eight
+marks, grouped so the category reads before the words do: the four volume
+badges share a stack of boards, the two dailies share a calendar, difficulty is
+a rising ladder, and Spotless and Habit share a shield because both are about
+keeping a standard up. Three marks were added for the categories that had none.
+
+An unearned badge is drawn in the same mark, dimmed, rather than swapped for a
+silhouette or a padlock. The mark you are working towards should be the mark
+you get.
+
+`BadgeMark` takes an achievement id rather than an art name now, and a test
+fails in both directions: an achievement with no mark, and a mark left behind
+by an achievement that no longer exists.
+
+**`EmptyMark` is mounted too**, on the one screen whose main content can be
+genuinely absent: a review of a game recorded before move logging, which was a
+bare paragraph that read like a diagram had failed to load.
+
 ## v3.2.0 - 2026-08-13 - the Mac is not the phone with more room
 
 The tactile pass was decided by a thumb. This is the same work done for a mouse

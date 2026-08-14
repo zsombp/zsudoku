@@ -11,6 +11,7 @@ import Experiments from './Experiments.jsx'
 import League from './League.jsx'
 import { VARIANT_LIST, VARIANTS } from '../logic/variants.js'
 import Companion from './Companion.jsx'
+import { BadgeMark } from './Emblems.jsx'
 
 const variantName = id => VARIANTS[id]?.name || id
 import * as gameLog from '../lib/gameLog.js'
@@ -279,6 +280,14 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
                 className={'badge' + (b.earned ? ' earned' : '')}
                 key={b.id}
               >
+                {/* The mark is the fastest way to read this grid: the four
+                    volume badges look like each other, the two dailies look
+                    like each other, and you can tell what a row is about
+                    before you have read a word of it. Unearned ones are drawn
+                    the same and dimmed by CSS rather than swapped for a
+                    silhouette, so the thing you are working towards is the
+                    thing you will get. */}
+                <BadgeMark id={b.id} size={26} className="badgeMark" />
                 <span className="badgeTop">
                   <span className="badgeName">{b.name}</span>
                   {b.detail && <span className="badgeDetail">{b.detail}</span>}

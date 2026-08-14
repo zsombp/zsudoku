@@ -1828,3 +1828,59 @@ bound plain key has a row, so the two lists cannot part company again.
 
 Rules out: a badge typed onto a button, a summary line maintained by hand, and
 inventing a shortcut for Check, which has none.
+
+### Silence is not the same as stopped
+
+Resolved at v3.3.0. The AudioContext was created on the first sound and left
+running for the rest of the session. A running context holds a real-time audio
+thread at the device sample rate and keeps the audio hardware clocked, which
+blocks deeper CPU sleep whether or not anything is audible.
+
+**Neither the ring switch nor a gain of zero is a battery answer**, and both look
+like one. They silence the output and leave the thread running, so the cheapest
+sounding fix here is the one that does nothing.
+
+It suspends five seconds after the last scheduled sound ends, and immediately on
+`setEnabled(false)` and on being backgrounded. The grace exists because suspend
+and resume have their own latency and a solve places a digit every few seconds;
+the cost being avoided is a context running for hours on the dashboard, not one
+running for four seconds between two digits, so there is nothing to buy by
+cutting it fine and a clipped attack to lose.
+
+The timer keys off the end of the longest *scheduled* sound rather than the
+moment of the call. Sounds are scheduled ahead of the clock, so suspending on the
+call would cut the win fanfare off in the middle.
+
+This is also what makes ambient audio viable later: the answer to "does it drain
+the battery" is a context that suspends when nothing is playing, not a switch the
+user has to remember and not the phone's mute button.
+
+Rules out: relying on the hardware ring switch, muting by gain, and closing the
+context rather than suspending it, which would need a new one and a new gesture.
+
+### An unearned badge is the badge, dimmed
+
+Resolved at v3.3.0. The fifteen achievements were text and a progress bar. The
+marks for them had been drawn and tested and mounted nowhere, which is the
+failure the working conventions already name, sitting in the tree unnoticed
+because a drawn thing nobody renders looks exactly like a drawn thing nobody
+needed.
+
+**Eight marks for fifteen achievements, grouped by category**, so a row says what
+it is about before any of its text is read: one silhouette for the four volume
+badges, one for the two dailies, a ladder for difficulty, a shield shared by
+Spotless and Habit because both are about keeping a standard up. Giving all
+fifteen their own drawing would have been more work and less legible.
+
+Unearned is the same mark at low opacity, never a silhouette and never a padlock.
+**The mark you are working towards has to be the mark you get**, or the reward
+for earning it is finding out what it actually looked like.
+
+`BadgeMark` takes an achievement id, not an art name, and the id-to-art map lives
+with the drawings rather than as a field on each achievement, because which
+picture to draw is a question about the component and `src/stats/` stays free of
+presentation. A test fails in both directions: an achievement with no mark, and a
+mark whose achievement has been deleted.
+
+Rules out: a padlock, a generic fallback shape for an unmapped id, and putting
+the art name in `achievements.js`.

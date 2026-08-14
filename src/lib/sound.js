@@ -9,9 +9,55 @@
 
 let ctx = null
 let enabled = false
+let idleTimer = null
+let quietAt = 0
+
+/**
+ * How long the context is allowed to idle before it is suspended.
+ *
+ * A running AudioContext holds a real-time audio thread at the device sample
+ * rate and keeps the audio hardware clocked, which blocks deeper CPU sleep
+ * whether or not anything is audible. Silencing it is not the same as stopping
+ * it: the iPhone ring switch and a volume of zero both leave that thread
+ * running, so neither is a battery answer.
+ *
+ * Five seconds rather than something tighter, because suspending and resuming
+ * has its own latency and placements during a solve arrive every few seconds.
+ * The cost being avoided is a context left running for hours on the dashboard
+ * or in the background, not one running for four seconds between two digits, so
+ * there is nothing to buy by cutting this fine and a clipped attack to lose.
+ */
+const IDLE_MS = 5000
 
 export function setEnabled(on) {
   enabled = Boolean(on)
+  // Turning sound off is an explicit "stop", so it does not wait out the grace.
+  if (!enabled) quiet()
+}
+
+/** Suspend now. Safe to call when there is no context or it is already down. */
+export function quiet() {
+  clearTimeout(idleTimer)
+  idleTimer = null
+  try {
+    if (ctx && ctx.state === 'running') ctx.suspend()
+  } catch {
+    /* A context that refuses to suspend is not worth throwing over. */
+  }
+}
+
+/**
+ * Suspend once everything scheduled has finished playing.
+ *
+ * Sounds are scheduled ahead of the clock rather than played now, so the last
+ * one ends at some point in the future and suspending on the call would cut it
+ * off. Every sound pushes this out.
+ */
+function suspendWhenDone(c, endsAt) {
+  quietAt = Math.max(quietAt, endsAt)
+  clearTimeout(idleTimer)
+  const ms = Math.max(0, (quietAt - c.currentTime) * 1000) + IDLE_MS
+  idleTimer = setTimeout(quiet, ms)
 }
 
 function audio() {
@@ -25,6 +71,15 @@ function audio() {
   } catch {
     return null
   }
+}
+
+// Backgrounding the app is a definite answer, so it does not wait out the
+// grace either. The timer half of this is what covers a phone that is simply
+// sitting on the dashboard with the screen on.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') quiet()
+  })
 }
 
 /**
@@ -45,6 +100,7 @@ function tone(freq, { duration = 0.09, gain = 0.05, type = 'sine', delay = 0 } =
   osc.connect(amp).connect(c.destination)
   osc.start(t0)
   osc.stop(t0 + duration + 0.02)
+  suspendWhenDone(c, t0 + duration + 0.02)
 }
 
 export const place = () => tone(660, { duration: 0.07, gain: 0.04 })

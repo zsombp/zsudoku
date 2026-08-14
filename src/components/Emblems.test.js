@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createElement } from 'react'
-import { TierEmblem, BadgeMark, EmptyMark, TIER_EMBLEMS } from './Emblems.jsx'
+import { TierEmblem, BadgeMark, EmptyMark, TIER_EMBLEMS, BADGE_IDS } from './Emblems.jsx'
+import { achievements } from '../stats/achievements.js'
 import Companion from './Companion.jsx'
 import { TIERS } from '../logic/difficulty.js'
 
@@ -44,11 +45,48 @@ describe('a mark for every tier, and only for real tiers', () => {
 })
 
 describe('badges and the empty mark', () => {
-  it('draws the four badges and refuses an unknown one', () => {
-    for (const k of ['clean', 'fast', 'unaided', 'streak']) {
-      expect(draw(BadgeMark, { kind: k })).toContain('<svg')
+  it('draws a mark for every achievement that exists', () => {
+    // The same rule the tier emblems follow and the glossary follows: the drawn
+    // set tracks the real one rather than a list copied beside it. An
+    // achievement added to `achievements.js` with no entry here would render as
+    // a hole in the grid, which nothing reports and nobody reads as a bug.
+    for (const a of achievements([])) {
+      expect(BADGE_IDS, `no mark for the "${a.id}" achievement`).toContain(a.id)
+      expect(draw(BadgeMark, { id: a.id })).toContain('<svg')
     }
-    expect(draw(BadgeMark, { kind: 'nonsense' })).toBe('')
+  })
+
+  it('has no marks for achievements that do not exist', () => {
+    // The other direction. A mark left behind by a deleted achievement is dead
+    // art that still passes the test above.
+    const real = new Set(achievements([]).map(a => a.id))
+    for (const id of BADGE_IDS) {
+      expect(real, `"${id}" has a mark and is not an achievement`).toContain(id)
+    }
+  })
+
+  it('draws nothing for an id it has not been taught', () => {
+    expect(draw(BadgeMark, { id: 'nonsense' })).toBe('')
+    expect(draw(BadgeMark, { id: undefined })).toBe('')
+  })
+
+  it('gives the categories different silhouettes and shares within them', () => {
+    // The point of eight marks for fifteen achievements: the four volume
+    // badges are meant to look alike, and a volume badge is meant to look
+    // nothing like the stopwatch.
+    const art = id => draw(BadgeMark, { id })
+    expect(art('first')).toBe(art('hundred'))
+    expect(art('daily-7')).toBe(art('daily-30'))
+    expect(art('first')).not.toBe(art('quick-medium'))
+    expect(art('clean')).not.toBe(art('no-pencil'))
+    // Eight distinct drawings across the fifteen.
+    expect(new Set(BADGE_IDS.map(art)).size).toBe(8)
+  })
+
+  it('names no colour of its own', () => {
+    const all = BADGE_IDS.map(id => draw(BadgeMark, { id })).join('')
+    expect(all).not.toMatch(/#[0-9a-f]{3,6}/i)
+    expect(all).toContain('currentColor')
   })
 
   it('draws the empty mark at a stated aspect rather than a square', () => {

@@ -3271,3 +3271,59 @@ h3.statHeading { margin-top: 20px; }
    * tall window. */
   .playSide { min-height: 0; }
 }
+
+/* ---- the achievement marks ----
+ *
+ * The badge became a two-column card: the drawn mark on the left, the words to
+ * the right of it. The mark is the fastest thing to read in a grid of fifteen,
+ * because the four volume badges share a silhouette and so do the two dailies,
+ * so what a row is about arrives before any of its text does.
+ *
+ * `grid` rather than flex because the text column has to be able to shrink to
+ * nothing; a flex row let the longest description push the mark off its own
+ * card at 375px. */
+.badge {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+}
+
+.badgeMark {
+  color: var(--accent);
+  margin-top: 1px;
+  flex: 0 0 auto;
+  /* Earning one should be visible from across the grid without reading it, and
+   * the border already carries that signal at the edge of the card. This puts
+   * it in the middle, where the eye is. */
+  opacity: 0.32;
+  transition: opacity 0.2s ease;
+}
+.badge.earned .badgeMark { opacity: 1; }
+
+/* Unearned is drawn, not hidden: the mark you are working towards is the mark
+ * you will get, which is the whole reason to show a locked one at all. A
+ * silhouette or a padlock would be a different picture and a worse promise. */
+.badge:not(.earned) .badgeMark { color: var(--sub); }
+
+/* All four children are direct children of the grid, so each is placed by hand.
+ * Left to flow, the description landed underneath the mark in column one and
+ * the progress bar started halfway across the card. */
+.badgeMark { grid-column: 1; grid-row: 1 / span 2; }
+.badge .badgeTop { grid-column: 2; grid-row: 1; }
+.badgeDesc { grid-column: 2; grid-row: 2; }
+.badgeTrack { grid-column: 1 / -1; grid-row: 3; }
+
+/* A review with no move log: the only screen here whose main content is simply
+ * absent. Centred with the mark above the sentence, so it reads as a state
+ * rather than as a paragraph whose diagram failed to load. */
+.reviewEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 30px 16px 34px;
+  text-align: center;
+  color: var(--line-strong);
+}
+.reviewEmpty .dataNote { max-width: 42ch; }

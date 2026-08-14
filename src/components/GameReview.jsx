@@ -10,6 +10,7 @@ import { analyseGame, verdict, timeShape, settledCands, CLASSES } from '../stats
 import { falseBeliefs, beliefVerdict } from '../stats/beliefs.js'
 import { narrate, headline } from '../stats/narrate.js'
 import { flowSummary } from '../stats/flow.js'
+import { EmptyMark } from './Emblems.jsx'
 import ReviewBoard from './ReviewBoard.jsx'
 import FlowStrip from './FlowStrip.jsx'
 import SolveArt from './SolveArt.jsx'
@@ -285,10 +286,17 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
       )}
 
       {noLog ? (
-        <p className="dataNote">
-          This game has no move log, so there is nothing to replay. Games recorded
-          before move logging was added only kept their summary.
-        </p>
+        // The one screen in the review that has nothing to draw. The mark is a
+        // box of the board with an empty cell picked out, which is literally
+        // the situation rather than a shrug or an apology, and it stops this
+        // reading as a paragraph that failed to load.
+        <div className="reviewEmpty">
+          <EmptyMark size={84} />
+          <p className="dataNote">
+            This game has no move log, so there is nothing to replay. Games recorded
+            before move logging was added only kept their summary.
+          </p>
+        </div>
       ) : (
         <>
           <div className="segTabs" role="tablist" ref={tabStrip}>
