@@ -120,6 +120,13 @@ export function sessionToday(stored, games, { now = Date.now(), drills = [] } = 
   return { session: blankSession(day, pickPattern(games, { now, drills }), history), created: true }
 }
 
+/**
+ * Whether a session belongs to a day that has ended. An app left open
+ * overnight still holds yesterday's, and a finished one shows no button that
+ * would ask for today's, so the screen has to ask.
+ */
+export const isStale = (session, now = Date.now()) => !session || session.day !== dayKey(now)
+
 /** The first step not yet done or skipped, or null once the session is over. */
 export const nextStage = session => STAGES.find(s => !session?.stages?.[s]) || null
 

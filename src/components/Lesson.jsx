@@ -6,6 +6,8 @@ import { optionsOf, patternCellsOf, judge } from '../logic/worlds.js'
 import { regionEdges, rowOf, colOf, range } from '../logic/topology.js'
 import { hasMark } from '../logic/marks.js'
 import { Explain, Term, TermGroup } from './Term.jsx'
+import { cageEdges } from '../logic/variants.js'
+import { cageClass } from './Board.jsx'
 
 /**
  * A lesson: one pattern on one real position, walked through as every way it
@@ -215,6 +217,7 @@ export default function Lesson({ lesson, onClose, onDrill = null, onFinish = nul
             sceneKey={sceneKey}
             label={`${step.title}. ${asking ? step.askText || step.text : step.text}`}
             onPick={asking && lesson.predict.kind === 'cells' ? toggleGuess : null}
+            flaw={flaw}
           />
           <p className="lsShowing">
             {lesson.lens
@@ -391,8 +394,10 @@ function drawScene(lesson, step, mode, A, W, flaw, { asking = false, picks = [],
   // The note's own position in the cell, so a beam lands on the digit it kills.
   const notePos = (c, d) =>
     lens
-      ? center(c)
-      : [colOf(c) + 0.05 + (((d - 1) % 3) + 0.5) * 0.3, rowOf(c) + 0.05 + (Math.floor((d - 1) / 3) + 0.5) * 0.3]
+      ? [colOf(c) + 0.5, rowOf(c) + (topo.cages ? 0.6 : 0.5)]
+      : topo.cages
+        ? [colOf(c) + 0.07 + (((d - 1) % 3) + 0.5) * 0.86 / 3, rowOf(c) + 0.27 + (Math.floor((d - 1) / 3) + 0.5) * 0.22]
+        : [colOf(c) + 0.05 + (((d - 1) % 3) + 0.5) * 0.3, rowOf(c) + 0.05 + (Math.floor((d - 1) / 3) + 0.5) * 0.3]
 
   const s = {
     // The candidates being drawn, with the flaw applied when one is on.
@@ -480,7 +485,7 @@ function drawScene(lesson, step, mode, A, W, flaw, { asking = false, picks = [],
     } else if (W) {
       s.what = true
       let i = 0
-      for (const [c, d] of W) s.ghosts.set(c, { d, delay: 0.05 + 0.08 * i++ })
+      for (const [c, d] of W) if (!board[c]) s.ghosts.set(c, { d, delay: 0.05 + 0.08 * i++ })
       const judgeAll = (list, faint) =>
         list.forEach(([c, d], i) => {
           const j = judge(W, c, d, topo)
@@ -501,9 +506,19 @@ function drawScene(lesson, step, mode, A, W, flaw, { asking = false, picks = [],
   return s
 }
 
-function LessonBoard({ lesson, scene, sceneKey, label, onPick = null }) {
+export function LessonBoard({ lesson, scene, sceneKey, label, onPick = null, flaw = null }) {
   const { board, topo } = lesson
   const edges = useMemo(() => regionEdges(topo), [topo])
+  // A total flaw changes the printed clue as well as the equation, so the
+  // counterexample never appears to satisfy the original cage by mistake.
+  const cages = useMemo(() => {
+    if (!topo.cages) return null
+    const index = lesson.slots[0]?.sumGroup?.cageIndex
+    const list = flaw?.sum != null
+      ? topo.cages.map((cage, i) => i === index ? { ...cage, sum: flaw.sum } : cage)
+      : topo.cages
+    return cageEdges(list)
+  }, [topo, lesson.slots, flaw])
   const lens = lesson.lens
   // Which cells show their notes at all. The rest of the board is context.
   const flawCells = new Set()
@@ -523,7 +538,7 @@ function LessonBoard({ lesson, scene, sceneKey, label, onPick = null }) {
           <span key={k} className={'lsLab' + (scene.bandRows.has(k) ? ' on' : '')}>{k + 1}</span>
         ))}
       </div>
-      <div className={'lsBoard' + (lens ? ' lensed' : '')} role="img" aria-label={label}>
+      <div className={'lsBoard' + (lens ? ' lensed' : '') + (cages ? ' caged' : '')} role={onPick ? 'group' : 'img'} aria-label={label}>
         {range(81).map(c => {
           const e = edges[c]
           const cls = ['lsCell']
@@ -549,7 +564,8 @@ function LessonBoard({ lesson, scene, sceneKey, label, onPick = null }) {
                     role: 'button',
                     tabIndex: 0,
                     'aria-pressed': scene.picks.has(c),
-                    'aria-label': `Mark r${rowOf(c) + 1}c${colOf(c) + 1} as losing a note`,
+                    'aria-label': `Mark r${rowOf(c) + 1}c${colOf(c) + 1} as losing a note` +
+                      (cages ? `, in a cage of ${cages[c].size} adding to ${cages[c].sum}` : ''),
                     onClick: () => onPick(c),
                     onKeyDown: e => {
                       if (e.key === 'Enter' || e.key === ' ') {
@@ -560,6 +576,8 @@ function LessonBoard({ lesson, scene, sceneKey, label, onPick = null }) {
                   }
                 : {})}
             >
+              {cages && <span className={'cageBox' + cageClass(cages[c])} aria-hidden="true" />}
+              {cages?.[c].head && <span className="cageSum" aria-hidden="true">{cages[c].sum}</span>}
               {v !== 0 && <span className={'lsG' + (lens && v === lens ? ' lensDigit' : '')}>{v}</span>}
               {notes.length > 0 && (
                 <span className={'lsNotes' + (lens ? ' solo' : '')} key={sceneKey}>

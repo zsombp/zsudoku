@@ -105,6 +105,19 @@ describe('the pad plays only while you are solving', () => {
     expect(ambience.isPlaying()).toBe(true)
   })
 
+  it('suspends at once when the page is hidden in the middle of a fade-out', () => {
+    // Stopped, so it is fading and still holding the context; hiding the page
+    // must not leave it running until a throttled timer gets round to it.
+    ambience.setActive(true)
+    ambience.setActive(false)
+    expect(ctx.state).toBe('running')
+    setHidden(true)
+    expect(ctx.state).toBe('suspended')
+    // The timer that would have released it later releases nothing twice.
+    vi.advanceTimersByTime(5000)
+    expect(ctx.state).toBe('suspended')
+  })
+
   it('keeps playing when the clicks are switched off, and keeps the context up', () => {
     sound.setEnabled(true)
     ambience.setActive(true)

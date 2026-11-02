@@ -4,8 +4,7 @@
 // time a lesson is opened.
 //
 // The naked single is left out on purpose: it is bookkeeping, the grader scores
-// it zero, and nothing counts as being stuck on it. The cage rungs are left out
-// because their argument is a sum, which a list of placements cannot show.
+// it zero, and nothing counts as being stuck on it.
 
 export const TEACHABLE = new Set([
   'hiddenSingle',
@@ -23,6 +22,11 @@ export const TEACHABLE = new Set([
   'twoStringKite',
   'wWing',
   'xyzWing',
+  'cageCombo',
+  'cageSum',
+  'cageSingle',
+  'sum45',
+  'cageLocked',
 ])
 
 export const canTeach = technique => TEACHABLE.has(technique)

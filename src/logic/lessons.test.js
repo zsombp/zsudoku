@@ -8,6 +8,9 @@ import { explainBottleneck, explainPlacement } from './explain.js'
 import { hasMark, countMarks } from './marks.js'
 import { CLASSIC } from './topology.js'
 import { solve, hasUniqueSolution } from './solver.js'
+import { hasUniqueKillerSolution, killerSolutions } from './killer.js'
+import { CAGE_TECHNIQUES } from './techniques.js'
+import { questionFor } from './socratic.js'
 
 /**
  * A lesson is a promise that an argument holds, so every lesson the app can
@@ -20,7 +23,7 @@ import { solve, hasUniqueSolution } from './solver.js'
  *   none of the copy has a hole in it
  */
 function walk(entry, visit) {
-  const topo = topologyFromRecord({ variant: entry.variant, regions: entry.regions, seed: entry.seed })
+  const topo = topologyFromRecord(entry)
   const state = createState([...entry.puzzle].map(Number), topo)
   for (let guard = 0; guard < 800; guard++) {
     const step = nextStep(state)
@@ -55,6 +58,7 @@ function direct(board, cands, topo, cell, digit) {
 
 describe('every lesson holds its own argument', () => {
   const built = {}
+  const remainders = new Set()
 
   for (const [n, entry] of fixtures.entries()) {
     it(`builds a sound lesson for every teachable step of solve ${n + 1} (${entry.variant})`, () => {
@@ -68,6 +72,20 @@ describe('every lesson holds its own argument', () => {
         expect(a.intact).toBe(true)
         expect(a.truncated).toBe(false)
         expect(lesson.worldCount).toBe(a.worlds.length)
+        if (CAGE_TECHNIQUES.includes(step.technique)) {
+          expect(topo.cages).toBeTruthy()
+          expect(questionFor(step, topo, board)).toMatch(/\?$/)
+          expect(questionFor(step, topo, board)).not.toMatch(/r\dc\d/)
+          if (step.technique === 'sum45') {
+            // A fixed remainder with one unknown cannot be broken by notes.
+            expect(lesson.flaws).toHaveLength(0)
+            remainders.add(lesson.slots[0].sumGroup.innie ? 'inside' : 'outside')
+          } else expect(lesson.flaws.length, step.technique).toBeGreaterThan(0)
+          for (const p of step.placements) {
+            expect(lesson.placement).toEqual(p)
+            for (const w of a.worlds) expect(w.get(p.cell)).toBe(p.digit)
+          }
+        }
 
         for (const f of lesson.flaws) {
           const b = analyse(lesson, f)
@@ -99,6 +117,7 @@ describe('every lesson holds its own argument', () => {
 
   it('reached every teachable rung', () => {
     for (const k of TEACHABLE) expect(built[k] || 0, `${k} never built`).toBeGreaterThan(0)
+    expect([...remainders].sort()).toEqual(['inside', 'outside'])
   })
 })
 
@@ -152,27 +171,34 @@ describe('the lessons on a hand-made XY-Wing', () => {
 })
 
 describe('the stock lessons', () => {
-  it('has a position for every teachable rung, and every one builds with a flaw', () => {
+  it('covers every teachable rung, with flaws except for scanning and fixed subtraction', () => {
     expect([...STOCK].sort()).toEqual([...TEACHABLE].sort())
     for (const k of TEACHABLE) {
       const lesson = stockLesson(k)
       expect(lesson, k).toBeTruthy()
       expect(analyse(lesson).intact).toBe(true)
-      // A hidden single is a scan, not a case split, and has no flaw by design.
-      if (k !== 'hiddenSingle') expect(lesson.flaws.length, `${k} has no flaw`).toBeGreaterThan(0)
+      // A hidden single is a scan. The 45 rule has one unknown and fixed totals.
+      if (k === 'hiddenSingle' || k === 'sum45') expect(lesson.flaws).toHaveLength(0)
+      else expect(lesson.flaws.length, `${k} has no flaw`).toBeGreaterThan(0)
+      if (CAGE_TECHNIQUES.includes(k)) expect(lesson.topo.id).toBe('killer')
+      for (const f of lesson.flaws) {
+        const b = analyse(lesson, f)
+        expect(b.truncated).toBe(false)
+        expect(b.survivorWorlds.length).toBeGreaterThan(0)
+      }
     }
   })
 
   it('is a real position: every stock board still has a unique solution', () => {
     for (const k of TEACHABLE) {
-      const { board } = stockLesson(k)
-      expect(hasUniqueSolution(board), k).toBe(true)
+      const { board, topo } = stockLesson(k)
+      expect(topo.cages ? hasUniqueKillerSolution(board, topo.cages, topo) : hasUniqueSolution(board), k).toBe(true)
     }
   })
 
-  it('has nothing for the naked single or the cage rungs', () => {
+  it('has nothing for the naked single or an unknown rung', () => {
     expect(stockLesson('nakedSingle')).toBeNull()
-    expect(stockLesson('sum45')).toBeNull()
+    expect(stockLesson('unknown')).toBeNull()
   })
 })
 
@@ -237,6 +263,29 @@ describe('your guess first', () => {
 })
 
 describe('the hint teaches the hard step', () => {
+  it('opens a lesson through the real hint explanation for every cage rung', () => {
+    const seen = new Set()
+    for (const entry of fixtures.filter(f => f.variant === 'killer')) {
+      const topo = topologyFromRecord(entry)
+      const [solution] = killerSolutions([...entry.puzzle].map(Number), topo.cages, 1, topo)
+      walk(entry, (_, board) => {
+        if (seen.size === CAGE_TECHNIQUES.length) return
+        const hint = hintPlacement(board, solution, topo)
+        if (!hint || !CAGE_TECHNIQUES.includes(hint.needed) || seen.has(hint.needed)) return
+        const ex = hint.via
+          ? explainBottleneck(hint.via, hint.cell, hint.digit)
+          : explainPlacement(board, hint.cell, hint.digit, topo)
+        expect(ex, hint.needed).toBeTruthy()
+        const lesson = buildLesson({ ...ex.lesson, topo, source: 'hint', hint })
+        expect(lesson, hint.needed).toBeTruthy()
+        expect(lesson.technique).toBe(hint.needed)
+        expect(analyse(lesson).intact).toBe(true)
+        seen.add(hint.needed)
+      })
+    }
+    expect([...seen].sort()).toEqual([...CAGE_TECHNIQUES].sort())
+  })
+
   // A real position from the fixtures where the ladder has to eliminate before
   // any digit can be placed: the hint must say what was needed, and the pattern
   // rung must draw the elimination, not the single it uncovered.

@@ -175,6 +175,10 @@
   inset: 18%;
   font-size: calc(100cqw / 9 * 0.4);
 }
+/* Keep the sum clear in every cell, including those with no printed total.
+ * The beam coordinates in Lesson use these same note positions. */
+.lsBoard.caged .lsNotes { inset: 27% 7% 7%; }
+.lsBoard.caged .lsNotes:not(.solo) { font-size: calc(100cqw / 9 * 0.24); }
 .lsN { font-style: normal; display: grid; place-items: center; position: relative; border-radius: 4px; line-height: 1; }
 .lsN.lit { color: var(--accent); font-weight: 800; }
 .lsN.probe { color: var(--probe); font-weight: 800; background: var(--probe-soft); }

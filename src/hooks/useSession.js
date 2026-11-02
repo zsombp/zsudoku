@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { KEYS, getSync, set } from '../lib/storage.js'
 import * as gameLog from '../lib/gameLog.js'
 import { allDrills } from '../lib/drillLog.js'
-import { sessionToday, markStage as mark } from '../stats/session.js'
+import { sessionToday, markStage as mark, isStale } from '../stats/session.js'
 
 /**
  * Today's session, read from and written to localStorage.
@@ -37,6 +37,16 @@ export function useSession() {
 
   useEffect(() => {
     refresh()
+  }, [refresh])
+
+  // An app left open overnight, or brought back from the background the next
+  // morning, picks today's pattern without needing a reload.
+  useEffect(() => {
+    const onShow = () => {
+      if (document.visibilityState === 'visible' && isStale(getSync(KEYS.session))) refresh()
+    }
+    document.addEventListener('visibilitychange', onShow)
+    return () => document.removeEventListener('visibilitychange', onShow)
   }, [refresh])
 
   return { session, refresh, markStage }

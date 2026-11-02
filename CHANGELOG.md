@@ -2,6 +2,32 @@
 
 Newest first.
 
+## v4.1.0 - 2026-11-02 - killer cage lessons
+
+All five cage rungs now offer lessons from practice and cage hints. Their
+worlds enforce the cage sum and distinct digits, or the remainder of a unit's
+45. Each lesson asks for a guess before the reveal. The 45 rule has one unknown
+and fixed totals, so it has no break step; the other four offer validated
+counterexamples, including a changed printed total where needed.
+
+The stock bank carries killer topology and adds one example per cage rung;
+all fifteen existing entries are byte identical. Five generated killer solve
+fixtures cover the new lessons, including both directions of the 45 rule.
+Lesson boards show the game's dashed cages and totals, with notes and beam
+endpoints shifted together to leave room. No new animation or colour is added.
+The explanation engine now also retains direct arithmetic placement proofs,
+so cage singles and the 45 rule can open their lessons from a hint. Technique
+detectors, costs and `GRADER_VERSION` are unchanged.
+
+Built by Codex in its own worktree, then checked here in the browser at phone
+width: cage outlines, totals, highlights and verdicts all draw.
+
+Two fixes from an independent review of v4.0.0. A finished session stayed on
+screen into the next day when the app was left open, because nothing asked for
+a new one; the home screen and a return from the background now do. And hiding
+the app during the ambience's fade-out kept the audio context running until a
+timer a backgrounded page may never fire; hiding now finishes the stop at once.
+
 ## v4.0.0 - 2026-11-02 - four rungs past the swordfish, and a session a day
 
 v3.4.0 made every elimination something you can step through. This release

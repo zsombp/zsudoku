@@ -6,7 +6,7 @@
 import fs from 'fs'
 import { makePuzzle } from '../src/logic/generator.js'
 import { gradePuzzle } from '../src/logic/grader.js'
-import { makeVariantPuzzle } from '../src/logic/variants.js'
+import { makeVariantPuzzle, topologyFromRecord } from '../src/logic/variants.js'
 
 const want = ['hiddenSingle', 'pointing', 'claiming', 'nakedPair', 'hiddenPair', 'nakedTriple', 'hiddenTriple', 'nakedQuad', 'xWing', 'xyWing', 'swordfish', 'skyscraper', 'twoStringKite', 'wWing', 'xyzWing']
 // Grows the existing file rather than replacing it: a rung added to the top of
@@ -39,5 +39,19 @@ else {
     if (made) out.push({ variant, regions: made.regions || null, puzzle: made.puzzle.join(''), seed: made.seed })
   }
 }
+// Preserve the existing solves and add the generated cage cases. Their actual
+// cages travel with the puzzle, so replay never depends on regenerating a seed.
+for (let seed = 7001; seed <= 7005; seed++) {
+  if (out.some(f => f.variant === 'killer' && f.seed === seed)) continue
+  const made = makeVariantPuzzle('killer', 'Expert', { seed })
+  if (made) out.push({ variant: 'killer', seed, puzzle: made.puzzle.join(''), cages: made.cages })
+}
+const cageRungs = ['cageCombo', 'cageSum', 'cageSingle', 'sum45', 'cageLocked']
+const cageSeen = new Set()
+for (const f of out.filter(f => f.variant === 'killer')) {
+  const g = gradePuzzle([...f.puzzle].map(Number), { topo: topologyFromRecord(f) })
+  for (const k of cageRungs) if (g.counts[k]) cageSeen.add(k)
+}
+if (cageRungs.some(k => !cageSeen.has(k))) throw new Error('Killer fixtures missed a rung')
 fs.writeFileSync(FILE, JSON.stringify(out, null, 0) + '\n')
 console.log('puzzles:', out.length, 'coverage:', JSON.stringify(seen), Math.round((Date.now() - t0) / 1000) + 's')

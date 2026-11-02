@@ -2068,3 +2068,40 @@ only on the board with the clock running and the page visible, holds the shared
 context open only while it plays, and runs on timers every few seconds rather
 than a frame loop. Rules out: a pad on the dashboard, a pad behind a paused game,
 and convolution reverb.
+
+
+### Cage lessons enumerate the sum as well as the placements
+
+2026-11-02. The five arithmetic rungs now have lessons. Cell slots can share a
+sum and a no-repeat constraint, including any written digits in the cage. The
+45 rule derives its remainder from the unit and the cages, never from the
+answer on the step. Outside cells can repeat across separate cages when they
+do not see each other. Partial totals prune enumeration before impossible
+fillings turn into worlds.
+
+A changed-total flaw prints the changed clue on the board as well as changing
+the equation. Cage singles and locks also try an extra home for the required
+digit. A lock whose notes already form a naked set can need both a different
+total and a new note; its label names both changes. Every offered flaw must
+still open a world where a target survives.
+
+The 45 rule has no break step. Its fixed totals and written digits leave one
+unknown, so an extra note cannot open another case. It still asks for a guess
+before showing the one world and the placement. The tests assert this exception
+explicitly, alongside the hidden single's scan.
+
+Stock entries can carry a variant and cages. The bank builder preserves the
+existing classic entries unless run with --refresh-classic, and adds killer
+positions from fixed generated seeds. The solve fixtures now include five
+killer boards and replay their stored cages. This checkout previously had no
+killer solve fixtures.
+
+Lesson boards reuse the game's topology-derived cage boundaries and total
+styles. All notes move down on a caged board, and the beam endpoints move with
+them. No detector, technique cost, difficulty band or grader stamp changes.
+
+Direct cage placements also travel through the existing explanation engine.
+It previously skipped every placement while looking for a proof, so a cage
+single or 45-rule hint could fill a digit without offering its explanation.
+Recognising the detector's placement fixes that route without introducing a
+second explanation or changing a technique.

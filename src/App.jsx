@@ -42,7 +42,7 @@ import PracticeView from './components/PracticeView.jsx'
 import Flashcards from './components/Flashcards.jsx'
 import { Lesson, lessons, moments, bank } from './components/lazyLesson.js'
 import { useSession } from './hooks/useSession.js'
-import { nextStage, isComplete, sessionStreak, SESSION_CARDS } from './stats/session.js'
+import { nextStage, isComplete, isStale, sessionStreak, SESSION_CARDS } from './stats/session.js'
 import { canTeach } from './logic/teachable.js'
 import * as sound from './lib/sound.js'
 import * as ambience from './lib/ambience.js'
@@ -390,6 +390,11 @@ export default function App() {
   const { session, refresh: refreshSession, markStage } = useSession()
   const [sessionLesson, setSessionLesson] = useState(null)
   const sessionPrep = useRef(null)
+  // The home screen is where a new day's session first shows, so coming back
+  // to it after midnight asks for one.
+  useEffect(() => {
+    if (view === 'home' && isStale(session)) refreshSession()
+  }, [view, session, refreshSession])
 
   const prepSession = useCallback(
     s => {

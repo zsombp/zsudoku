@@ -8,6 +8,7 @@ import {
   sessionStreak,
   sessionable,
   dayKey,
+  isStale,
   STAGES,
 } from './session.js'
 import { LADDER } from '../logic/techniques.js'
@@ -79,6 +80,13 @@ describe('a session through the day', () => {
     const tomorrow = sessionToday(session, [], { now: NOW + DAY })
     expect(tomorrow.created).toBe(true)
     expect(tomorrow.session.stages).toEqual({})
+  })
+
+  it('knows when the session it holds is from a day that has ended', () => {
+    const { session } = sessionToday(null, [], { now: NOW })
+    expect(isStale(session, NOW + 3600000)).toBe(false)
+    expect(isStale(session, NOW + DAY)).toBe(true)
+    expect(isStale(null, NOW)).toBe(true)
   })
 
   it('walks the three steps in order and counts the day once the deck is done', () => {

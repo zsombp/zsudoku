@@ -20,7 +20,7 @@
 // do not kill every elimination, or a flaw fails to open a world, it is not
 // shown. A lesson that teaches a broken argument is worse than none.
 
-import { argue, slotsFor, patternCellsOf } from './worlds.js'
+import { argue, slotsFor, patternCellsOf, sumSlots } from './worlds.js'
 import { TECHNIQUES } from './techniques.js'
 import { CLASSIC, unitName, unitCellsOf, rowOf, colOf } from './topology.js'
 import { hasMark, addMark, removeMark, marksToList, countMarks } from './marks.js'
@@ -70,7 +70,10 @@ export function withFlaw(cands, flaw) {
 /** Every world of the lesson, and what dies in all of them, with a flaw or without. */
 export function analyse(lesson, flaw = null, targets = lesson.targets) {
   const cands = withFlaw(lesson.cands, flaw)
-  const a = argue(null, lesson.board, cands, lesson.topo, { slots: lesson.slots, targets })
+  const slots = flaw?.sum != null
+    ? sumSlots({ ...lesson.slots[0].sumGroup, sum: flaw.sum })
+    : lesson.slots
+  const a = argue(null, lesson.board, cands, lesson.topo, { slots, targets })
   return { ...a, cands }
 }
 
@@ -940,7 +943,180 @@ function xyzLesson(base, step) {
   }
 }
 
+/** A different total tests the arithmetic premise without pretending a forbidden
+ * digit could make the original sum. The board prints the changed clue too. */
+function totalFlaws(base) {
+  const group = base.slots[0].sumGroup
+  const n = group.cells.length
+  const low = n * (n + 1) / 2
+  const high = n * (19 - n) / 2
+  return Array.from({ length: high - low + 1 }, (_, i) => low + i)
+    .filter(sum => sum !== group.sum)
+    .sort((a, b) => Math.abs(a - group.sum) - Math.abs(b - group.sum))
+    .map(sum => ({ id: 'total', label: `What if this cage added to ${sum} instead of ${group.sum}?`, sum }))
+}
+
+/** Shared arithmetic picture; the families below supply the particular claim. */
+function cageLesson(base, step, words) {
+  const group = base.slots[0].sumGroup
+  const { board, cands, topo } = base
+  const placement = step.placements?.[0] || null
+  const targets = placement
+    ? marksToList(cands[placement.cell]).filter(d => d !== placement.digit).map(d => [placement.cell, d])
+    : step.eliminations.map(e => [e.cell, e.digit])
+  const unit = [...(unitCellsOf(topo, step) || [])]
+  const band = unit.length ? unitBand(step.unit, unit) : { ...NO_BAND, cells: group.cells }
+  const external = step.technique === 'cageLocked'
+  const empty = group.cells.filter(c => board[c] === 0)
+  const held = group.cells.filter(c => board[c] !== 0).reduce((n, c) => n + board[c], 0)
+  const controls = empty.flatMap(c => marksToList(cands[c]).map(d => [c, d]))
+    .filter(([c, d]) => !targets.some(([x, v]) => x === c && v === d))
+  return {
+    ...base,
+    kicker: TECHNIQUES[step.technique].label,
+    lens: null,
+    focus: new Set([...group.cells, ...unit, ...targets.map(([c]) => c)]),
+    band,
+    targets,
+    placement,
+    controls,
+    flaws: totalFlaws(base),
+    steps: [
+      {
+        title: words.title,
+        text: `This cage has ${group.cells.length} cells adding to ${group.sum}, with no repeated digit.` +
+          (held ? ` The written digits already total ${held}, leaving ${group.sum - held} for ${cells(empty)}.` : '') +
+          ` ${words.start}`,
+        hi: { band, pat: group.cells, lit: slotNotes },
+      },
+      {
+        title: words.questionTitle,
+        text: words.question,
+        askText: words.question + (external ? ' Which cells outside the cage lose it? Tap them.' :
+          ` Which digits leave ${cells([...new Set(targets.map(([c]) => c))])}? Pick them.`),
+        hi: { band, pat: group.cells, lit: slotNotes, probe: allTargets },
+      },
+      {
+        mode: 'worlds', title: 'Every way to make the total',
+        text: 'Each world fills the cage using its notes, with no repeats and exactly the printed total. Step through them.',
+      },
+      { mode: 'apply', title: placement ? `So ${nm(placement.cell)} is ${placement.digit}` : 'Gone in every world', text: words.result },
+      {
+        mode: 'break', title: 'Now break it',
+        text: 'What if the printed total were different? Keep the notes and watch a ruled-out digit find a place.',
+      },
+    ],
+    caption: w => `${group.cells.map(c => w.get(c)).join(' + ')} = ${group.cells.reduce((n, c) => n + w.get(c), 0)}. ${and(empty.map(c => `${nm(c)} is ${w.get(c)}`))}.`,
+    worldKill: words.result,
+    intactLine: n => `${words.result} That holds ${inAll(n)}.`,
+  }
+}
+
+function cageComboLesson(base, step) {
+  return cageLesson(base, step, {
+    title: 'One set makes the sum',
+    start: `With these notes, the only set left is ${and(step.digits)}. The order can still change.`,
+    questionTitle: 'The set stays the same',
+    question: 'Try every order that fits the notes. A digit outside the set cannot help make this total.',
+    result: `Every filling uses only ${and(step.digits)} in the empty cells, so their other notes go.`,
+  })
+}
+
+function cageSumLesson(base, step) {
+  return cageLesson(base, step, {
+    title: 'Several sets, one total',
+    start: 'There is more than one set left. Keep a digit if even one filling can use it.',
+    questionTitle: 'What no filling can use',
+    question: 'A digit can go only if every way of making the total leaves it out.',
+    result: `Every filling uses only ${and(step.digits)} in the empty cells. A note outside that list never fits the sum.`,
+  })
+}
+
+function cageSingleLesson(base, step) {
+  const { cell, digit } = step.placements[0]
+  const lesson = cageLesson(base, step, {
+    title: `Every set needs a ${digit}`,
+    start: `Every surviving set uses ${digit}, so the cage must put it somewhere.`,
+    questionTitle: 'One home for a required digit',
+    question: `Only ${nm(cell)} still has ${digit} in its notes. It must take the cage's ${digit}.`,
+    result: `Every filling puts ${digit} in ${nm(cell)}, so that cell's other notes go.`,
+  })
+  const group = base.slots[0].sumGroup
+  lesson.flaws.unshift(...ranked(base, group.cells.filter(c => c !== cell).map(c => [c, digit]))
+    .map(([c, d]) => ({ id: 'home', label: `${nm(c)} could also take the ${d}`, add: [[c, d]] })))
+  lesson.steps.at(-1).text = 'Give the required digit another home, or change the printed total. Watch whether the placement still follows.'
+  return lesson
+}
+
+function cageLockedLesson(base, step) {
+  const d = step.digits[0]
+  const U = unitName(step.unit)
+  const lesson = cageLesson(base, step, {
+    title: `The cage must use ${d}`,
+    start: `Every surviving set needs ${d}.`,
+    questionTitle: `It is also the ${d} of ${U}`,
+    question: `Every home for the cage's ${d} lies in ${U}. Whichever home it takes, ${U} has its ${d}.`,
+    result: `The cage supplies the ${d} of ${U}, so the other ${d}s in that unit go.`,
+  })
+  const unit = [...unitCellsOf(base.topo, step)]
+  lesson.flaws.unshift(...ranked(base, base.slots[0].sumGroup.cells.filter(c => !unit.includes(c)).map(c => [c, d]))
+    .map(([c]) => ({ id: 'escape', label: `${nm(c)} could take ${d} outside ${U}`, add: [[c, d]] })))
+  // A cage wholly inside the unit has nowhere to escape. If its notes already
+  // form a naked set, even changing the total cannot free the digit. Give that
+  // set an alternative note as well, and state both changed premises.
+  const alternatives = ranked(base, base.slots.flatMap(s =>
+    [1, 2, 3, 4, 5, 6, 7, 8, 9].map(v => [s.cell, v])))
+  for (const [c, v] of alternatives) {
+    lesson.flaws.push(...totalFlaws(base).map(f => ({
+      ...f, add: [[c, v]], label: `What if the cage added to ${f.sum} and ${nm(c)} could also be ${v}?`,
+    })))
+  }
+  lesson.steps.at(-1).text = `Give the ${d} a home outside ${U}, or change the total so the cage need not use it.`
+  return lesson
+}
+
+function sum45Lesson(base, step) {
+  const group = base.slots[0].sumGroup
+  const { cell, digit } = step.placements[0]
+  const U = unitName(step.unit)
+  const held = group.cells.reduce((n, c) => n + base.board[c], 0)
+  const targets = marksToList(base.cands[cell]).filter(d => d !== digit).map(d => [cell, d])
+  const unit = [...unitCellsOf(base.topo, step)]
+  const band = unitBand(step.unit, unit)
+  const equation = group.innie
+    ? `The cages wholly inside ${U} add to ${group.total}. The leftover cells must total 45 - ${group.total} = ${group.sum}.`
+    : `The cages touching ${U} add to ${group.total}. Their cells outside it must total ${group.total} - 45 = ${group.sum}.`
+  const result = `${nm(cell)} is the only unknown in that remainder: ${group.sum} - ${held} = ${digit}.`
+  // This is subtraction with one unknown, not a choice of homes. Adding notes
+  // cannot change the remainder. Changing a total would replace the given
+  // equation rather than expose another case under it, so there is no break
+  // step with this board fixed.
+  return {
+    ...base, kicker: TECHNIQUES.sum45.label, lens: null,
+    focus: new Set([...unit, ...group.cells, ...group.cageIndices.flatMap(i => base.topo.cages[i].cells)]),
+    band, targets, placement: { cell, digit },
+    steps: [
+      { title: `${cap(U)} adds to 45`, text: `It holds one of each digit from 1 to 9. ${equation}`, hi: { band, pat: group.cells, lit: slotNotes } },
+      {
+        title: 'Subtract what is already written', text: `${equation} The written digits in the remainder add to ${held}.`,
+        askText: `The remainder totals ${group.sum}, and its written digits add to ${held}. Which digits leave ${nm(cell)}? Pick them.`,
+        hi: { band, pat: group.cells, probe: allTargets },
+      },
+      { mode: 'worlds', title: 'Only one way to finish the remainder', text: result },
+      { mode: 'apply', title: `So ${nm(cell)} is ${digit}`, text: result },
+    ],
+    caption: w => `${group.sum} - ${held} = ${w.get(cell)}.`,
+    worldKill: result,
+    intactLine: () => result,
+  }
+}
+
 const FAMILIES = {
+  cageCombo: cageComboLesson,
+  cageSum: cageSumLesson,
+  cageSingle: cageSingleLesson,
+  sum45: sum45Lesson,
+  cageLocked: cageLockedLesson,
   hiddenSingle: single,
   pointing: locked,
   claiming: locked,

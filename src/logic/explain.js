@@ -55,8 +55,8 @@ export function justification(state, cell, digit) {
     }
   }
 
-  // Neither a lone candidate nor a hidden single, so the only way this was
-  // knowable is if the ladder's eliminations make it one.
+  // Neither a lone candidate nor a hidden single. The ladder must either
+  // eliminate the other notes or prove this digit by cage arithmetic.
   //
   // "Sharp" used to be the fallthrough, which meant a digit dropped onto an
   // empty grid was classed as brilliant deduction. A move is only sharp if
@@ -75,7 +75,7 @@ export function justification(state, cell, digit) {
 }
 
 /**
- * The technique whose eliminations first prove this digit belongs in this cell,
+ * The technique whose deduction first proves this digit belongs in this cell,
  * or null if nothing in the ladder does.
  *
  * Candidates have to be re-derived rather than read off the player's own pencil
@@ -94,6 +94,12 @@ function provenBy(state, cell, digit) {
     let changed = false
     for (const key of LADDER) {
       const step = TECHNIQUES[key].fn(work)
+      // A cage single or the 45 rule can prove the requested digit directly.
+      // Skipping placement steps made their hints jump straight to filling it,
+      // with no explanation from which to open the arithmetic lesson.
+      if (step?.placements?.some(p => p.cell === cell && p.digit === digit)) {
+        return { key, step, cands: work.cands.slice() }
+      }
       if (!step?.eliminations?.length) continue
       let did = false
       for (const e of step.eliminations) {

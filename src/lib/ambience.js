@@ -41,6 +41,10 @@ const STALL_MS = 60000
 
 let wanted = false
 let live = null
+// A pad fading out after a stop, and the clean-up that releases the context
+// once it is quiet. Hiding the page runs it at once rather than waiting on a
+// timer a backgrounded page may never fire.
+let fading = null
 let placedAt = []
 let lastPlaced = 0
 
@@ -55,6 +59,7 @@ export function moodAt(times, last, now) {
 const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden'
 
 function sync() {
+  if (!visible() && fading) fading()
   const want = wanted && visible()
   if (want && !live) start()
   else if (!want && live) stop({ now: !visible() })
@@ -191,7 +196,13 @@ function stop({ now = false } = {}) {
   } catch {
     /* Already stopped is stopped. */
   }
+  let finished = false
+  let timer = null
   const done = () => {
+    if (finished) return
+    finished = true
+    clearTimeout(timer)
+    if (fading === done) fading = null
     try {
       for (const v of l.voices) v.osc.disconnect()
       l.master.disconnect()
@@ -205,7 +216,10 @@ function stop({ now = false } = {}) {
   // Hidden means now: a backgrounded page's timers are throttled, and the
   // context must not run on behind a timer that may not fire for a minute.
   if (now) done()
-  else setTimeout(done, (fade + 0.2) * 1000)
+  else {
+    fading = done
+    timer = setTimeout(done, (fade + 0.2) * 1000)
+  }
 }
 
 if (typeof document !== 'undefined') {

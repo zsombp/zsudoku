@@ -26,9 +26,10 @@ export const WORLD_LIMIT = 120
  * The constraints a step's argument rests on.
  *
  * A slot is either `{ cell }`, a cell that must take one of its notes, or
- * `{ digit, cells }`, a digit that must land in one of these cells. Returns null
- * for the cage rungs: their argument is arithmetic over a sum, which placements
- * alone cannot show, and the lesson falls back to the written explanation.
+ * `{ digit, cells }`, a digit that must land in one of these cells. Cell slots
+ * can share a sumGroup: their digits must make its sum, without repeats when
+ * distinct is true. Fixed digits stay in the group so subtraction and the
+ * no-repeat rule use exactly the same cells as the printed cage.
  */
 export function slotsFor(step, topo = CLASSIC) {
   const unit = () => {
@@ -36,6 +37,18 @@ export function slotsFor(step, topo = CLASSIC) {
     return s ? [...s] : null
   }
   switch (step?.technique) {
+    case 'cageCombo':
+    case 'cageSum':
+    case 'cageSingle':
+    case 'cageLocked': {
+      const index = topo.cageOf?.[step.cells[0]]
+      const cage = topo.cages?.[index]
+      return cage ? sumSlots({ ...cage, distinct: true, cageIndex: index }) : null
+    }
+    case 'sum45': {
+      const group = remainderFor(step, topo)
+      return group ? sumSlots(group) : null
+    }
     case 'nakedSingle':
       return [{ cell: step.cells[0] }]
     case 'hiddenSingle':
@@ -90,11 +103,36 @@ export function slotsFor(step, topo = CLASSIC) {
   }
 }
 
+export const sumSlots = group => group.cells.map(cell => ({ cell, sumGroup: group }))
+
+/** Read the 45 equation from the topology, never from the answer on the step. */
+export function remainderFor(step, topo) {
+  const unit = [...(unitCellsOf(topo, step) || [])]
+  if (!topo.cages || unit.length !== 9 || unit.some(c => topo.cageOf[c] < 0)) return null
+  const inside = new Set(unit)
+  const touching = [...new Set(unit.map(c => topo.cageOf[c]))]
+  const innie = inside.has(step.cells[0])
+  const indices = innie
+    ? touching.filter(i => topo.cages[i].cells.every(c => inside.has(c)))
+    : touching
+  const covered = new Set(indices.flatMap(i => topo.cages[i].cells))
+  const total = indices.reduce((n, i) => n + topo.cages[i].sum, 0)
+  return {
+    cells: innie ? unit.filter(c => !covered.has(c)) : [...covered].filter(c => !inside.has(c)),
+    sum: innie ? 45 - total : total - 45,
+    // Spillover cells need not see each other and can repeat across cages.
+    distinct: innie,
+    innie,
+    total,
+    cageIndices: indices,
+  }
+}
+
 /** What each slot could be, read off the candidates every time. */
 export function optionsOf(slots, board, cands) {
   return slots.map(s =>
     s.cell != null
-      ? marksToList(cands[s.cell]).map(d => [s.cell, d])
+      ? (board[s.cell] ? [board[s.cell]] : marksToList(cands[s.cell])).map(d => [s.cell, d])
       : s.cells.filter(c => board[c] === 0 && hasMark(cands[c], s.digit)).map(c => [c, s.digit])
   )
 }
@@ -120,10 +158,34 @@ function seer(topo) {
 export function worldsOf(slots, board, cands, topo = CLASSIC, { limit = WORLD_LIMIT } = {}) {
   const sees = seer(topo)
   const opts = optionsOf(slots, board, cands)
+  const groups = [...new Set(slots.map(s => s.sumGroup).filter(Boolean))]
+  const cellOptions = new Map(slots.flatMap((s, i) => s.cell != null ? [[s.cell, opts[i].map(([, d]) => d)]] : []))
   const out = []
   const seen = new Set()
   const place = new Map()
   let truncated = false
+
+  // Reject an impossible partial total before visiting its permutations. The
+  // bounds can be loose, but never exclude a way of making the sum.
+  const sumsFit = () => groups.every(g => {
+    let sum = 0, low = 0, high = 0
+    const used = new Set()
+    for (const c of g.cells) {
+      if (!place.has(c)) continue
+      const d = place.get(c)
+      if (g.distinct && used.has(d)) return false
+      used.add(d)
+      sum += d
+    }
+    for (const c of g.cells) {
+      if (place.has(c)) continue
+      const ds = (cellOptions.get(c) || []).filter(d => !g.distinct || !used.has(d))
+      if (!ds.length) return false
+      low += Math.min(...ds)
+      high += Math.max(...ds)
+    }
+    return sum + low <= g.sum && sum + high >= g.sum
+  })
 
   const fits = (c, d) => {
     if (place.has(c)) return place.get(c) === d
@@ -131,13 +193,11 @@ export function worldsOf(slots, board, cands, topo = CLASSIC, { limit = WORLD_LI
     return true
   }
   const rec = i => {
-    if (out.length >= limit) {
-      truncated = true
-      return
-    }
+    if (truncated || !sumsFit()) return
     if (i === opts.length) {
       const key = [...place].sort((a, b) => a[0] - b[0]).map(p => p.join(':')).join(',')
       if (!seen.has(key)) {
+        if (out.length >= limit) { truncated = true; return }
         seen.add(key)
         out.push(new Map(place))
       }
