@@ -2,7 +2,7 @@
 
 Newest first.
 
-## Unreleased
+## v4.2.0 - 2026-11-02 - killer drills, a short session puzzle, a weekly review
 
 ### Ambience per theme
 
@@ -77,6 +77,16 @@ All 15 cage decks were full. Classic pointing at the same seeds took 1579 to
 9268ms. These are local Node measurements, with the test runner also active.
 833 tests pass; the production build passes. Drill taps and cage spacing need
 browser verification.
+
+All five were built by Codex in its own worktree, one commit each, then checked
+here in the browser: a killer deck dealt eight cage-sum cards with cages and
+totals drawn; the session's last step opened a 29-cell finish-from-here
+position labelled "Session puzzle", and a four-second finish set no best time;
+statistics, settings and practice load on demand; the weekly review opens and
+says plainly when a week is too thin for a trend. Its copy was tidied after
+that check: counts take the right noun ("1 game", not "1 games"), dates read
+"26 Oct", and pattern names that start a line are capitalised.
+
 
 ## v4.1.0 - 2026-11-02 - killer cage lessons
 
