@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, Suspense } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, Suspense, lazy, startTransition } from 'react'
 import Board from './components/Board.jsx'
 import NumberPad from './components/NumberPad.jsx'
 import HandwritingPad from './components/HandwritingPad.jsx'
@@ -10,8 +10,6 @@ import NewGameSheet from './components/NewGameSheet.jsx'
 import { recordKey } from './components/NewGameSheet.jsx'
 import HintSummary from './components/HintSummary.jsx'
 import { Moon, Sun, Play, Plus, Trophy, Sparkles, Chart } from './components/Icons.jsx'
-import StatsView from './components/StatsView.jsx'
-import GameReview from './components/GameReview.jsx'
 import * as gameLog from './lib/gameLog.js'
 import * as backup from './lib/backup.js'
 import * as experiments from './stats/experiments.js'
@@ -34,12 +32,9 @@ import { progressOf, raceState } from './stats/ghost.js'
 import { KEYS, slotFor, getSync, set, requestPersistence } from './lib/storage.js'
 import { fmtMs } from './lib/format.js'
 import { dailyPlan, weekdayName, dailyStreak } from './logic/daily.js'
-import SettingsView from './components/SettingsView.jsx'
 import { Gear, Home } from './components/Icons.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import ThemeMenu from './components/ThemeMenu.jsx'
-import PracticeView from './components/PracticeView.jsx'
-import Flashcards from './components/Flashcards.jsx'
 import { Lesson, lessons, moments, bank } from './components/lazyLesson.js'
 import { useSession } from './hooks/useSession.js'
 import { nextStage, isComplete, isStale, sessionStreak, SESSION_CARDS } from './stats/session.js'
@@ -49,7 +44,19 @@ import * as ambience from './lib/ambience.js'
 import Companion from './components/Companion.jsx'
 import { PLAIN, shortcutLine } from './logic/shortcuts.js'
 
+const StatsView = lazy(() => import('./components/StatsView.jsx'))
+const GameReview = lazy(() => import('./components/GameReview.jsx'))
+const SettingsView = lazy(() => import('./components/SettingsView.jsx'))
+const PracticeView = lazy(() => import('./components/PracticeView.jsx'))
+const Flashcards = lazy(() => import('./components/Flashcards.jsx'))
+
 export default function App() {
+  // Navigation is a transition, so a lazy screen keeps the current screen
+  // visible until it is ready. Home and the game never suspend on first paint.
+  return <Suspense fallback={null}><AppContent /></Suspense>
+}
+
+function AppContent() {
   const [state, rawDispatch] = useReducer(gameReducer, initialState)
   const [settings, updateSettings] = useSettings()
   const settingsRef = useRef(settings)
@@ -69,7 +76,7 @@ export default function App() {
   // because "playing" only meant "not paused". Leaving the tab was already
   // handled; leaving the game screen was not.
   const [view, setViewRaw] = useState('home')
-  const setView = setViewRaw
+  const setView = useCallback(next => startTransition(() => setViewRaw(next)), [])
   const timer = useTimer(state.status === 'playing' && view === 'game', 0)
   const generator = useGenerator()
 

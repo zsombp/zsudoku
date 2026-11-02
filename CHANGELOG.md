@@ -4,6 +4,20 @@ Newest first.
 
 ## Unreleased
 
+### Faster cold start
+
+Statistics, review, settings, practice and drills load through React.lazy.
+Navigation is a transition under a shared Suspense boundary, keeping the
+current screen until the destination is ready. Theme metadata moved out of
+SettingsView so the header picker no longer pulls settings into first paint.
+
+Vite's main chunk fell from 487.66kB (154.50kB gzip) to 372.09kB (119.50kB gzip),
+23.7% smaller before compression. The generated service worker contains all
+18 JavaScript and CSS assets, including the worker and lazy chunks; 38 total
+precache entries. scripts/check-precache.mjs checks this against the build.
+842 tests and the production build pass. Offline navigation and the absence
+of a transition flash still need a browser check.
+
 ### Short session puzzles
 
 The session's third step starts from a real prefix of a generated practice

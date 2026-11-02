@@ -6,14 +6,7 @@ import BackupSettings from './BackupSettings.jsx'
 import * as experiments from '../stats/experiments.js'
 import { Term, TermGroup } from './Term.jsx'
 
-export const THEMES = [
-  { id: 'ink', name: 'Ink & Brass', desc: 'The original. Deep blue, warm brass.' },
-  { id: 'paper', name: 'Paper', desc: 'Clean and bright for daylight.' },
-  { id: 'midnight', name: 'Midnight', desc: 'True black and ice, gentle on OLED.' },
-  { id: 'nord', name: 'Nord', desc: 'Muted arctic blue-greys, soft frost.' },
-  { id: 'newsprint', name: 'Newsprint', desc: 'Warm cream and red ink.' },
-  { id: 'contrast', name: 'High Contrast', desc: 'Maximum legibility, black on white.' },
-]
+import { THEMES } from '../lib/themes.js'
 
 function Row({ label, hint, note, children }) {
   return (

@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        // The whole app is 320KB, so precache all of it. Offline is the point,
+        // Precache every lazy screen as well as the entry. Offline is the point,
         // and there is no runtime caching to reason about because the app makes
         // no network requests at all once it is loaded.
         globPatterns: ['**/*.{js,css,html,woff,woff2,png,svg,webmanifest}'],

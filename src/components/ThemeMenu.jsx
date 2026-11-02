@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Moon, Sun } from './Icons.jsx'
-import { THEMES } from './SettingsView.jsx'
+import { THEMES } from '../lib/themes.js'
 
 const LIGHT = new Set(['paper', 'newsprint', 'contrast'])
 

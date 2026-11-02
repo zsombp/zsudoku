@@ -2128,3 +2128,13 @@ day survive saves and records; a shortened puzzle only finishes its own day's
 step. Full practice still credits today's matching pattern as before.
 These games remain curriculum evidence but cannot set best times or enter tier
 time comparisons. Full practice games keep their existing behaviour.
+
+
+### Screen loading keeps the previous screen visible
+
+2026-11-02. Secondary screens are lazy imports under one Suspense boundary.
+Navigation uses React transitions, so loading a chunk retains the current
+screen rather than painting an empty fallback. Home and game remain eager.
+Theme metadata is independent of SettingsView to avoid pulling that screen
+back into the entry. Every emitted JavaScript and CSS asset must be present in
+the generated precache, checked from the actual build rather than the config.
