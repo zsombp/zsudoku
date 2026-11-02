@@ -2,6 +2,10 @@
 #
 # Deliberately boring: no caching beyond npm's, no matrix, no extra actions.
 # This is a personal project and every moving part here is a future chore.
+#
+# Actions follow major tags, not commit SHAs, so patch releases arrive without
+# an update bot, and the runner stays on ubuntu-latest. Both are decisions:
+# see "The deploy follows moving labels" in docs/DECISIONS.md.
 
 name: Deploy
 
@@ -23,8 +27,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -33,7 +37,7 @@ jobs:
       # should reach the phone.
       - run: npm test
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
@@ -45,4 +49,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

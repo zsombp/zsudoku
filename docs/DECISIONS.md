@@ -1990,3 +1990,41 @@ lessons. Nothing the grader reads changed, and 28 puzzles at fixed seeds across
 five boards graded byte identical before and after. The stamp moved anyway,
 because the rule is that a technique change moves it, and a rule with
 exceptions argued case by case is no rule.
+
+### The deploy follows moving labels
+
+Decided on 2026-11-02, after v3.4.0. No version and no CHANGELOG entry: the app
+is built and published exactly as before.
+
+The v3.4.0 deploy passed with two kinds of warning. `upload-pages-artifact@v4`
+calls an upload-artifact built for Node 20, and `deploy-pages@v4` is itself a
+Node 20 action, so GitHub was forcing both onto Node 24. And `ubuntu-latest` is
+moving to Ubuntu 26.04. The actions went to `checkout@v7`, `setup-node@v7`,
+`upload-pages-artifact@v5` and `deploy-pages@v5`, all built for Node 24.
+Checkout and setup-node were already on Node 24 at v5 and moved anyway, because
+the breaking changes on the way (credentials persisted to a separate file, fork
+checkouts blocked on `pull_request_target`, automatic caching limited to npm, no
+placeholder `NODE_AUTH_TOKEN`) touch nothing this workflow does. The Pages
+artifact is the same tar: v5 swaps the upload-artifact it calls, v4.6.2 for
+v7.0.0, and its new `include-hidden-files` input defaults to the old behaviour.
+The app is still built on Node 22, which is a separate question from the Node
+the actions run on.
+
+They stay on major tags, not commit SHAs. A SHA never moves, so every patch has
+to be bumped by hand or by a bot, and update bots are ruled out by what this
+project is for. Checkout backported its fixes to every major line on 2026-07-20,
+and the v3.4.0 run was already on v5.1.0 without a commit here. The price is
+trusting a tag that could be moved, and all four are GitHub's own: the same
+company runs the runner and hosts the site, so trusting its tags adds little to
+the trust the deploy already places in it.
+
+The runner stays on `ubuntu-latest`. The v3.4.0 run had already landed on
+`ubuntu-26.04` (image 20261025.179.1) and passed tests, build and deploy there.
+The build depends on the Node that `setup-node` installs and on the lockfile,
+not on the OS. A pinned label comes with a retirement date, and the day it
+arrives the deploy stops until someone edits this file. The notice is GitHub
+announcing a migration it plans to finish by November 19, 2026.
+
+Rules out: SHA pins without an update bot, pinning `ubuntu-24.04` to quiet a
+notice, and pinning a runner label for any reason the build itself does not
+give.
