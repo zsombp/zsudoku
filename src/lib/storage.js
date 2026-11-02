@@ -24,6 +24,7 @@ export const KEYS = {
   drills: `${NS}.drills.v1`,
   // Today's practice session: which pattern, and which stages are done.
   session: `${NS}.session.v1`,
+  weeklyReview: `${NS}.weeklyReview.v1`,
 }
 
 export const slotFor = mode => (mode === 'daily' ? KEYS.daily : KEYS.game)

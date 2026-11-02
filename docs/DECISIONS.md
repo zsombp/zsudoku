@@ -2138,3 +2138,15 @@ screen rather than painting an empty fallback. Home and game remain eager.
 Theme metadata is independent of SettingsView to avoid pulling that screen
 back into the entry. Every emitted JavaScript and CSS asset must be present in
 the generated precache, checked from the actual build rather than the config.
+
+
+### Weekly reviews compare retained history at two times
+
+2026-11-02. The review covers a rolling seven-day window by recorded end time,
+including abandoned games but excluding games still in progress. Strength
+comparisons run the same curriculum twice, filtering both games and decks at
+the cutoff; first evidence is labelled new, not improvement from zero. Spotting
+times compare first and last timed decks of the same pattern, using correct
+cards only and printing both sample sizes. Fewer than three games and decks
+combined is too little for trend claims. Opening or dismissing the card starts
+a seven-day local wait, with no cloud state or background polling.

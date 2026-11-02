@@ -44,6 +44,7 @@ import * as ambience from './lib/ambience.js'
 import Companion from './components/Companion.jsx'
 import { PLAIN, shortcutLine } from './logic/shortcuts.js'
 
+const WeeklyReview = lazy(() => import('./components/WeeklyReview.jsx'))
 const StatsView = lazy(() => import('./components/StatsView.jsx'))
 const GameReview = lazy(() => import('./components/GameReview.jsx'))
 const SettingsView = lazy(() => import('./components/SettingsView.jsx'))
@@ -66,6 +67,7 @@ function AppContent() {
   const [newRecord, setNewRecord] = useState(false)
   // The record for the game that just ended, so the review can open straight
   // from the end screen instead of being hunted for in the statistics tab.
+  const [weekly, setWeekly] = useState(null)
   const [lastGame, setLastGame] = useState(null)
   const [confirmQuit, setConfirmQuit] = useState(false)
   const [genError, setGenError] = useState(null)
@@ -1108,6 +1110,10 @@ function AppContent() {
     )
   }
 
+  if (view === 'weekly' && weekly) {
+    return <div className="app wide"><WeeklyReview {...weekly} onClose={() => setView('home')} /></div>
+  }
+
   if (view === 'practice') {
     return (
       <div className="app wide">
@@ -1164,6 +1170,7 @@ function AppContent() {
               : null
           }
           daily={dailyInfo}
+          onWeeklyReview={data => { setWeekly(data); setView('weekly') }}
           session={session}
           sessionBusy={practicing}
           sessionError={genError}

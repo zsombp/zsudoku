@@ -6,6 +6,9 @@ import * as compute from '../stats/compute.js'
 import { dailyStreak } from '../logic/daily.js'
 import { VARIANTS } from '../logic/variants.js'
 import { TierEmblem } from './Emblems.jsx'
+import { weeklyDue, WEEK_MS } from '../stats/weekly.js'
+import { KEYS, getSync, set } from '../lib/storage.js'
+import { allDrills } from '../lib/drillLog.js'
 import SessionCard from './SessionCard.jsx'
 
 const boardName = id => (id && id !== 'classic' ? ` · ${VARIANTS[id]?.name}` : '')
@@ -24,11 +27,29 @@ import { Term, TermButton, TermGroup, termLabel } from './Term.jsx'
  * the front door: what is in progress, what today's puzzle is, how you are
  * doing, and every way in.
  */
-export default function Dashboard({ handoff, inProgress, daily, session, sessionBusy, sessionError, onSession, onSkipPuzzle, records, variant = 'classic', theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice, onTailored }) {
+export default function Dashboard({ handoff, inProgress, daily, session, sessionBusy, sessionError, onSession, onSkipPuzzle, records, variant = 'classic', theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice, onTailored, onWeeklyReview }) {
   const [summary, setSummary] = useState(null)
+  const [games, setGames] = useState(null)
+  const [handledAt, setHandledAt] = useState(() => getSync(KEYS.weeklyReview))
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') setNow(Date.now()) }
+    document.addEventListener('visibilitychange', refresh)
+    // One wakeup when due also covers a home screen left open all week.
+    const remaining = Math.max(0, (handledAt || 0) + WEEK_MS - Date.now())
+    const timer = remaining ? setTimeout(() => setNow(Date.now()), remaining) : null
+    return () => { document.removeEventListener('visibilitychange', refresh); clearTimeout(timer) }
+  }, [handledAt])
+  const handleWeek = open => {
+    const at = Date.now()
+    set(KEYS.weeklyReview, at)
+    setHandledAt(at)
+    if (open) onWeeklyReview({ games, drills: allDrills(), history: session?.history || [], now: at })
+  }
 
   useEffect(() => {
     gameLog.all().then(games => {
+      setGames(games)
       // Surface the pattern that stops you most, so the practice card says
       // something specific rather than advertising a feature. Read off what
       // the positions needed, not off the label of the single a hint filled in.
@@ -128,6 +149,16 @@ export default function Dashboard({ handoff, inProgress, daily, session, session
             </span>
             {daily.done && <span className="cardGo done"><Trophy size={16} /></span>}
           </button>
+
+          {games && onWeeklyReview && weeklyDue(handledAt, now) && <div className="card">
+            <span className="cardKicker">Weekly review</span>
+            <span className="cardTitle">Last seven days</span>
+            <span className="cardMeta">Your recorded games, patterns and drills on this device.</span>
+            <div className="dataRow">
+              <button className="newBtn" onClick={() => handleWeek(true)}>Review the week</button>
+              <button className="linkBtn" onClick={() => handleWeek(false)}>Dismiss for a week</button>
+            </div>
+          </div>}
 
           {/* Today's ten minutes of practice, decided for you from the same
               schedule the practice screen shows. */}

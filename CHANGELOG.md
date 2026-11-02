@@ -4,6 +4,22 @@ Newest first.
 
 ## Unreleased
 
+### Weekly review
+
+A home card opens a review of the last seven days: recorded games played and
+finished, clean finishes, stuck moments by the pattern needed, changes in
+curriculum strength, decks and within-pattern spotting times, and the session
+streak. Strengths are reconstructed from retained history on both sides of the
+cutoff, including drills. Newly encountered patterns have no invented prior
+strength. Every comparison prints its samples; weeks with fewer than three
+games and decks combined show counts and stuck moments without trend claims.
+Opening or dismissing the card hides it locally for seven days.
+
+Pure summary over 1000 synthetic games and 800 decks, 20 runs: median 1.53ms,
+maximum 7.70ms. 854 tests and the production build pass; all emitted JS/CSS
+chunks remain precached. Card dismissal, layout and navigation need a visual
+check on a device.
+
 ### Faster cold start
 
 Statistics, review, settings, practice and drills load through React.lazy.
