@@ -668,7 +668,7 @@ const WRITTEN = {
   session: {
     label: "Today's session",
     definition:
-      'One pattern a day, picked from your schedule: a lesson on it, five drill cards, then one puzzle that needs it, and the day counts once the cards are done.',
+      'One pattern a day from your schedule: a lesson, five cards and a finish-from-here puzzle, which you can put off after the lesson and cards to complete the day.',
   },
   lesson: {
     label: 'Lesson',

@@ -2115,3 +2115,16 @@ one tier-shaping attempt. A deterministic 2000-node limit abandons expensive
 uniqueness searches without returning a partial solution count. Full-game
 layout generation keeps its existing defaults. The saved cage list, rather
 than regeneration from the seed, is the drill and lesson's topology.
+
+
+### Session time is not a full-puzzle time
+
+2026-11-02. Session puzzles are solve prefixes with all earlier digits given.
+Adding correct givens preserves uniqueness, but can erase an elimination, so
+fresh-candidate regrading must still use the selected pattern. Size is a target,
+not a claim: prefer 25 to 40 empties, accept 20 to 45, otherwise fail the search.
+The actual starting count is printed on the game screen. Session identity and
+day survive saves and records; a shortened puzzle only finishes its own day's
+step. Full practice still credits today's matching pattern as before.
+These games remain curriculum evidence but cannot set best times or enter tier
+time comparisons. Full practice games keep their existing behaviour.

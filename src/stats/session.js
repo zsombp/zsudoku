@@ -5,8 +5,8 @@
 // what to practise before you have practised anything. This decides once a
 // day, from the same schedule the practice screen shows, and walks the three
 // ways in in the order they are worth doing: a lesson on the pattern (the last
-// position it stopped you in, when there is one), five drill cards, and the
-// shortest puzzle the generator can find that needs it.
+// position it stopped you in, when there is one), five drill cards, and
+// a finish-from-here position that still needs it.
 //
 // The pattern is fixed for the day once picked. A finished deck moves the
 // schedule, and a session that changed its subject halfway through because its
@@ -132,9 +132,8 @@ export const nextStage = session => STAGES.find(s => !session?.stages?.[s]) || n
 
 /**
  * A day counts once the lesson and the deck are done and the puzzle is done or
- * put off. The puzzle can be skipped because it is the long step and a
- * weeknight does not always have twenty minutes in it. The deck cannot: five
- * cards against the clock is the part that builds recognition, and a session
+ * put off. Even a shortened puzzle can be put off when time is short. The deck
+ * cannot: five cards against the clock is the part that builds recognition, and a session
  * without it is a lesson you read.
  */
 export const isComplete = session =>
@@ -177,4 +176,4 @@ export function sessionStreak(history, now = Date.now()) {
 }
 
 /** What the card says about each step. */
-export const STAGE_LABEL = { lesson: 'Lesson', drill: `${SESSION_CARDS} cards`, puzzle: 'One puzzle' }
+export const STAGE_LABEL = { lesson: 'Lesson', drill: `${SESSION_CARDS} cards`, puzzle: 'Finish from here' }

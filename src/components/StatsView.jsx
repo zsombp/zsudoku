@@ -213,7 +213,7 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
             value={shortDuration(o.totalMs)}
             sub={`${o.daysPlayed} ${o.daysPlayed === 1 ? 'day' : 'days'}`}
           />
-          <StatTile term="medianSolve" value={fmtMs(o.medianMs)} sub={`fastest ${fmtMs(o.fastest)}`} />
+          <StatTile term="medianSolve" value={fmtMs(o.medianMs)} sub={`${o.timedCompleted} full solves; fastest ${fmtMs(o.fastest)}`} />
           {/* "Mistakes / per solve" split a label across a label and a subtext.
               The glossary calls it one thing, so the tile does too. */}
           <StatTile term="mistakesPerSolve" value={o.mistakesPerGame.toFixed(1)} />
@@ -308,7 +308,7 @@ export default function StatsView({ onClose, onPractice, leagueName, onLeagueNam
         <div className="gameList">
           {[...games].reverse().slice(0, 12).map(g => (
             <button className="gameRow" key={g.id} onClick={() => setReviewing(g)}>
-              <span className="grTier">{g.graded}</span>
+              <span className="grTier">{g.sessionPuzzle ? 'Session puzzle' : g.graded}</span>
               <span className="grMeta">
                 {new Date(g.endedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 {/* Which board, when there is more than one kind in the list. */}

@@ -4,6 +4,22 @@ Newest first.
 
 ## Unreleased
 
+### Short session puzzles
+
+The session's third step starts from a real prefix of a generated practice
+solve. Fresh candidates are regraded before accepting it: the ladder must
+still finish and still use the requested pattern. Aim is 25 to 40 empty cells;
+a nearest miss can have 20 to 45, and a search outside that range fails openly.
+All earlier placements become givens. Full practice puzzles stay full.
+
+At seed 1234, hidden single, pointing, naked pair and XY-Wing produced 33, 28,
+31 and 40 empty cells in 22, 195, 821 and 97ms. X-Wing took 10.0s for a 43-cell
+fallback; results depend on the search budget. Tests prove unique solutions,
+real solve prefixes and retained patterns. The session marker survives resume
+and recorded results, keeps curriculum evidence, and excludes records, tier
+times, speed badges and experiment time baselines. The game, win and history
+screens name the session puzzle. 842 tests and the production build pass.
+
 ### Killer drill cards
 
 All five cage rungs deal generated killer positions, carry their cages into

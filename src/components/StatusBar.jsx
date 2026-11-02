@@ -4,11 +4,11 @@ import { TECHNIQUES } from '../logic/techniques.js'
 import { Term, TermGroup } from './Term.jsx'
 import { techniqueTerm, tierTerm } from '../logic/glossary.js'
 
-export default function StatusBar({ graded, tech, requested, hardest, ms, paused, canPause, onTogglePause }) {
+export default function StatusBar({ sessionPuzzle = false, graded, tech, requested, hardest, ms, paused, canPause, onTogglePause }) {
   // The label is always the grader's verdict on this puzzle. When it disagrees
   // with what was asked for, say so out loud: quietly showing the requested
   // tier instead would be the exact lie this engine exists to avoid.
-  const mismatched = requested && requested !== graded
+  const mismatched = !sessionPuzzle && requested && requested !== graded
 
   return (
     /* No standing prompt here, unlike the statistics screens. This row sits
@@ -21,7 +21,7 @@ export default function StatusBar({ graded, tech, requested, hardest, ms, paused
         {/* Three words, and all three are the grader's rather than yours: the
             tier it decided on, the hardest rung it needed, and, when they
             differ, the tier you asked for. */}
-        <b><Term id={tierTerm(graded)}>{graded}</Term></b>
+        <b>{sessionPuzzle ? 'Session puzzle' : <Term id={tierTerm(graded)}>{graded}</Term>}</b>
         <span className="tech">
           {hardest
             ? <Term id={techniqueTerm(hardest)}>{TECHNIQUES[hardest].label}</Term>

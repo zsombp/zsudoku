@@ -37,11 +37,11 @@ export function useGenerator() {
   }, [])
 
   const generate = useCallback(
-    (tier, seed, practice, variant = 'classic', tailored = null, cards = null, count = undefined) =>
+    (tier, seed, practice, variant = 'classic', tailored = null, cards = null, count = undefined, sessionPattern = null) =>
       new Promise((resolve, reject) => {
         const id = nextIdRef.current++
         pendingRef.current.set(id, { resolve, reject })
-        ensureWorker().postMessage({ id, tier, seed, practice, variant, tailored, cards, count })
+        ensureWorker().postMessage({ id, tier, seed, practice, variant, tailored, cards, count, sessionPattern })
       }),
     [ensureWorker]
   )
@@ -57,6 +57,11 @@ export function useGenerator() {
    *  the worker: a rare rung can take ten seconds to find eight of. */
   const deck = useCallback(
     (technique, { count } = {}) => generate(null, undefined, null, CAGE_TECHNIQUES.includes(technique) ? 'killer' : 'classic', null, technique, count),
+    [generate]
+  )
+
+  const sessionPuzzle = useCallback(
+    technique => generate(null, undefined, null, 'classic', null, null, undefined, technique),
     [generate]
   )
 
@@ -102,7 +107,7 @@ export function useGenerator() {
   // that lists the generator as a dependency re-run on every render, which in
   // App means startNew is rebuilt constantly and effects keyed on it loop.
   return useMemo(
-    () => ({ request, prefetch, practice, tailored, deck }),
-    [request, prefetch, practice, tailored, deck]
+    () => ({ request, prefetch, practice, tailored, deck, sessionPuzzle }),
+    [request, prefetch, practice, tailored, deck, sessionPuzzle]
   )
 }

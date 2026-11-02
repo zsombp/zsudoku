@@ -37,6 +37,8 @@ export const initialState = {
   // The technique this puzzle was generated to require, when it came from
   // practice mode rather than a tier.
   practice: null,
+  sessionPuzzle: false,
+  sessionDay: null,
   // { id, arm } when this game is one half of a running experiment. Fixed when
   // the game starts: an assist changed halfway through would make the game
   // belong to neither arm.
@@ -291,6 +293,8 @@ function reduce(state, action) {
         // `mode`, which decides the save slot: a drill is still a casual game
         // as far as storage is concerned.
         practice: action.practice || null,
+        sessionPuzzle: Boolean(made.sessionPuzzle),
+        sessionDay: action.sessionDay || null,
         experiment: action.experiment || null,
         variant: action.made.variant || 'classic',
         regions: action.made.regions || null,
@@ -335,6 +339,8 @@ function reduce(state, action) {
         graded: s.graded || LEGACY_LEVEL_NAME[s.level] || 'Medium',
         mode: s.mode || 'casual',
         practice: s.practice || null,
+        sessionPuzzle: Boolean(s.sessionPuzzle),
+        sessionDay: s.sessionDay || null,
         experiment: s.experiment || null,
         variant: s.variant || 'classic',
         regions: s.regions || null,

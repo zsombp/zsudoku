@@ -7,8 +7,7 @@ import { TechGlyph } from './Glyphs.jsx'
  * one button for whichever comes next.
  *
  * Not a button itself, unlike the cards around it, because it holds two: the
- * next step, and putting the puzzle off when the evening has no twenty minutes
- * in it.
+ * next step, and putting the puzzle off when time is short.
  */
 export default function SessionCard({ session, busy, error, replacesGame, onGo, onSkipPuzzle }) {
   if (!session || !TECHNIQUES[session.technique]) return null
@@ -35,7 +34,7 @@ export default function SessionCard({ session, busy, error, replacesGame, onGo, 
       ? 'Start with the lesson'
       : next === 'drill'
         ? 'Next: five cards'
-        : 'Next: one puzzle'
+        : 'Next: finish from here'
 
   return (
     <div className={'card cardSession' + (next ? '' : ' isDone')}>

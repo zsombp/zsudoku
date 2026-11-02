@@ -181,6 +181,8 @@ export default function App() {
       regions: s.regions,
       cages: s.cages,
       practice: s.practice,
+      sessionPuzzle: s.sessionPuzzle,
+      sessionDay: s.sessionDay,
       experiment: s.experiment,
       dayKey: s.dayKey,
       score: s.score,
@@ -266,6 +268,8 @@ export default function App() {
         mode: s.mode,
         dayKey: s.dayKey,
         practice: s.practice,
+        sessionPuzzle: s.sessionPuzzle,
+        sessionDay: s.sessionDay,
         moveLog: s.moveLog,
         mistakes: s.mistakes,
         hints: s.hints,
@@ -406,7 +410,7 @@ export default function App() {
         p.deck.catch(() => {})
       }
       if (!p.puzzle && !s.stages.puzzle) {
-        p.puzzle = generator.practice(s.technique, 'classic')
+        p.puzzle = generator.sessionPuzzle(s.technique)
         p.puzzle.catch(() => {})
       }
       sessionPrep.current = p
@@ -453,7 +457,7 @@ export default function App() {
         try {
           made = await p.puzzle
         } catch {
-          made = await generator.practice(s.technique, 'classic')
+          made = await generator.sessionPuzzle(s.technique)
         }
         p.puzzle = null
         // Only once the puzzle is in hand, so a failed search never costs the
@@ -461,7 +465,7 @@ export default function App() {
         recordAbandon()
         updateSettings({ lastMode: 'casual' })
         timerRef.current.reset(0)
-        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual', practice: s.technique })
+        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual', practice: s.technique, sessionDay: s.day })
         setView('game')
       } catch (err) {
         setGenError(String(err.message || err))
@@ -920,15 +924,17 @@ export default function App() {
     })
     gameLog.saveRecord(rec).then(pushBackup)
     setLastGame(rec)
-    // A practice puzzle on today's pattern is today's third step, wherever it
-    // was started from.
-    if (stateRef.current.practice && getSync(KEYS.session)?.technique === stateRef.current.practice) {
+    // Full practice keeps its existing credit for today's matching pattern.
+    // A shortened saved session belongs only to the day that requested it.
+    const played = stateRef.current
+    const todaySession = getSync(KEYS.session)
+    if (played.practice && todaySession?.technique === played.practice && (!played.sessionPuzzle || todaySession?.day === played.sessionDay)) {
       markStage('puzzle')
     }
 
     const key = recordKey(stateRef.current.variant || 'classic', label)
     const prev = records[key]
-    if (prev === undefined || ms < prev) {
+    if (!stateRef.current.sessionPuzzle && (prev === undefined || ms < prev)) {
       const next = { ...records, [key]: ms }
       setRecords(next)
       set(KEYS.records, next)
@@ -1142,7 +1148,7 @@ export default function App() {
             state.board && (state.status === 'playing' || state.status === 'paused')
               ? {
                   mode: state.mode,
-                  graded: label,
+                  graded: state.sessionPuzzle ? 'Session puzzle' : label,
                   variant: state.variant,
                   tech,
                   elapsedMs: timer.ms,
@@ -1193,6 +1199,7 @@ export default function App() {
       <div className="play">
       <div className="playMain">
       <StatusBar
+        sessionPuzzle={state.sessionPuzzle}
         graded={label}
         tech={tech}
         requested={state.requested}
@@ -1202,6 +1209,10 @@ export default function App() {
         canPause={Boolean(state.board) && !won && !lost && !generating}
         onTogglePause={() => dispatch({ type: 'togglePause' })}
       />
+
+      {state.sessionPuzzle && <p className="dataNote">
+        Finish from here: {81 - state.clues} empty cells at the start. This time does not count toward tier records.
+      </p>}
 
       {/* Between the clock and the board, because it is about the clock. One
           line, and gone the moment you close it. */}
@@ -1254,7 +1265,7 @@ export default function App() {
           <div className="veil lost">
             <div className="lostTitle">Gave up</div>
             <div className="winSub">
-              {label} · {tech} · {fmtMs(timer.ms)}
+              {state.sessionPuzzle ? 'Session puzzle' : label} · {tech} · {fmtMs(timer.ms)}
             </div>
             <div className="lostBody">
               The rest of the grid is filled in below. It counts as a loss, which
@@ -1281,15 +1292,15 @@ export default function App() {
             <Trophy size={34} className="trophy" />
             <div className="winTime">{fmtMs(timer.ms)}</div>
             <div className="winSub">
-              {label} · {tech}
-              {newRecord
+              {state.sessionPuzzle ? 'Session puzzle' : label} · {tech}
+              {state.sessionPuzzle ? '' : newRecord
                 ? ' · new best!'
                 : records[recordKey(state.variant || 'classic', label)] !== undefined
                   ? ` · best ${fmtMs(records[recordKey(state.variant || 'classic', label)])}`
                   : ''}
             </div>
             <HintSummary hintLog={state.hintLog} mistakes={state.mistakes} />
-            {state.practice && session?.technique === state.practice && isComplete(session) && (
+            {state.practice && (!state.sessionPuzzle || session?.day === state.sessionDay) && session?.technique === state.practice && isComplete(session) && (
               <div className="winSession">
                 Today's session is done
                 {sessionStreak(session.history) > 1 ? `, ${sessionStreak(session.history)} days running` : ''}.

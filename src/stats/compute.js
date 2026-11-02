@@ -33,12 +33,13 @@ const dayNumber = ts => {
 
 export function overview(games) {
   const done = games.filter(g => g.completed)
-  const durations = done.map(g => g.durationMs)
+  const durations = done.filter(g => !g.sessionPuzzle).map(g => g.durationMs)
   return {
     played: games.length,
     completed: done.length,
     winRate: games.length ? done.length / games.length : 0,
     totalMs: games.reduce((a, g) => a + g.durationMs, 0),
+    timedCompleted: durations.length,
     fastest: durations.length ? Math.min(...durations) : 0,
     medianMs: median(durations),
     mistakesPerGame: done.length ? done.reduce((a, g) => a + g.mistakes, 0) / done.length : 0,
@@ -83,7 +84,7 @@ export function streaks(games, now = Date.now()) {
 
 export function byTier(games) {
   return TIERS.map(tier => {
-    const played = games.filter(g => g.graded === tier.name)
+    const played = games.filter(g => !g.sessionPuzzle && g.graded === tier.name)
     const done = played.filter(g => g.completed)
     const times = done.map(g => g.durationMs)
     const recent = done.slice(-10)
@@ -376,7 +377,7 @@ export function tilt(games, { windowMs = 300000 } = {}) {
  * enough games on both sides are counted.
  */
 export function improvement(games) {
-  const done = games.filter(g => g.completed).sort((a, b) => a.endedAt - b.endedAt)
+  const done = games.filter(g => g.completed && !g.sessionPuzzle).sort((a, b) => a.endedAt - b.endedAt)
   if (done.length < 20) return null
 
   const byTierName = {}

@@ -32,7 +32,7 @@ export function achievements(games) {
   const daily = dailyStreak(games)
 
   const fastest = tier => {
-    const times = finished.filter(g => g.graded === tier).map(g => g.durationMs)
+    const times = finished.filter(g => !g.sessionPuzzle && g.graded === tier).map(g => g.durationMs)
     return times.length ? Math.min(...times) : Infinity
   }
 

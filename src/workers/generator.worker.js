@@ -10,10 +10,11 @@
 // is what makes "New game" feel instant despite the cost.
 
 import { makeVariantPuzzle, makeVariantPractice, makeVariantTailored } from '../logic/variants.js'
+import { makeSessionPuzzle } from '../logic/sessionPuzzle.js'
 import { buildDeck } from '../logic/flashcards.js'
 
 self.onmessage = event => {
-  const { id, tier, seed, practice, tailored, cards, count, variant = 'classic' } = event.data
+  const { id, tier, seed, practice, tailored, cards, count, sessionPattern, variant = 'classic' } = event.data
   try {
     // Rare techniques need a long leash. Measured with scripts/practice.mjs:
     // Swordfish took a median 9s and naked quad landed only 67% of the time at
@@ -31,7 +32,9 @@ self.onmessage = event => {
       return
     }
 
-    const made = practice
+    const made = sessionPattern
+      ? makeSessionPuzzle(sessionPattern, { seed, budgetMs: 30000 })
+      : practice
       ? makeVariantPractice(variant, practice, { budgetMs: 30000, ...(seed === undefined ? {} : { seed }) })
       : tailored
         ? makeVariantTailored(variant, { wants: tailored, budgetMs: 20000, ...(seed === undefined ? {} : { seed }) })
@@ -39,7 +42,9 @@ self.onmessage = event => {
     if (!made) {
       self.postMessage({
         id,
-        error: practice
+        error: sessionPattern
+          ? `could not find a short position that still needs this pattern. Try again.`
+          : practice
           ? `could not find a puzzle needing that technique. It is rare; try again.`
           : tailored
             ? `could not find a puzzle built around your weak spots. Try again, or play a tier.`

@@ -160,7 +160,7 @@ export default function Flashcards({ technique, deck, onClose, onAgain, onFinish
             // Inside today's session the deck is the middle step, so the end
             // of it points at the last one rather than at another deck.
             <div className="dataRow">
-              <button className="newBtn" onClick={onNext}>Next: one puzzle</button>
+              <button className="newBtn" onClick={onNext}>Next: finish from here</button>
               <button className="linkBtn" onClick={onLater ?? onClose}>not today</button>
             </div>
           ) : (

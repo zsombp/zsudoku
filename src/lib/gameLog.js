@@ -42,6 +42,8 @@ function baseRecord(state, { completed, durationMs, endedAt }) {
 
     requested: state.requested,
     graded: state.graded,
+    sessionPuzzle: Boolean(state.sessionPuzzle),
+    sessionDay: state.sessionDay || null,
     daily: state.mode === 'daily',
     dayKey: state.dayKey || null,
     score: state.score,

@@ -165,7 +165,7 @@ function outcomeValues(games, outcome, all) {
   const out = []
   for (const g of games) {
     if (outcome === 'time') {
-      if (!g.completed) continue
+      if (!g.completed || g.sessionPuzzle) continue
       // Against your own median for that tier on that kind of board. Tier
       // alone is not enough once variants exist: a jigsaw Hard and a classic
       // Hard are different amounts of time for the same amount of thinking.
@@ -186,12 +186,12 @@ function outcomeValues(games, outcome, all) {
 
 const tierMedian = (games, tier, variant) => {
   const same = games.filter(
-    g => g.completed && g.graded === tier && (g.variant || 'classic') === variant
+    g => g.completed && !g.sessionPuzzle && g.graded === tier && (g.variant || 'classic') === variant
   )
   if (same.length >= 3) return median(same.map(g => g.durationMs))
   // Not enough of that board at that tier yet. Falling back to the tier across
   // all boards is better than dropping the game, and is stated in the copy.
-  const anyBoard = games.filter(g => g.completed && g.graded === tier)
+  const anyBoard = games.filter(g => g.completed && !g.sessionPuzzle && g.graded === tier)
   return anyBoard.length >= 3 ? median(anyBoard.map(g => g.durationMs)) : null
 }
 
