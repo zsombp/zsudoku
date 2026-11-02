@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import fixtures from './__fixtures__/solvepaths.json'
 import { createState, nextStep, applyStep, hintPlacement } from './grader.js'
 import { topologyFromRecord } from './variants.js'
-import { buildLesson, analyse, canTeach, TEACHABLE, survivorPhrase, withFlaw } from './lessons.js'
+import { buildLesson, analyse, canTeach, TEACHABLE, survivorPhrase, withFlaw, judgePrediction } from './lessons.js'
 import { stockLesson, STOCK } from './lessonBank.js'
 import { explainBottleneck, explainPlacement } from './explain.js'
 import { hasMark, countMarks } from './marks.js'
@@ -34,7 +34,7 @@ const HOLES = /undefined|NaN|null|\[object|—|–/
 
 function copyOf(lesson) {
   const a = analyse(lesson)
-  const lines = lesson.steps.flatMap(s => [s.title, s.text, s.payoff || ''])
+  const lines = lesson.steps.flatMap(s => [s.title, s.text, s.payoff || '', s.askTitle || '', s.askText || ''])
   for (const w of a.worlds) lines.push(lesson.caption(w, a.cands))
   lines.push(lesson.worldKill, lesson.intactLine(a.worlds.length))
   for (const f of lesson.flaws) {
@@ -173,6 +173,66 @@ describe('the stock lessons', () => {
   it('has nothing for the naked single or the cage rungs', () => {
     expect(stockLesson('nakedSingle')).toBeNull()
     expect(stockLesson('sum45')).toBeNull()
+  })
+})
+
+describe('your guess first', () => {
+  // The question step asks for a guess before it shows anything. What it asks
+  // for is worked out from the targets (cells outside the pattern, or digits
+  // inside it), and the copy is written per family, so the two have to agree
+  // on every lesson the app can build, not only the stock ones.
+  it('asks for the kind of answer its copy promises, on every teachable step of every solve', () => {
+    let asked = 0
+    for (const entry of fixtures) {
+      walk(entry, (step, board, cands, topo) => {
+        if (!canTeach(step.technique)) return
+        const lesson = buildLesson({ board, cands, step, topo })
+        if (!lesson) return
+        const ask = lesson.steps.filter(s => s.predict)
+        if (step.technique === 'hiddenSingle') {
+          expect(lesson.predict ?? null).toBeNull()
+          return
+        }
+        expect(ask, step.technique).toHaveLength(1)
+        const p = lesson.predict
+        expect(p, step.technique).toBeTruthy()
+        expect(ask[0].askText, step.technique).toMatch(p.kind === 'digits' ? /Pick them\.$/ : /Tap them\.$/)
+        // The answer is exactly what the ladder removed, said the right way.
+        const right = judgePrediction(lesson, p.answer)
+        expect(right.exact).toBe(true)
+        expect(right.text).not.toMatch(HOLES)
+        if (p.kind === 'digits') {
+          for (const d of p.answer) expect(p.offer).toContain(d)
+          expect(p.offer.length).toBeGreaterThan(p.answer.length)
+        } else {
+          for (const c of p.answer) expect(board[c]).toBe(0)
+        }
+        asked++
+      })
+    }
+    expect(asked).toBeGreaterThan(40)
+  })
+
+  it('judges a partial guess by what it got, what it missed and what it added', () => {
+    const lesson = stockLesson('pointing')
+    const [first, ...rest] = lesson.predict.answer
+    const stray = lesson.board.findIndex((v, c) => v === 0 && !lesson.predict.answer.includes(c))
+    const r = judgePrediction(lesson, [first, stray])
+    expect(r.exact).toBe(false)
+    expect(r.hits).toEqual([first])
+    expect(r.missed).toEqual(rest)
+    expect(r.extra).toEqual([stray])
+    expect(r.text).toMatch(/^You named 1 of \d\./)
+    expect(r.text).toMatch(/keeps its notes\.$/)
+    expect(r.text).not.toMatch(HOLES)
+  })
+
+  it('asks for digits on a hidden set, where the cells are already given', () => {
+    const lesson = stockLesson('hiddenPair')
+    expect(lesson.predict.kind).toBe('digits')
+    const r = judgePrediction(lesson, [])
+    expect(r.exact).toBe(false)
+    expect(r.missed).toEqual(lesson.predict.answer)
   })
 })
 

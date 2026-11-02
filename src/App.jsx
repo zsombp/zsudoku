@@ -40,9 +40,12 @@ import Dashboard from './components/Dashboard.jsx'
 import ThemeMenu from './components/ThemeMenu.jsx'
 import PracticeView from './components/PracticeView.jsx'
 import Flashcards from './components/Flashcards.jsx'
-import { Lesson, lessons } from './components/lazyLesson.js'
+import { Lesson, lessons, moments, bank } from './components/lazyLesson.js'
+import { useSession } from './hooks/useSession.js'
+import { nextStage, isComplete, sessionStreak, SESSION_CARDS } from './stats/session.js'
 import { canTeach } from './logic/teachable.js'
 import * as sound from './lib/sound.js'
+import * as ambience from './lib/ambience.js'
 import Companion from './components/Companion.jsx'
 import { PLAIN, shortcutLine } from './logic/shortcuts.js'
 
@@ -377,6 +380,131 @@ export default function App() {
       }
     },
     [generator]
+  )
+
+  // ---- today's session ----
+  //
+  // One pattern, three steps: a lesson, five cards, one puzzle. The deck and
+  // the puzzle are asked for the moment the session starts, so the worker
+  // builds them while the lesson is being read and neither step waits.
+  const { session, refresh: refreshSession, markStage } = useSession()
+  const [sessionLesson, setSessionLesson] = useState(null)
+  const sessionPrep = useRef(null)
+
+  const prepSession = useCallback(
+    s => {
+      const key = s.day + ':' + s.technique
+      const p = sessionPrep.current?.key === key ? sessionPrep.current : { key }
+      // A failure is reported by the step that waits on it, not here.
+      if (!p.deck && s.stages.drill !== 'done') {
+        p.deck = generator.deck(s.technique, { count: SESSION_CARDS })
+        p.deck.catch(() => {})
+      }
+      if (!p.puzzle && !s.stages.puzzle) {
+        p.puzzle = generator.practice(s.technique, 'classic')
+        p.puzzle.catch(() => {})
+      }
+      sessionPrep.current = p
+      return p
+    },
+    [generator]
+  )
+
+  const startSessionCards = useCallback(
+    async s => {
+      setPracticing('cards:' + s.technique)
+      setGenError(null)
+      try {
+        const p = prepSession(s)
+        let made
+        try {
+          made = await p.deck
+        } catch {
+          // A prefetched deck that failed gets one fresh try before giving up.
+          made = await generator.deck(s.technique, { count: SESSION_CARDS })
+        }
+        // Spent: a second deck today is a new deal, not the same five again.
+        p.deck = null
+        setCards({ ...made, session: true })
+        setView('cards')
+      } catch (err) {
+        setGenError(String(err.message || err))
+        setView('home')
+      } finally {
+        setPracticing(null)
+      }
+    },
+    [generator, prepSession]
+  )
+
+  const startSessionPuzzle = useCallback(
+    async s => {
+      setPracticing(s.technique)
+      setGenError(null)
+      setNewRecord(false)
+      try {
+        const p = prepSession(s)
+        let made
+        try {
+          made = await p.puzzle
+        } catch {
+          made = await generator.practice(s.technique, 'classic')
+        }
+        p.puzzle = null
+        // Only once the puzzle is in hand, so a failed search never costs the
+        // game in progress.
+        recordAbandon()
+        updateSettings({ lastMode: 'casual' })
+        timerRef.current.reset(0)
+        dispatch({ type: 'ready', made, now: Date.now(), mode: 'casual', practice: s.technique })
+        setView('game')
+      } catch (err) {
+        setGenError(String(err.message || err))
+        setView('home')
+      } finally {
+        setPracticing(null)
+      }
+    },
+    [generator, prepSession, recordAbandon, updateSettings, dispatch]
+  )
+
+  const openSessionLesson = useCallback(
+    async s => {
+      setPracticing('session')
+      setGenError(null)
+      try {
+        // The last position this pattern stopped you in, when there is one:
+        // a lesson on your own mistake beats a lesson on somebody's example.
+        const games = await gameLog.all()
+        const lesson =
+          (await moments()).latestStuckLesson(games, s.technique) || (await bank()).stockLesson(s.technique)
+        if (!lesson) {
+          markStage('lesson', 'skipped')
+          return
+        }
+        setSessionLesson(lesson)
+        setView('sessionLesson')
+      } catch (err) {
+        setGenError(String(err.message || err))
+      } finally {
+        setPracticing(null)
+      }
+    },
+    [markStage]
+  )
+
+  /** The next step of today's session, whichever it is. */
+  const continueSession = useCallback(
+    async given => {
+      const s = given || (await refreshSession())
+      const stage = nextStage(s)
+      if (!stage) return setView('home')
+      prepSession(s)
+      if (stage === 'lesson') return openSessionLesson(s)
+      if (stage === 'drill') return startSessionCards(s)
+      return startSessionPuzzle(s)
+    },
+    [refreshSession, prepSession, openSessionLesson, startSessionCards, startSessionPuzzle]
   )
 
   /**
@@ -734,6 +862,13 @@ export default function App() {
     sound.setEnabled(settings.sound)
   }, [settings.sound])
 
+  // The pad plays only while you are solving: this screen, the clock going.
+  // The module itself stops it when the page is hidden.
+  useEffect(() => {
+    ambience.setActive(Boolean(settings.ambience) && view === 'game' && state.status === 'playing')
+  }, [settings.ambience, view, state.status])
+  useEffect(() => () => ambience.setActive(false), [])
+
   // Driven off the move log rather than sprinkled through the handlers: the
   // log already knows exactly what just happened, including whether it was
   // right, so one effect covers every input path there is.
@@ -753,6 +888,7 @@ export default function App() {
     // speaker.
     const tellingYou = settings.checkErrors && !state.bookmark
     if (m.kind === 'place') {
+      if (m.correct !== false) ambience.placed()
       const empties = state.board ? state.board.reduce((a, v) => a + (v ? 0 : 1), 0) : 1
       if (m.correct === false && tellingYou) sound.wrong()
       else if (empties === 0) sound.lastCell()
@@ -779,6 +915,11 @@ export default function App() {
     })
     gameLog.saveRecord(rec).then(pushBackup)
     setLastGame(rec)
+    // A practice puzzle on today's pattern is today's third step, wherever it
+    // was started from.
+    if (stateRef.current.practice && getSync(KEYS.session)?.technique === stateRef.current.practice) {
+      markStage('puzzle')
+    }
 
     const key = recordKey(stateRef.current.variant || 'classic', label)
     const prev = records[key]
@@ -892,6 +1033,25 @@ export default function App() {
     )
   }
 
+  if (view === 'sessionLesson' && sessionLesson) {
+    return (
+      <div className="app wide">
+        <Suspense fallback={null}>
+          <Lesson
+            lesson={sessionLesson}
+            onClose={() => setView('home')}
+            finishLabel="Next: five cards"
+            onFinish={() => {
+              const next = markStage('lesson')
+              setView('home')
+              if (next) continueSession(next)
+            }}
+          />
+        </Suspense>
+      </div>
+    )
+  }
+
   if (view === 'lesson' && lessonOpen) {
     return (
       <div className="app wide">
@@ -908,8 +1068,23 @@ export default function App() {
         <Flashcards
           technique={cards.technique}
           deck={cards.deck}
-          onClose={() => setView('practice')}
+          onClose={() => setView(cards.session ? 'home' : 'practice')}
           onAgain={() => startCards(cards.technique)}
+          {...(cards.session
+            ? {
+                onFinish: () => markStage('drill'),
+                // The deck is on the record by now, so this reads a session
+                // with the drill already done and goes straight on.
+                onNext: () => {
+                  setView('home')
+                  continueSession(getSync(KEYS.session))
+                },
+                onLater: () => {
+                  markStage('puzzle', 'skipped')
+                  setView('home')
+                },
+              }
+            : {})}
         />
       </div>
     )
@@ -971,6 +1146,11 @@ export default function App() {
               : null
           }
           daily={dailyInfo}
+          session={session}
+          sessionBusy={practicing}
+          sessionError={genError}
+          onSession={() => continueSession()}
+          onSkipPuzzle={() => markStage('puzzle', 'skipped')}
           records={records}
           variant={settings.variant || 'classic'}
           theme={settings.theme}
@@ -1104,6 +1284,12 @@ export default function App() {
                   : ''}
             </div>
             <HintSummary hintLog={state.hintLog} mistakes={state.mistakes} />
+            {state.practice && session?.technique === state.practice && isComplete(session) && (
+              <div className="winSession">
+                Today's session is done
+                {sessionStreak(session.history) > 1 ? `, ${sessionStreak(session.history)} days running` : ''}.
+              </div>
+            )}
             <div className="winBtns">
               <button className="bigBtn" onClick={() => startNew(label)}>Play again</button>
               {/* The review used to be buried in the statistics tab, which is

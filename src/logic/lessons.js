@@ -20,7 +20,7 @@
 // do not kill every elimination, or a flaw fails to open a world, it is not
 // shown. A lesson that teaches a broken argument is worse than none.
 
-import { argue, slotsFor } from './worlds.js'
+import { argue, slotsFor, patternCellsOf } from './worlds.js'
 import { TECHNIQUES } from './techniques.js'
 import { CLASSIC, unitName, unitCellsOf, rowOf, colOf } from './topology.js'
 import { hasMark, addMark, removeMark, marksToList, countMarks } from './marks.js'
@@ -158,9 +158,9 @@ function single(base, step) {
         title: others.length ? 'Every other cell is blocked' : 'Only one cell is empty',
         text: others.length
           ? `Each of the others already sees a ${d}. Follow the lines.` +
-            (lost.length ? ` ${(cells(lost))} lost ${lost.length === 1 ? 'its' : 'their'} ${d} to an earlier pattern.` : '') +
+            (lost.length ? ` ${cells(lost)} lost ${lost.length === 1 ? 'its' : 'their'} ${d} to an earlier pattern.` : '') +
             ` That leaves ${nm(cell)}.`
-          : `${(nm(cell))} is the only gap left, so it is the only place for the ${d}.`,
+          : `${nm(cell)} is the only gap left, so it is the only place for the ${d}.`,
         hi: { band, pat: [cell], lit: [[cell, d]], blocks },
       },
       {
@@ -173,7 +173,7 @@ function single(base, step) {
       },
     ],
     caption: () => `The ${d} goes in ${nm(cell)}.`,
-    worldKill: `${(nm(cell))} is full, so its other notes are out.`,
+    worldKill: `${nm(cell)} is full, so its other notes are out.`,
     intactLine: () => `There is only one place for the ${d}, so ${nm(cell)} is a ${d}.`,
   }
 }
@@ -228,6 +228,7 @@ function locked(base, step) {
       {
         title: `It is ${T}'s ${d} as well`,
         text: `Whichever cell it is, the ${d} of ${F} is also the ${d} of ${T}, and ${T} holds only one. What about the other ${d}s in ${T}?`,
+        askText: `Whichever cell it is, the ${d} of ${F} is also the ${d} of ${T}, and ${T} holds only one. Which cells in ${T} lose their ${d}? Tap them.`,
         hi: { band: mergeBands(fromBand, toBand), pat: 'slots', lit: slotNotes, probe: allTargets },
       },
       {
@@ -281,13 +282,14 @@ function naked(base, step) {
       {
         title: `${cap(NUM[k])} cells, ${NUM[k]} digits`,
         text:
-          `${(cells(S))} hold only ${and(D)} between them.` +
+          `${cells(S)} hold only ${and(D)} between them.` +
           (partial ? ` Not every cell needs all ${NUM[k]}: what counts is that the set never grows past ${k}.` : ''),
         hi: { band, pat: S, lit: slotNotes },
       },
       {
         title: 'They share them out',
         text: `Each of these cells needs a digit, and only ${NUM[k]} are on offer. So ${and(D)} ${k === 2 ? 'both' : 'all'} land in these cells. What about the other ${or(D)} notes in ${U}?`,
+        askText: `Each of these cells needs a digit, and only ${NUM[k]} are on offer. So ${and(D)} ${k === 2 ? 'both' : 'all'} land in these cells. Which other cells in ${U} lose a note? Tap them.`,
         hi: { band, pat: S, lit: slotNotes, probe: allTargets },
       },
       {
@@ -361,6 +363,7 @@ function hidden(base, step) {
       {
         title: `${cap(NUM[k])} digits, ${NUM[k]} cells`,
         text: `${cap(and(D))} each have to land in one of ${cells(S)}, so those cells belong to them. What happens to their other notes?`,
+        askText: `${cap(and(D))} each have to land in one of ${cells(S)}, so those cells belong to them. Which digits leave those cells? Pick them.`,
         hi: { band, pat: S, lit: slotNotes, probe: allTargets },
       },
       {
@@ -474,6 +477,7 @@ function fishLesson(base, step) {
       {
         title: `${cap(NUM[size])} ${L}s, ${NUM[size]} ${X}s`,
         text: `Each ${L} needs its ${d}, and a ${X} can hold only one. So ${lineNames} put one ${d} in each of ${coverNames}. What about the other ${d}s in those ${X}s?`,
+        askText: `Each ${L} needs its ${d}, and a ${X} can hold only one. So ${lineNames} put one ${d} in each of ${coverNames}. Which cells lose their ${d}? Tap them.`,
         hi: { band: crossBand(cover), pat: 'slots', lit: slotNotes, probe: allTargets },
       },
       {
@@ -554,19 +558,19 @@ function wing(base, step) {
         .map(([c]) => {
           const q = sees(c, A) ? A : B
           const other = q === A ? x : y
-          return `${(nm(c))} keeps its ${z}: it sees only ${nm(q)}, and in some worlds ${nm(q)} is a ${other}.`
+          return `${nm(c)} keeps its ${z}: it sees only ${nm(q)}, and in some worlds ${nm(q)} is a ${other}.`
         })
         .join(' '),
     flaws,
     steps: [
       {
         title: 'Three cells, two notes each',
-        text: `${(nm(P))}, ${nm(A)} and ${nm(B)} are each down to two notes.`,
+        text: `${nm(P)}, ${nm(A)} and ${nm(B)} are each down to two notes.`,
         hi: { pat: [P, A, B], lit: slotNotes },
       },
       {
         title: 'The pivot links them',
-        text: `${(nm(P))} is the pivot. It shares a ${x} with ${nm(A)} and a ${y} with ${nm(B)}, and it sees both of them.`,
+        text: `${nm(P)} is the pivot. It shares a ${x} with ${nm(A)} and a ${y} with ${nm(B)}, and it sees both of them.`,
         hi: {
           pat: [P, A, B],
           lit: [[P, x], [A, x], [P, y], [B, y]],
@@ -575,20 +579,22 @@ function wing(base, step) {
       },
       {
         title: `The pincers share a ${z}`,
-        text: `${(nm(A))} and ${nm(B)} both have a ${z}. ${pincers}`,
+        text: `${nm(A)} and ${nm(B)} both have a ${z}. ${pincers}`,
         hi: { pat: [P, A, B], lit: [[A, z], [B, z]] },
       },
       {
         title: one ? 'One cell sees both pincers' : `${cap(NUM[T.length])} cells see both pincers`,
         text: one
-          ? `${(nm(T[0]))} sees ${nm(A)} and ${nm(B)}. Can ${nm(T[0])} be ${z}?`
-          : `${(cells(T))} each see ${nm(A)} and ${nm(B)}. Can any of them be ${z}?`,
+          ? `${nm(T[0])} sees ${nm(A)} and ${nm(B)}. Can ${nm(T[0])} be ${z}?`
+          : `${cells(T)} each see ${nm(A)} and ${nm(B)}. Can any of them be ${z}?`,
+        askTitle: 'Your guess first',
+        askText: `Whichever way the pivot goes, one pincer ends up a ${z}. So which cells can never be ${z}? Tap them.`,
         hi: {
           pat: [A, B],
           tgt: T,
           lit: [[A, z], [B, z]],
           probe: allTargets,
-          links: T.flatMap(t => [{ a: A, b: t, dashed: true }, { a: B, b: t, dashed: true }]),
+          links: T.flatMap(t => [{ a: A, b: t, dashed: true, toTarget: true }, { a: B, b: t, dashed: true, toTarget: true }]),
         },
       },
       {
@@ -613,16 +619,324 @@ function wing(base, step) {
       const free = [A, B].filter(q => !forced.includes(q))
       let s = `The pivot is ${p}. `
       s += forced.length
-        ? forced.map(q => `${(nm(q))} sees it, so ${nm(q)} is ${w.get(q)}.`).join(' ')
+        ? forced.map(q => `${nm(q)} sees it, so ${nm(q)} is ${w.get(q)}.`).join(' ')
         : 'Neither pincer is forced.'
-      if (forced.length && free.length) s += ` ${(nm(free[0]))} is ${w.get(free[0])} here.`
+      if (forced.length && free.length) s += ` ${nm(free[0])} is ${w.get(free[0])} here.`
       return s
     },
     worldKill: one
-      ? `${(nm(T[0]))} sees a ${z}, so it cannot be ${z}.`
-      : `${(cells(T))} each see a ${z}, so none of them can be ${z}.`,
+      ? `${nm(T[0])} sees a ${z}, so it cannot be ${z}.`
+      : `${cells(T)} each see a ${z}, so none of them can be ${z}.`,
     intactLine: n =>
       `One pincer is a ${z} ${inAll(n)}, and ${one ? `${nm(T[0])} sees` : `${cells(T)} see`} both. ${one ? 'It cannot' : 'None of them can'} be ${z}.`,
+  }
+}
+
+/** The line a strong link runs along, named the way a person would. */
+function linkLine(topo, a, b) {
+  if (rowOf(a) === rowOf(b)) return { meta: { type: 'row', index: rowOf(a) }, cells: topo.rows[rowOf(a)] }
+  if (colOf(a) === colOf(b)) return { meta: { type: 'col', index: colOf(a) }, cells: topo.cols[colOf(a)] }
+  const r = topo.regionOf[a]
+  return { meta: topo.unitMeta[topo.regionStart + r], cells: topo.regions[r] }
+}
+
+/**
+ * Skyscraper and 2-String Kite: two strong links, joined at one end. The skill
+ * is seeing a strong link as a fact ("one of these two is the digit") and then
+ * chaining two of them.
+ */
+function chain(base, step) {
+  const { topo } = base
+  const d = step.digits[0]
+  const [[a1, a2], [b1, b2]] = step.links
+  const A = linkLine(topo, a1, a2)
+  const B = linkLine(topo, b1, b2)
+  const An = unitName(A.meta)
+  const Bn = unitName(B.meta)
+  const kite = step.technique === 'twoStringKite'
+  const targets = step.eliminations.map(e => [e.cell, e.digit])
+  const T = targets.map(([c]) => c)
+  const one = T.length === 1
+  const join = kite
+    ? `${nm(a1)} and ${nm(b1)} sit in the same box`
+    : `${nm(a1)} and ${nm(b1)} line up in ${rowOf(a1) === rowOf(b1) ? `row ${rowOf(a1) + 1}` : `column ${colOf(a1) + 1}`}`
+  const bandA = unitBand(A.meta, A.cells)
+  const bandB = unitBand(B.meta, B.cells)
+  const linkSet = new Set(step.cells)
+
+  // A third home in either link is the obvious way to break it. For a
+  // skyscraper, so is a base that does not line up.
+  const flaws = [
+    ...ranked(base, A.cells.filter(c => !linkSet.has(c)).map(c => [c, d])).map(([c]) => ({
+      id: 'thirdA',
+      label: `${cap(An)} has a third ${d}, at ${nm(c)}`,
+      add: [[c, d]],
+    })),
+    ...ranked(base, B.cells.filter(c => !linkSet.has(c)).map(c => [c, d])).map(([c]) => ({
+      id: 'thirdB',
+      label: `${cap(Bn)} has a third ${d}, at ${nm(c)}`,
+      add: [[c, d]],
+    })),
+  ]
+
+  const focus = new Set([...A.cells, ...B.cells, ...T])
+  return {
+    ...base,
+    kicker: TECHNIQUES[step.technique].label,
+    lens: d,
+    focus,
+    band: mergeBands(bandA, bandB),
+    targets,
+    flaws,
+    steps: [
+      {
+        title: 'A strong link',
+        text: `This board shows only the ${d}s. In ${An} a ${d} fits in just two cells, ${nm(a1)} and ${nm(a2)}. Whichever it is, one of the two is the ${d}. That is a strong link.`,
+        hi: { band: bandA, lit: [[a1, d], [a2, d]], links: [{ a: a1, b: a2 }] },
+      },
+      {
+        title: 'And a second one',
+        text: `${cap(Bn)} is the same: its ${d} is in ${nm(b1)} or ${nm(b2)}.`,
+        hi: {
+          band: mergeBands(bandA, bandB),
+          lit: [[a1, d], [a2, d], [b1, d], [b2, d]],
+          links: [{ a: a1, b: a2 }, { a: b1, b: b2 }],
+        },
+      },
+      {
+        title: kite ? 'Tied in a box' : 'Joined at the base',
+        text: `${cap(join)}, so they cannot both be the ${d}. So at least one of the far ends, ${nm(a2)} or ${nm(b2)}, is a ${d}. What about ${one ? nm(T[0]) : cells(T)}, which ${one ? 'sees' : 'see'} both?`,
+        askText: `${cap(join)}, so they cannot both be the ${d}. So at least one of the far ends, ${nm(a2)} or ${nm(b2)}, is a ${d}. Which cells can never be ${d}? Tap them.`,
+        hi: {
+          pat: step.cells,
+          tgt: T,
+          lit: [[a1, d], [a2, d], [b1, d], [b2, d]],
+          probe: allTargets,
+          links: [{ a: a1, b: a2 }, { a: b1, b: b2 }, { a: a1, b: b1, dashed: true }],
+        },
+      },
+      {
+        mode: 'worlds',
+        title: 'Every way it can go',
+        text: `Each world puts one ${d} in each link. The two joined ends never both get one. Watch the far ends.`,
+      },
+      {
+        mode: 'apply',
+        title: 'Gone in every world',
+        text: `In every world ${nm(a2)} or ${nm(b2)} is a ${d}, and ${one ? `${nm(T[0])} sees` : `${cells(T)} see`} both. So ${one ? `${nm(T[0])} cannot` : 'none of them can'} be ${d}.`,
+      },
+      {
+        mode: 'break',
+        title: 'Now break it',
+        text: 'Give one of the links a third home and the fact it rested on is gone.',
+      },
+    ],
+    caption: w => {
+      const at = cs => cs.find(c => w.get(c) === d)
+      const ia = at([a1, a2])
+      const ib = at([b1, b2])
+      return `${cap(An)} puts its ${d} in ${nm(ia)}. ${cap(Bn)} puts its ${d} in ${nm(ib)}.`
+    },
+    worldKill: one
+      ? `${nm(T[0])} sees a ${d}, so it cannot be ${d}.`
+      : `${cells(T)} each see a ${d}, so none of them can be ${d}.`,
+    intactLine: n =>
+      `One of the far ends is a ${d} ${inAll(n)}, and ${one ? `${nm(T[0])} sees` : `${cells(T)} see`} both. ${one ? 'It cannot' : 'None of them can'} be ${d}.`,
+  }
+}
+
+/** W-Wing: two identical pairs, bridged by a strong link on one of their digits. */
+function wWingLesson(base, step) {
+  const { topo } = base
+  const [x, y] = step.digits
+  const [c1, c2] = step.wings
+  const [l1, l2] = step.bridge
+  const bridgeUnit = step.unit
+  const bridgeCells = [...(unitCellsOf(topo, step) || [])]
+  const Un = unitName(bridgeUnit)
+  const targets = step.eliminations.map(e => [e.cell, e.digit])
+  const T = targets.map(([c]) => c)
+  const one = T.length === 1
+  const band = unitBand(bridgeUnit, bridgeCells)
+  const inBridge = new Set([l1, l2])
+  const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+  const flaws = [
+    ...ranked(base, bridgeCells.filter(c => !inBridge.has(c) && c !== c1 && c !== c2).map(c => [c, x])).map(([c]) => ({
+      id: 'third',
+      label: `${cap(Un)} has a third ${x}, at ${nm(c)}`,
+      add: [[c, x]],
+    })),
+    ...ranked(base, digits.filter(w => w !== x && w !== y).map(w => [c2, w])).map(([, w]) => ({
+      id: 'unlike',
+      label: `${nm(c2)} holds ${x} and ${w}, no ${y}`,
+      add: [[c2, w]],
+      remove: [[c2, y]],
+    })),
+  ]
+
+  return {
+    ...base,
+    kicker: TECHNIQUES.wWing.label,
+    lens: null,
+    focus: new Set([c1, c2, ...bridgeCells, ...T]),
+    band,
+    targets,
+    flaws,
+    steps: [
+      {
+        title: 'Two cells, the same two notes',
+        text: `${nm(c1)} and ${nm(c2)} both hold just ${x} and ${y}, and they do not see each other. On their own they prove nothing.`,
+        hi: { pat: [c1, c2], lit: [[c1, x], [c1, y], [c2, x], [c2, y]] },
+      },
+      {
+        title: `A bridge on ${x}`,
+        text: `In ${Un}, ${x} has only two homes, ${nm(l1)} and ${nm(l2)}. ${nm(l1)} sees ${nm(c1)}, and ${nm(l2)} sees ${nm(c2)}.`,
+        hi: {
+          band,
+          pat: [c1, c2],
+          lit: [[l1, x], [l2, x], [c1, x], [c2, x]],
+          links: [{ a: l1, b: l2 }, { a: c1, b: l1, dashed: true }, { a: c2, b: l2, dashed: true }],
+        },
+      },
+      {
+        title: `Follow the ${x}`,
+        text: `If ${nm(c1)} is ${x}, ${nm(l1)} is not, so ${nm(l2)} is, so ${nm(c2)} cannot be ${x}: it is ${y}. Either way one of the two cells is a ${y}. What about ${one ? nm(T[0]) : cells(T)}, which ${one ? 'sees' : 'see'} both?`,
+        askText: `If ${nm(c1)} is ${x}, ${nm(l1)} is not, so ${nm(l2)} is, so ${nm(c2)} cannot be ${x}: it is ${y}. Either way one of the two cells is a ${y}. Which cells can never be ${y}? Tap them.`,
+        hi: {
+          pat: [c1, c2],
+          tgt: T,
+          lit: [[c1, y], [c2, y]],
+          probe: allTargets,
+          links: T.flatMap(t => [{ a: c1, b: t, dashed: true, toTarget: true }, { a: c2, b: t, dashed: true, toTarget: true }]),
+        },
+      },
+      {
+        mode: 'worlds',
+        title: 'Every way it can go',
+        text: `Each world fills the two cells and the bridge one way. Watch where the ${y} ends up.`,
+      },
+      {
+        mode: 'apply',
+        title: 'Gone in every world',
+        text: `In every world ${nm(c1)} or ${nm(c2)} is a ${y}, and ${one ? `${nm(T[0])} sees` : `${cells(T)} see`} both. So ${one ? `${nm(T[0])} cannot` : 'none of them can'} be ${y}.`,
+      },
+      {
+        mode: 'break',
+        title: 'Now break it',
+        text: 'Pick a flaw. One world where the note survives is enough to stop the elimination.',
+      },
+    ],
+    caption: w => {
+      const at = [l1, l2].find(c => w.get(c) === x)
+      return `Here ${nm(c1)} is ${w.get(c1)} and ${nm(c2)} is ${w.get(c2)}, and the ${x} of ${Un} is in ${nm(at)}.`
+    },
+    worldKill: one
+      ? `${nm(T[0])} sees a ${y}, so it cannot be ${y}.`
+      : `${cells(T)} each see a ${y}, so none of them can be ${y}.`,
+    intactLine: n =>
+      `One of the two cells is a ${y} ${inAll(n)}, and ${one ? `${nm(T[0])} sees` : `${cells(T)} see`} both. ${one ? 'It cannot' : 'None of them can'} be ${y}.`,
+  }
+}
+
+/** XYZ-Wing: the XY-Wing whose pivot holds the third digit too. */
+function xyzLesson(base, step) {
+  const [P, A, B] = step.cells
+  const [x, y, z] = step.digits
+  const targets = step.eliminations.map(e => [e.cell, e.digit])
+  const T = targets.map(([c]) => c)
+  const one = T.length === 1
+  const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+  const flaws = [
+    ...ranked(base, digits.filter(w => w !== x && w !== y && w !== z).map(w => [P, w])).map(([, w]) => ({
+      id: 'fourth',
+      label: `The pivot has a fourth note, a ${w}`,
+      add: [[P, w]],
+    })),
+    ...ranked(base, digits.filter(w => w !== y && w !== z).map(w => [B, w])).map(([, w]) => ({
+      id: 'noshare',
+      label: `${nm(B)} holds ${y} and ${w}, no ${z}`,
+      add: [[B, w]],
+      remove: [[B, z]],
+    })),
+  ]
+
+  return {
+    ...base,
+    kicker: TECHNIQUES.xyzWing.label,
+    lens: null,
+    focus: new Set([P, A, B, ...T]),
+    band: NO_BAND,
+    targets,
+    flaws,
+    steps: [
+      {
+        title: 'A pivot with three notes',
+        text: `${nm(P)} holds ${x}, ${y} and ${z}. It sees ${nm(A)}, which holds ${x} and ${z}, and ${nm(B)}, which holds ${y} and ${z}.`,
+        hi: {
+          pat: [P, A, B],
+          lit: 'slotNotes',
+          links: [{ a: P, b: A, label: x }, { a: P, b: B, label: y }],
+        },
+      },
+      {
+        title: `All three hold a ${z}`,
+        text: `Whatever the pivot turns out to be, the ${z} ends up in one of the three cells. Can you see why before stepping through it?`,
+        hi: { pat: [P, A, B], lit: [[P, z], [A, z], [B, z]] },
+      },
+      {
+        title: one ? 'One cell sees all three' : `${cap(NUM[T.length])} cells see all three`,
+        text: one
+          ? `${nm(T[0])} sees ${nm(P)}, ${nm(A)} and ${nm(B)}. Can it be ${z}?`
+          : `${cells(T)} each see ${nm(P)}, ${nm(A)} and ${nm(B)}. Can any of them be ${z}?`,
+        askTitle: 'Your guess first',
+        askText: `The ${z} lands in one of the three cells whatever the pivot is. So which cells can never be ${z}? Tap them.`,
+        hi: {
+          pat: [P, A, B],
+          tgt: T,
+          lit: [[P, z], [A, z], [B, z]],
+          probe: allTargets,
+          links: T.flatMap(t => [
+            { a: P, b: t, dashed: true, toTarget: true },
+            { a: A, b: t, dashed: true, toTarget: true },
+            { a: B, b: t, dashed: true, toTarget: true },
+          ]),
+        },
+      },
+      {
+        mode: 'worlds',
+        title: `The pivot is ${x}, ${y} or ${z}. Follow all three.`,
+        text: `Each world fills the three cells one way. Watch where the ${z} lands.`,
+      },
+      {
+        mode: 'apply',
+        title: 'Gone in every world',
+        text: `If the pivot is ${z}, ${one ? nm(T[0]) : 'they'} ${one ? 'sees' : 'see'} it. If not, the wing that shares the pivot's digit is forced to ${z}, and ${one ? 'it sees that too' : 'they see that too'}. So ${one ? `${nm(T[0])} cannot` : 'none of them can'} be ${z}.`,
+      },
+      {
+        mode: 'break',
+        title: 'Now break it',
+        text: `Pick a flaw. One world where the ${z} survives is enough to stop the elimination.`,
+      },
+    ],
+    caption: (w, notes) => {
+      const p = w.get(P)
+      if (p === z) return `The pivot is ${z} itself. Here ${nm(A)} is ${w.get(A)} and ${nm(B)} is ${w.get(B)}.`
+      const forced = [A, B].filter(q => hasMark(notes[q], p))
+      const free = [A, B].filter(q => !forced.includes(q))
+      let s = `The pivot is ${p}. `
+      s += forced.length
+        ? forced.map(q => `${nm(q)} sees it, so ${nm(q)} is ${w.get(q)}.`).join(' ')
+        : 'Neither wing is forced.'
+      if (forced.length && free.length) s += ` ${nm(free[0])} is ${w.get(free[0])} here.`
+      return s
+    },
+    worldKill: one
+      ? `${nm(T[0])} sees a ${z}, so it cannot be ${z}.`
+      : `${cells(T)} each see a ${z}, so none of them can be ${z}.`,
+    intactLine: n =>
+      `A ${z} lands in one of the three cells ${inAll(n)}, and ${one ? `${nm(T[0])} sees` : `${cells(T)} see`} all three. ${one ? 'It cannot' : 'None of them can'} be ${z}.`,
   }
 }
 
@@ -638,6 +952,10 @@ const FAMILIES = {
   xWing: fishLesson,
   swordfish: fishLesson,
   xyWing: wing,
+  skyscraper: chain,
+  twoStringKite: chain,
+  wWing: wWingLesson,
+  xyzWing: xyzLesson,
 }
 
 // ---- what the elimination leads to ----
@@ -770,8 +1088,70 @@ export function buildLesson({ board, cands, step, topo = CLASSIC, source = 'exam
     ].filter(Boolean)
     if (extra.length) apply.payoff = [apply.payoff, ...extra].filter(Boolean).join(' ')
   }
+  // The question step asks for your guess before anything is shown. Guessing
+  // first and then seeing the answer sticks far better than reading it, and it
+  // turns the step that used to say "what about the other 9s?" into one that
+  // waits for an answer. Cells for most patterns; digits for the hidden
+  // subsets, whose eliminations sit inside the pattern's own cells, where
+  // "which cells" would be a question with the answer already drawn.
+  const ask = lesson.steps.find(st => (st.mode || 'build') === 'build' && st.hi?.probe === 'targets')
+  if (ask) {
+    const pat = new Set(patternCellsOf(lesson.slots, lesson.board, lesson.cands))
+    const tcells = [...new Set(lesson.targets.map(([c]) => c))].sort((x, y) => x - y)
+    lesson.predict = tcells.every(c => pat.has(c))
+      ? {
+          kind: 'digits',
+          answer: [...new Set(lesson.targets.map(([, d]) => d))].sort((x, y) => x - y),
+          cells: tcells,
+          offer: [...new Set(tcells.flatMap(c => marksToList(lesson.cands[c])))].sort((x, y) => x - y),
+        }
+      : { kind: 'cells', answer: tcells }
+    ask.predict = true
+  }
+
   lesson.worldCount = a.worlds.length
   return lesson
+}
+
+/**
+ * How a guess at the question step went: what you named that is right, what
+ * you missed, and what you named that keeps its notes, in words.
+ */
+export function judgePrediction(lesson, picks) {
+  const p = lesson.predict
+  if (!p) return null
+  const want = new Set(p.answer)
+  const got = new Set(picks)
+  const hits = p.answer.filter(x => got.has(x))
+  const missed = p.answer.filter(x => !got.has(x))
+  const extra = [...got].filter(x => !want.has(x)).sort((a, b) => a - b)
+  const exact = !missed.length && !extra.length
+  const say = xs => (p.kind === 'cells' ? cells(xs) : and(xs))
+  let text
+  if (exact) {
+    text =
+      p.kind === 'cells'
+        ? `Exactly right: ${say(p.answer)} ${p.answer.length === 1 ? 'loses' : 'lose'} a note.`
+        : `Exactly right: ${say(p.answer)} ${p.answer.length === 1 ? 'goes' : 'go'} from ${cells(p.cells)}.`
+  } else {
+    const parts = [`You named ${hits.length} of ${p.answer.length}.`]
+    if (missed.length) {
+      parts.push(
+        p.kind === 'cells'
+          ? `${cap(say(missed))} ${missed.length === 1 ? 'loses' : 'lose'} a note too.`
+          : `${cap(say(missed))} ${missed.length === 1 ? 'goes' : 'go'} as well.`
+      )
+    }
+    if (extra.length) {
+      parts.push(
+        p.kind === 'cells'
+          ? `${cap(say(extra))} ${extra.length === 1 ? 'keeps its' : 'keep their'} notes.`
+          : `${cap(say(extra))} ${extra.length === 1 ? 'stays' : 'stay'}.`
+      )
+    }
+    text = parts.join(' ')
+  }
+  return { hits, missed, extra, exact, text }
 }
 
 export const SOURCE_LABEL = {

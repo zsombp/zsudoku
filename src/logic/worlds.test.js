@@ -29,6 +29,9 @@ function walk(entry, visit) {
 }
 
 describe('the worlds are the argument the ladder made', () => {
+  // Grown at v4.0.0 with puzzles that need the four rungs above the swordfish;
+  // the old sixteen solves are unchanged because those rungs only fire where
+  // nothing older can move.
   const checked = {}
 
   for (const [n, entry] of fixtures.entries()) {
@@ -54,7 +57,7 @@ describe('the worlds are the argument the ladder made', () => {
   }
 
   it('reached every classic rung on the way', () => {
-    for (const k of ['nakedSingle', 'hiddenSingle', 'pointing', 'claiming', 'nakedPair', 'hiddenPair', 'nakedTriple', 'hiddenTriple', 'nakedQuad', 'xWing', 'xyWing', 'swordfish']) {
+    for (const k of ['nakedSingle', 'hiddenSingle', 'pointing', 'claiming', 'nakedPair', 'hiddenPair', 'nakedTriple', 'hiddenTriple', 'nakedQuad', 'xWing', 'xyWing', 'swordfish', 'skyscraper', 'twoStringKite', 'wWing', 'xyzWing']) {
       expect(checked[k] || 0, `${k} never checked`).toBeGreaterThan(0)
     }
   })

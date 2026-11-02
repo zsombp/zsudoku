@@ -268,3 +268,68 @@ describe('the ladder on a real killer board', () => {
     expect(TECHNIQUES.cageCombo.repeat).toBeLessThanOrEqual(TECHNIQUES.hiddenSingle.repeat)
   })
 })
+
+describe('the four rungs above the swordfish', () => {
+  const NEW = ['skyscraper', 'twoStringKite', 'wWing', 'xyzWing']
+  const ALLD = 0b111111111
+
+  // Grids dug to 22 to 27 clues, where the old ladder gave up on about one in
+  // three. The solution is known, so every claim the new rungs make can be held
+  // against it.
+  const grids = range(80).map(i => {
+    const rng = mulberry32(777000 + i)
+    const solution = generateFull(rng)
+    return { solution, puzzle: dig(solution, 22 + (i % 6), rng) }
+  })
+
+  it('never rule out a digit the answer needs', () => {
+    const fired = Object.fromEntries(NEW.map(k => [k, 0]))
+    for (const { solution, puzzle } of grids) {
+      const state = createState(puzzle)
+      for (let guard = 0; guard < 800; guard++) {
+        const step = nextStep(state)
+        if (!step) break
+        if (NEW.includes(step.technique)) {
+          fired[step.technique]++
+          for (const e of step.eliminations) expect(solution[e.cell], step.detail).not.toBe(e.digit)
+        }
+        applyStep(state, step)
+      }
+    }
+    // A rung that never fires here is untested, not sound.
+    for (const k of NEW) expect(fired[k], `${k} never fired`).toBeGreaterThan(0)
+  })
+
+  it('only fire where nothing older can move', () => {
+    // The reason they sit at the top: every puzzle the old ladder could finish
+    // grades exactly as it did. Checked here by switching the four off and
+    // grading again, which must change nothing for a puzzle that never needed
+    // them.
+    for (const { puzzle } of grids.slice(0, 40)) {
+      const all = gradePuzzle(puzzle)
+      if (NEW.some(k => all.counts[k])) continue
+      const saved = NEW.map(k => TECHNIQUES[k].fn)
+      for (const k of NEW) TECHNIQUES[k].fn = () => null
+      try {
+        expect(gradePuzzle(puzzle)).toEqual(all)
+      } finally {
+        NEW.forEach((k, i) => (TECHNIQUES[k].fn = saved[i]))
+      }
+    }
+  })
+
+  it('finds a hand-built skyscraper and strikes what sees both roofs', () => {
+    // 5 has exactly two homes in row 1 (c1, c5) and in row 5 (c1, c6). The c1
+    // ends line up, so r1c5 or r5c6 is a 5, and r2c6 sees both: r1c5 through
+    // the top centre box, r5c6 down column 6.
+    const at = (r, c) => (r - 1) * 9 + (c - 1)
+    const board = new Array(81).fill(0)
+    const cands = Int16Array.from(range(81), () => ALLD & ~(1 << 4))
+    for (const c of [at(1, 1), at(1, 5), at(5, 1), at(5, 6), at(2, 6)]) cands[c] = ALLD
+    const step = fire('skyscraper', { board, cands, topo: CLASSIC })
+    expect(step).toBeTruthy()
+    expect(step.digits).toEqual([5])
+    expect(step.roof.sort((a, b) => a - b)).toEqual([at(1, 5), at(5, 6)])
+    expect(step.eliminations).toEqual([{ cell: at(2, 6), digit: 5 }])
+  })
+})

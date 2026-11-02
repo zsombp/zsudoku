@@ -60,6 +60,31 @@ export function slotsFor(step, topo = CLASSIC) {
       const lines = step.base === 'row' ? topo.rows : topo.cols
       return step.lines.map(l => ({ digit: step.digits[0], cells: lines[l] }))
     }
+    // Two strong links: the digit lands somewhere in each of their lines. The
+    // whole line rather than the two link cells, so that a flaw adding a third
+    // home actually adds an option; on the real position only the two cells
+    // hold the digit, so the worlds are the same.
+    case 'skyscraper': {
+      if (!step.lines || !step.base) return null
+      const lines = step.base === 'row' ? topo.rows : topo.cols
+      return step.lines.map(l => ({ digit: step.digits[0], cells: lines[l] }))
+    }
+    case 'twoStringKite':
+      return step.lines
+        ? [
+            { digit: step.digits[0], cells: topo.rows[step.lines[0]] },
+            { digit: step.digits[0], cells: topo.cols[step.lines[1]] },
+          ]
+        : null
+    // Two x/y cells, and the strong link on x that bridges them.
+    case 'wWing': {
+      const bridge = unit()
+      return step.wings && bridge
+        ? [{ cell: step.wings[0] }, { cell: step.wings[1] }, { digit: step.digits[0], cells: bridge }]
+        : null
+    }
+    case 'xyzWing':
+      return step.cells.map(cell => ({ cell }))
     default:
       return null
   }

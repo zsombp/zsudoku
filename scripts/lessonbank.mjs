@@ -22,11 +22,11 @@ const puzzles = fixtures.filter(f => f.variant === 'classic').map(f => [...f.puz
 
 const t0 = Date.now()
 for (let seed = 9001; seed < 9001 + 400 && Date.now() - t0 < 100000; seed++) {
-  const made = makePuzzle(seed % 2 ? 'Diabolical' : 'Expert', { seed })
+  const made = makePuzzle(['Expert', 'Diabolical', 'Infernal'][seed % 3], { seed })
   if (made) puzzles.push(made.puzzle)
 }
 
-const IDEAL_WORLDS = { swordfish: 3, nakedTriple: 3, hiddenTriple: 3, nakedQuad: 4, xyWing: 4 }
+const IDEAL_WORLDS = { hiddenSingle: 1, swordfish: 3, nakedTriple: 3, hiddenTriple: 3, nakedQuad: 4, xyWing: 4, skyscraper: 3, twoStringKite: 3, wWing: 4, xyzWing: 5 }
 
 function score(lesson, step) {
   const t = step.technique
@@ -66,8 +66,11 @@ for (const puzzle of puzzles) {
     if (!step) break
     if (TEACHABLE.has(step.technique)) {
       const lesson = buildLesson({ board: state.board, cands: state.cands, step })
-      if (lesson) {
-        const sc = score(lesson, step)
+      // A stock lesson without a "break it" step teaches half the idea, so one
+      // is only kept when nothing with a flaw turns up. The hidden single is
+      // taught as a scan and never has one.
+      if (lesson && (lesson.flaws.length || step.technique === 'hiddenSingle' || !best[step.technique])) {
+        const sc = score(lesson, step) + (lesson.flaws.length || step.technique === 'hiddenSingle' ? 100 : 0)
         if (!best[step.technique] || sc > best[step.technique].sc) {
           best[step.technique] = {
             sc,

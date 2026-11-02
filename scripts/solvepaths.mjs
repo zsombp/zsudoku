@@ -8,13 +8,22 @@ import { makePuzzle } from '../src/logic/generator.js'
 import { gradePuzzle } from '../src/logic/grader.js'
 import { makeVariantPuzzle } from '../src/logic/variants.js'
 
-const want = ['hiddenSingle', 'pointing', 'claiming', 'nakedPair', 'hiddenPair', 'nakedTriple', 'hiddenTriple', 'nakedQuad', 'xWing', 'xyWing', 'swordfish']
+const want = ['hiddenSingle', 'pointing', 'claiming', 'nakedPair', 'hiddenPair', 'nakedTriple', 'hiddenTriple', 'nakedQuad', 'xWing', 'xyWing', 'swordfish', 'skyscraper', 'twoStringKite', 'wWing', 'xyzWing']
+// Grows the existing file rather than replacing it: a rung added to the top of
+// the ladder leaves every old solve path byte identical, and the naked quad
+// took most of a run to find the first time. Delete the file to start over.
+const FILE = 'src/logic/__fixtures__/solvepaths.json'
+const existing = fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, 'utf8')) : []
 const seen = Object.fromEntries(want.map(k => [k, 0]))
-const out = []
+const out = existing.filter(f => f.variant === 'classic')
+for (const f of out) {
+  const g = gradePuzzle([...f.puzzle].map(Number))
+  for (const k of want) if (g.counts[k]) seen[k]++
+}
 const t0 = Date.now()
-let seed = 4242
+let seed = 4242 + out.length * 1000
 while (want.some(k => seen[k] < 2) && Date.now() - t0 < 150000) {
-  const tier = ['Expert', 'Diabolical', 'Diabolical'][seed % 3]
+  const tier = ['Expert', 'Diabolical', 'Infernal'][seed % 3]
   const made = makePuzzle(tier, { seed: seed++ })
   if (!made) continue
   const g = gradePuzzle(made.puzzle)
@@ -22,9 +31,13 @@ while (want.some(k => seen[k] < 2) && Date.now() - t0 < 150000) {
   for (const k of want) if (g.counts[k]) seen[k]++
   out.push({ variant: 'classic', puzzle: made.puzzle.join('') })
 }
-for (const [variant, s] of [['jigsaw', 11], ['jigsaw', 23], ['x', 7], ['windoku', 5], ['antiknight', 3]]) {
-  const made = makeVariantPuzzle(variant, 'Hard', { seed: s })
-  if (made) out.push({ variant, regions: made.regions || null, puzzle: made.puzzle.join(''), seed: made.seed })
+const variants = existing.filter(f => f.variant !== 'classic')
+if (variants.length) out.push(...variants)
+else {
+  for (const [variant, s] of [['jigsaw', 11], ['jigsaw', 23], ['x', 7], ['windoku', 5], ['antiknight', 3]]) {
+    const made = makeVariantPuzzle(variant, 'Hard', { seed: s })
+    if (made) out.push({ variant, regions: made.regions || null, puzzle: made.puzzle.join(''), seed: made.seed })
+  }
 }
-fs.writeFileSync('src/logic/__fixtures__/solvepaths.json', JSON.stringify(out, null, 0) + '\n')
+fs.writeFileSync(FILE, JSON.stringify(out, null, 0) + '\n')
 console.log('puzzles:', out.length, 'coverage:', JSON.stringify(seen), Math.round((Date.now() - t0) / 1000) + 's')

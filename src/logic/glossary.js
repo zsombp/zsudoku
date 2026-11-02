@@ -665,6 +665,11 @@ const WRITTEN = {
     definition:
       'A real position from a real puzzle where you tap the cells the pattern uses, then the cells it removes a candidate from, against the clock.',
   },
+  session: {
+    label: "Today's session",
+    definition:
+      'One pattern a day, picked from your schedule: a lesson on it, five drill cards, then one puzzle that needs it, and the day counts once the cards are done.',
+  },
   lesson: {
     label: 'Lesson',
     definition:
@@ -793,12 +798,16 @@ const ACHIEVEMENT_TERMS = {
   },
   'all-tiers': {
     label: 'Full sweep',
-    definition: 'Finish a puzzle the grader graded at each of the six tiers, counted over all your games.',
+    definition: 'Finish a puzzle the grader graded at each of the six tiers from Gentle to Diabolical, counted over all your games.',
     scope: MANY,
   },
   diabolical: {
     label: 'Nerves of steel',
     definition: 'Finish one puzzle the grader graded Diabolical, whatever tier you asked for.',
+  },
+  infernal: {
+    label: 'Into the fire',
+    definition: 'Finish one puzzle the grader graded Infernal, whatever tier you asked for.',
   },
   'streak-7': {
     label: 'Habit',

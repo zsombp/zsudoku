@@ -2,11 +2,11 @@
  * The drawn marks: one emblem per tier, one per achievement, and the mark a
  * screen shows when it has nothing to show yet.
  *
- * Drawn rather than decorated. The six tier emblems escalate in *geometric
- * complexity*, not in ornament: Gentle is a circle with a centre, and Diabolical
- * is that same centre buried inside a lattice. That is the whole idea, and it is
- * the reason the set reads as a scale rather than as six unrelated badges. A
- * seventh tier, if one ever exists, has to say where it sits on that ramp.
+ * Drawn rather than decorated. The seven tier emblems escalate in *geometric
+ * complexity*, not in ornament: Gentle is a circle with a centre, Diabolical
+ * is that same centre buried inside a lattice, and Infernal seals the lattice
+ * back inside Gentle's ring. That is the whole idea, and it is the reason the
+ * set reads as a scale rather than as seven unrelated badges.
  *
  * Everything here strokes in `currentColor` and fills only with `--panel`, so a
  * mark takes the accent of whichever of the six themes is on and can never
@@ -87,6 +87,20 @@ const TIERS = {
           smudge where six strokes meet. */}
       <circle cx="26" cy="26" r="4.6" fill="var(--panel)" stroke="none" />
       <circle cx="26" cy="26" r="4.6" />
+    </>
+  ),
+  /* The scale comes full circle: Diabolical's lattice, sealed inside the ring
+     Gentle started with, its three diameters run out to meet it. The ring is
+     what the eye catches first at 22px, and nothing below Gentle has one with
+     anything inside it but a dot, so the two ends of the ramp cannot be
+     confused. */
+  Infernal: (
+    <>
+      <circle cx="26" cy="26" r="21.5" />
+      <path d="M26 12.5l11.7 6.75v13.5L26 39.5 14.3 32.75v-13.5z" />
+      <path d="M26 4.5v43M7.4 15.25l37.2 21.5M44.6 15.25L7.4 36.75" />
+      <circle cx="26" cy="26" r="4.2" fill="var(--panel)" stroke="none" />
+      <circle cx="26" cy="26" r="4.2" />
     </>
   ),
 }
@@ -202,6 +216,7 @@ const BADGE_ART = {
   'clean-ten': 'clean',
   'all-tiers': 'tiers',
   diabolical: 'tiers',
+  infernal: 'tiers',
   'streak-7': 'streak',
   'streak-30': 'streak',
   'daily-7': 'daily',

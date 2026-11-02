@@ -10,9 +10,9 @@ It costs nothing and must keep costing nothing. Seven dependencies; adding an ei
 
 ## What it is now
 
-Six boards: classic, jigsaw, X-Sudoku, Windoku, anti-knight and killer. Seventeen techniques on the ladder, five of them arithmetic and only reachable on a caged board.
+Six boards: classic, jigsaw, X-Sudoku, Windoku, anti-knight and killer. Twenty-one techniques on the ladder, five of them arithmetic and only reachable on a caged board, and seven tiers, the last of them (Infernal) beyond the sweep.
 
-Beyond playing: a post-game review that draws its evidence, a coach that reasons across games, belief archaeology, self-experiments with a permutation test, a curriculum scheduled against your own failures, lessons that step through every way a pattern can go on a real position (from the hint, the review, practice or a drill), position drills that ask what a pattern removes as well as where it is, Socratic questions as the rung below the hint, ghost racing, a private league over the sync repository, the solve path as a saveable picture, handwritten digit entry, spoken moves where the browser can recognise speech without sending it anywhere, and a glossary every screen reads from. `docs/VISION.md` records what shipped against the original ambition and what genuinely remains.
+Beyond playing: a post-game review that draws its evidence, a coach that reasons across games, belief archaeology, self-experiments with a permutation test, a curriculum scheduled against your own failures, lessons that step through every way a pattern can go on a real position (from the hint, the review, practice or a drill), position drills that ask what a pattern removes as well as where it is and count toward the schedule, a guess before every lesson's reveal, a daily session (lesson, five cards, one puzzle) picked from the schedule, an opt-in generated ambience, Socratic questions as the rung below the hint, ghost racing, a private league over the sync repository, the solve path as a saveable picture, handwritten digit entry, spoken moves where the browser can recognise speech without sending it anywhere, and a glossary every screen reads from. `docs/VISION.md` records what shipped against the original ambition and what genuinely remains.
 
 ## Non-negotiables
 
@@ -24,7 +24,7 @@ Beyond playing: a post-game review that draws its evidence, a coach that reasons
 2. **Honest difficulty.** The difficulty shown is always the grader's verdict on the puzzle in front of you, never the difficulty that was requested. No puzzle ships that the technique ladder cannot finish by pure logic. `requested` and `graded` stay separate fields everywhere; when they disagree the interface says so.
    - Score measures deduction, never board size and never board shape. Naked singles cost zero on purpose: see `docs/DECISIONS.md`. A regression test asserts naked-singles-only puzzles score exactly 0 at any clue count. The same disease nearly returned with killer, where the two routine cage rungs fire once per cage.
    - Techniques return structured steps, so the grader, the hint engine, the Socratic questions, the post-game review, the drawn explanations and the lessons are all the same code and cannot disagree. `src/logic/explain.js` is the single answer to "why does this digit go here"; never write a second one. `src/logic/bottleneck.js` is the single answer to "what did finding the next digit take from here", and everything that judges the player reads it rather than the label of the digit a hint placed.
-   - **Bump `GRADER_VERSION` (currently 4) whenever a technique, a cost or a band changes, even if you have proved no score moved.** Killer added five rungs and left the classic scale byte identical over 168 puzzles, and the stamp still went to 3: a version that only changes when a number changes is a version nobody can trust when one does. The stamp is cheap, it regrades saves and drops the pre-generated cache.
+   - **Bump `GRADER_VERSION` (currently 5) whenever a technique, a cost or a band changes, even if you have proved no score moved.** Killer added five rungs and left the classic scale byte identical over 168 puzzles, and the stamp still went to 3: a version that only changes when a number changes is a version nobody can trust when one does. The stamp is cheap, it regrades saves and drops the pre-generated cache.
    - Recalibration is a separate question from the stamp, and it is answered by measurement. Generate the same fixed seeds before and after and diff the JSON. If scores moved, `npm run calibrate -- explore` and re-derive the bands; if they did not, say so in the CHANGELOG with the numbers.
 3. **Honest timing.** Timestamp-based, not interval ticks, auto-paused on `visibilitychange`. Every statistic depends on this.
 4. **Nothing leaves the device except to the user's own repository.** Analytics are local and are never sent anywhere. Export is a file the user saves themselves. The GitHub backup writes the same data to a repo they own and control. The one thing that could ever leave for anyone else is speech, under non-negotiable 1, and only behind its own switch with the consequence spelled out.
@@ -43,14 +43,16 @@ src/logic/      topology, solver, generator, grader, techniques, explain,
                 bottleneck, worlds, lessons, teachable, lessonBank,
                 variants, killer, socratic, flashcards, share, glossary
 src/stats/      analysis, replay, coach, beliefs, experiments, curriculum,
-                moments, ghost, league, flow, solveart, narrate   (recorded games)
-src/lib/        storage, idb, prng, format, backup, sound, voice, handwriting
+                moments, ghost, league, flow, solveart, narrate,
+                drills, session                                 (recorded games)
+src/lib/        storage, idb, prng, format, backup, sound, ambience, voice,
+                handwriting, drillLog
 src/state/      gameReducer
 src/components/ Board, NumberPad, Toolbar, StatusBar, Dashboard, GameReview,
                 StatsView, SettingsView, Term, and the rest
 src/hooks/      useTimer, useKeyboard, useGenerator, useHint, useRace,
-                useLeague, useSettings
-src/styles/     tokens.css then everything else
+                useLeague, useSettings, useSession
+src/styles/     tokens.css, then app.css, lesson.css, training.css
 src/workers/    generator worker
 scripts/        measurement harnesses, run with node
 ```

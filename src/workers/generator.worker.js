@@ -13,14 +13,16 @@ import { makeVariantPuzzle, makeVariantPractice, makeVariantTailored } from '../
 import { buildDeck } from '../logic/flashcards.js'
 
 self.onmessage = event => {
-  const { id, tier, seed, practice, tailored, cards, variant = 'classic' } = event.data
+  const { id, tier, seed, practice, tailored, cards, count, variant = 'classic' } = event.data
   try {
     // Rare techniques need a long leash. Measured with scripts/practice.mjs:
     // Swordfish took a median 9s and naked quad landed only 67% of the time at
     // 20s, so the budget here is deliberately generous. It runs in a worker, so
     // waiting costs the interface nothing.
     if (cards) {
-      const deck = buildDeck(cards, { count: 8, budgetMs: 12000, ...(seed === undefined ? {} : { seed }) })
+      // Eight from the practice screen, five for today's session.
+      const n = Number.isInteger(count) && count > 0 && count <= 20 ? count : 8
+      const deck = buildDeck(cards, { count: n, budgetMs: n < 8 ? 9000 : 12000, ...(seed === undefined ? {} : { seed }) })
       if (!deck.length) {
         self.postMessage({ id, error: `could not deal any ${cards} positions. It is a rare pattern; try again.` })
         return

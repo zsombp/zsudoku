@@ -11,6 +11,9 @@ let ctx = null
 let enabled = false
 let idleTimer = null
 let quietAt = 0
+// How many long-running users are holding the context open. The ambience is
+// the only one: while it plays, the idle suspend below must not cut it off.
+let holds = 0
 
 /**
  * How long the context is allowed to idle before it is suspended.
@@ -39,6 +42,9 @@ export function setEnabled(on) {
 export function quiet() {
   clearTimeout(idleTimer)
   idleTimer = null
+  // Something is still playing on purpose. It releases the context when it
+  // stops, and that release suspends it.
+  if (holds > 0) return
   try {
     if (ctx && ctx.state === 'running') ctx.suspend()
   } catch {
@@ -71,6 +77,35 @@ function audio() {
   } catch {
     return null
   }
+}
+
+/**
+ * The context for something that plays for minutes rather than milliseconds.
+ *
+ * Independent of the sound switch: the ambience has a switch of its own, and
+ * turning the clicks off must not silence a pad somebody asked for. Every
+ * acquire is paired with a release, which is what lets the context suspend
+ * again the moment the last long sound stops.
+ */
+export function acquire() {
+  try {
+    if (!ctx) ctx = new (globalThis.AudioContext || globalThis.webkitAudioContext)()
+    if (ctx.state === 'suspended') ctx.resume()
+    holds++
+    clearTimeout(idleTimer)
+    idleTimer = null
+    return ctx
+  } catch {
+    return null
+  }
+}
+
+/** Let go of an acquired context. `now` suspends at once rather than after the grace. */
+export function release({ now = false } = {}) {
+  holds = Math.max(0, holds - 1)
+  if (holds > 0 || !ctx) return
+  if (now) quiet()
+  else suspendWhenDone(ctx, ctx.currentTime)
 }
 
 // Backgrounding the app is a definite answer, so it does not wait out the

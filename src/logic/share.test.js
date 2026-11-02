@@ -4,7 +4,7 @@ import { encodePuzzle, decodePuzzle, isPuzzleCode } from './share.js'
 describe('a puzzle as a word', () => {
   it('round-trips every board and tier', () => {
     for (const variant of ['classic', 'jigsaw', 'x', 'windoku', 'antiknight']) {
-      for (const tier of ['Gentle', 'Easy', 'Medium', 'Hard', 'Expert', 'Diabolical']) {
+      for (const tier of ['Gentle', 'Easy', 'Medium', 'Hard', 'Expert', 'Diabolical', 'Infernal']) {
         const code = encodePuzzle({ variant, tier, seed: 123456789 })
         expect(decodePuzzle(code)).toEqual({ variant, tier, seed: 123456789 })
       }

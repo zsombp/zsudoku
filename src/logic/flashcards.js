@@ -14,8 +14,8 @@ import { createState, nextStep } from './grader.js'
 import { TECHNIQUES } from './techniques.js'
 import { removeMark } from './marks.js'
 import { CLASSIC } from './topology.js'
-import { makePuzzle } from './generator.js'
-import { randomSeed } from '../lib/prng.js'
+import { makePuzzle, generateFull, dig } from './generator.js'
+import { randomSeed, mulberry32 } from '../lib/prng.js'
 
 /**
  * Walk a puzzle until the wanted technique fires, and hand back the position
@@ -73,6 +73,25 @@ export function buildDeck(technique, { count = 8, budgetMs = 8000, seed = random
   const t0 = Date.now()
   let n = 0
 
+  // The rungs above the swordfish only fire where nothing older can move, so
+  // a puzzle shaped to a tier band contains one rarely: an XYZ-Wing deck came
+  // back with two cards in twelve seconds. A grid dug straight to 22 to 27
+  // clues reaches that kind of position in milliseconds, and the position is
+  // as real as any other: unique, and reached by the ladder's own logic. It
+  // does not matter for a card whether the ladder could finish the grid.
+  if (DUG.has(technique)) {
+    while (cards.length < count && Date.now() - t0 < budgetMs) {
+      const rng = mulberry32((seed + n * 7919) >>> 0)
+      n++
+      const solution = generateFull(rng)
+      if (!solution) continue
+      const puzzle = dig(solution, 22 + (n % 6), rng, { symmetric: false })
+      const card = cardFrom(puzzle, technique)
+      if (card) cards.push({ ...card, seed: (seed + n * 7919) >>> 0 })
+    }
+    return cards
+  }
+
   while (cards.length < count && Date.now() - t0 < budgetMs) {
     const tier = tiers[n % tiers.length]
     const made = makePuzzle(tier, { seed: (seed + n * 7919) >>> 0 })
@@ -83,6 +102,8 @@ export function buildDeck(technique, { count = 8, budgetMs = 8000, seed = random
   }
   return cards
 }
+
+const DUG = new Set(['skyscraper', 'twoStringKite', 'wWing', 'xyzWing'])
 
 /** Where each rung tends to show up, so the search starts in the right place. */
 const TIERS_FOR = {
@@ -97,6 +118,10 @@ const TIERS_FOR = {
   xWing: ['Expert', 'Diabolical'],
   xyWing: ['Diabolical'],
   swordfish: ['Diabolical'],
+  skyscraper: ['Diabolical', 'Infernal'],
+  twoStringKite: ['Diabolical', 'Infernal'],
+  wWing: ['Diabolical', 'Infernal'],
+  xyzWing: ['Diabolical', 'Infernal'],
 }
 
 /** Did the player find it? Order does not matter, only the set of cells. */

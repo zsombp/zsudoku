@@ -378,6 +378,216 @@ function xyWing(state) {
   return null
 }
 
+// ---- the rungs above the swordfish ----
+//
+// Four patterns added at v4.0.0, chosen because they are the natural next step
+// after the XY-Wing and the swordfish and because the lessons' worlds engine
+// can already teach every one of them: each is a handful of cells that must
+// take one of their notes plus a digit that must land somewhere in a unit.
+//
+// Two of them are single-digit chains built from strong links. A strong link
+// is a unit where a digit has exactly two homes: whichever way it goes, one of
+// the two is that digit. Join two strong links at one end each, where the ends
+// see each other, and the far ends cannot both be empty of the digit: if one
+// far end is not it, its link's near end is, which pushes the other link to its
+// far end. Anything seeing both far ends loses the digit.
+
+/** Units where `digit` has exactly two homes, of the given types. */
+function strongLinks(state, digit, types) {
+  const { board, cands, topo = CLASSIC } = state
+  const out = []
+  for (let u = 0; u < topo.units.length; u++) {
+    const meta = topo.unitMeta[u]
+    if (!types.includes(meta.type)) continue
+    const cells = collect(topo.units[u], board, cands, digit)
+    if (cells.length === 2) out.push({ u, meta, cells })
+  }
+  return out
+}
+
+/** Cells holding `digit` that see both `a` and `b`, other than the pattern's own. */
+function seeingBoth(state, a, b, digit, pattern) {
+  const { board, cands, topo = CLASSIC } = state
+  const out = []
+  for (let i = 0; i < 81; i++) {
+    if (board[i] !== 0 || pattern.includes(i) || !hasMark(cands[i], digit)) continue
+    if (topo.peers[a].includes(i) && topo.peers[b].includes(i)) out.push({ cell: i, digit })
+  }
+  return out
+}
+
+// ---- Skyscraper ----
+// Two rows (or two columns) where a digit has exactly two homes, lined up at
+// one end and not the other. The lined-up ends are the base and cannot both be
+// the digit, so one of the two roof cells is, and anything seeing both roofs
+// loses it. Lined up at both ends it would be an X-Wing, which is cheaper and
+// has already had its chance.
+
+function skyscraper(state) {
+  for (const orientation of ['row', 'col']) {
+    const crossOf = orientation === 'row' ? colOf : rowOf
+    for (let digit = 1; digit <= 9; digit++) {
+      const links = strongLinks(state, digit, [orientation])
+      for (let i = 0; i < links.length; i++) {
+        for (let j = i + 1; j < links.length; j++) {
+          const A = links[i].cells
+          const B = links[j].cells
+          for (const [a1, a2] of [[A[0], A[1]], [A[1], A[0]]]) {
+            for (const [b1, b2] of [[B[0], B[1]], [B[1], B[0]]]) {
+              if (crossOf(a1) !== crossOf(b1) || crossOf(a2) === crossOf(b2)) continue
+              const pattern = [a1, a2, b1, b2]
+              const elim = seeingBoth(state, a2, b2, digit, pattern)
+              if (!elim.length) continue
+              const line = orientation === 'row' ? 'rows' : 'columns'
+              const cross = orientation === 'row' ? 'column' : 'row'
+              return step({
+                technique: 'skyscraper',
+                eliminations: elim,
+                cells: pattern,
+                digits: [digit],
+                // For the lessons: which lines the two links run along, which
+                // ends are the base, and which are the roof.
+                base: orientation,
+                lines: [links[i].meta.index, links[j].meta.index],
+                links: [[a1, a2], [b1, b2]],
+                roof: [a2, b2],
+                detail: `${digit} has two homes in each of ${line} ${links[i].meta.index + 1} and ${links[j].meta.index + 1}, and they line up in ${cross} ${crossOf(a1) + 1}, so one of the other two ends is ${digit}`,
+              })
+            }
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
+// ---- 2-String Kite ----
+// The same chain with one link in a row and one in a column, joined inside a
+// box: one end of each sits in the same box, so they see each other and cannot
+// both be the digit. One of the two free ends is, and the cell where the free
+// ends' lines cross loses it.
+
+function twoStringKite(state) {
+  const { topo = CLASSIC } = state
+  for (let digit = 1; digit <= 9; digit++) {
+    const rows = strongLinks(state, digit, ['row'])
+    const cols = strongLinks(state, digit, ['col'])
+    for (const R of rows) {
+      for (const C of cols) {
+        if (R.cells.some(c => C.cells.includes(c))) continue
+        for (const [a1, a2] of [[R.cells[0], R.cells[1]], [R.cells[1], R.cells[0]]]) {
+          for (const [b1, b2] of [[C.cells[0], C.cells[1]], [C.cells[1], C.cells[0]]]) {
+            if (topo.regionOf[a1] !== topo.regionOf[b1]) continue
+            if (topo.regionOf[a2] === topo.regionOf[a1] || topo.regionOf[b2] === topo.regionOf[a1]) continue
+            const pattern = [a1, a2, b1, b2]
+            const elim = seeingBoth(state, a2, b2, digit, pattern)
+            if (!elim.length) continue
+            return step({
+              technique: 'twoStringKite',
+              eliminations: elim,
+              cells: pattern,
+              digits: [digit],
+              links: [[a1, a2], [b1, b2]],
+              roof: [a2, b2],
+              lines: [R.meta.index, C.meta.index],
+              detail: `${digit} has two homes in row ${R.meta.index + 1} and two in column ${C.meta.index + 1}, joined inside ${unitName(topo.unitMeta[topo.regionStart + topo.regionOf[a1]])}, so one of the free ends is ${digit}`,
+            })
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
+// ---- W-Wing ----
+// Two cells holding the same two digits, x and y, that do not see each other,
+// and a strong link on x whose ends see one cell each. If the first cell is x,
+// its end of the link is not, so the far end is, so the second cell is not x
+// and must be y. Either way one of the two cells is y, and anything seeing both
+// loses it.
+
+function wWing(state) {
+  const { board, cands, topo = CLASSIC } = state
+  const twos = []
+  for (let i = 0; i < 81; i++) if (board[i] === 0 && countMarks(cands[i]) === 2) twos.push(i)
+  for (let p = 0; p < twos.length; p++) {
+    for (let q = p + 1; q < twos.length; q++) {
+      const c1 = twos[p]
+      const c2 = twos[q]
+      if (cands[c1] !== cands[c2] || topo.peers[c1].includes(c2)) continue
+      const [d1, d2] = marksToList(cands[c1])
+      for (const [x, y] of [[d1, d2], [d2, d1]]) {
+        for (const link of strongLinks(state, x, ['row', 'col', 'region'])) {
+          if (link.cells.includes(c1) || link.cells.includes(c2)) continue
+          for (const [l1, l2] of [[link.cells[0], link.cells[1]], [link.cells[1], link.cells[0]]]) {
+            if (!topo.peers[l1].includes(c1) || !topo.peers[l2].includes(c2)) continue
+            const pattern = [c1, c2, l1, l2]
+            const elim = seeingBoth(state, c1, c2, y, pattern)
+            if (!elim.length) continue
+            return step({
+              technique: 'wWing',
+              eliminations: elim,
+              cells: pattern,
+              digits: [x, y],
+              // The strong link's unit, so the board can shade the bridge.
+              unit: link.meta,
+              wings: [c1, c2],
+              bridge: [l1, l2],
+              detail: `both cells hold ${x}/${y}, and ${x} in ${unitName(link.meta)} has to be at one end or the other, so one of the two cells is ${y}`,
+            })
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
+// ---- XYZ-Wing ----
+// The XY-Wing with a pivot that holds all three digits: x/y/z, seeing an x/z
+// cell and a y/z cell. Whatever the pivot is, z lands in one of the three, so
+// anything that sees all three loses it. Seeing the pivot as well is the extra
+// condition the extra note costs.
+
+function xyzWing(state) {
+  const { board, cands, topo = CLASSIC } = state
+  for (let pivot = 0; pivot < 81; pivot++) {
+    if (board[pivot] !== 0 || countMarks(cands[pivot]) !== 3) continue
+    const wings = topo.peers[pivot].filter(
+      i => board[i] === 0 && countMarks(cands[i]) === 2 && (cands[i] & ~cands[pivot]) === 0
+    )
+    for (let p = 0; p < wings.length; p++) {
+      for (let q = p + 1; q < wings.length; q++) {
+        const a = wings[p]
+        const b = wings[q]
+        if (cands[a] === cands[b] || (cands[a] | cands[b]) !== cands[pivot]) continue
+        const shared = cands[a] & cands[b]
+        const z = marksToList(shared)[0]
+        const x = marksToList(cands[a]).find(d => d !== z)
+        const y = marksToList(cands[b]).find(d => d !== z)
+        const elim = []
+        for (let i = 0; i < 81; i++) {
+          if (i === pivot || i === a || i === b || board[i] !== 0 || !hasMark(cands[i], z)) continue
+          if (topo.peers[pivot].includes(i) && topo.peers[a].includes(i) && topo.peers[b].includes(i)) {
+            elim.push({ cell: i, digit: z })
+          }
+        }
+        if (!elim.length) continue
+        return step({
+          technique: 'xyzWing',
+          eliminations: elim,
+          cells: [pivot, a, b],
+          digits: [x, y, z],
+          detail: `the pivot holds ${x}/${y}/${z} and both wings share ${z} with it, so ${z} is in one of the three`,
+        })
+      }
+    }
+  }
+  return null
+}
+
 // ---- rungs 8 to 12: arithmetic, for killer ----
 //
 // The first constraint in this app that is not a set of nine cells holding nine
@@ -750,6 +960,10 @@ export const TECHNIQUES = {
   xWing: { label: 'X-Wing', first: 500, repeat: 120, short: 'a rectangle of two', about: 'A digit confined to the same two columns across two rows. Those columns are then accounted for and it leaves them elsewhere.', fn: fish(2, 'xWing') },
   xyWing: { label: 'XY-Wing', first: 620, repeat: 140, short: 'a pivot and two wings', about: 'A cell holding x/y sees one cell holding x/z and another holding y/z. Either way, one wing becomes z, so z leaves anything seeing both.', fn: xyWing },
   swordfish: { label: 'Swordfish', first: 800, repeat: 180, short: 'a rectangle of three', about: 'An X-Wing one size up: a digit confined to the same three columns across three rows.', fn: fish(3, 'swordfish') },
+  skyscraper: { label: 'Skyscraper', first: 820, repeat: 150, short: 'two links, one base', about: 'Two rows each hold a digit in exactly two cells, lined up at one end. Those two cannot both be it, so one of the other ends is, and it leaves anything seeing both.', fn: skyscraper },
+  twoStringKite: { label: '2-String Kite', first: 840, repeat: 155, short: 'a row and a column tied in a box', about: 'A row and a column each hold a digit in exactly two cells, with one end of each in the same box. One of the two free ends is the digit, so it leaves the cell that sees both.', fn: twoStringKite },
+  wWing: { label: 'W-Wing', first: 880, repeat: 165, short: 'two pairs and a bridge', about: 'Two cells hold the same x/y and do not see each other, and x has two homes in some unit, one seeing each. So one of the cells is y, and y leaves anything seeing both.', fn: wWing },
+  xyzWing: { label: 'XYZ-Wing', first: 920, repeat: 175, short: 'a pivot that holds all three', about: 'An XY-Wing whose pivot holds x/y/z. Whatever the pivot is, z lands in one of the three cells, so z leaves anything that sees all three.', fn: xyzWing },
 }
 
 export const LADDER = Object.keys(TECHNIQUES)
@@ -784,4 +998,13 @@ export const CAGE_TECHNIQUES = LADDER.filter(k => TECHNIQUES[k].cages)
 // lessons. Nothing the grader reads changed, and it was measured anyway: 28
 // puzzles at fixed seeds across five boards graded byte identical before and
 // after. The rule is the rule for the reason given above.
-export const GRADER_VERSION = 4
+//
+// Bumped to 5 for the four rungs above the swordfish. They sit at the top of
+// the ladder on purpose, so they only fire where nothing older can move: any
+// puzzle the old ladder could finish grades byte identical, measured over 120
+// at fixed seeds. Slotted in by human difficulty instead, between the X-Wing
+// and the XY-Wing, 17 of those 120 changed score and 9 went UP, because a
+// skyscraper nobody needed fired first and the XY-Wing was still needed after
+// it. A Hard puzzle read as Expert without getting any harder, which is the
+// one thing the scale must never do.
+export const GRADER_VERSION = 5

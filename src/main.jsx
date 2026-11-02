@@ -12,6 +12,7 @@ import '@fontsource/ibm-plex-mono/latin-600.css'
 
 import './styles/app.css'
 import './styles/lesson.css'
+import './styles/training.css'
 import App from './App.jsx'
 import { takeUpdates } from './lib/updates.js'
 

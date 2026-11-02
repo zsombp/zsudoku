@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { analyse, survivorPhrase, SOURCE_LABEL } from '../logic/lessons.js'
+import { analyse, survivorPhrase, SOURCE_LABEL, judgePrediction } from '../logic/lessons.js'
+import { recordPrediction } from '../lib/drillLog.js'
+import { TechGlyph } from './Glyphs.jsx'
 import { optionsOf, patternCellsOf, judge } from '../logic/worlds.js'
 import { regionEdges, rowOf, colOf, range } from '../logic/topology.js'
 import { hasMark } from '../logic/marks.js'
@@ -23,12 +25,15 @@ import { Explain, Term, TermGroup } from './Term.jsx'
  * picture, never an invisible one. "Play all" steps through the worlds once and
  * stops on its own.
  */
-export default function Lesson({ lesson, onClose, onDrill = null }) {
+export default function Lesson({ lesson, onClose, onDrill = null, onFinish = null, finishLabel = null }) {
   const [at, setAt] = useState(0)
   const [world, setWorld] = useState(0)
   const [visited, setVisited] = useState(() => new Set([0]))
   const [flawId, setFlawId] = useState(null)
   const [playing, setPlaying] = useState(false)
+  // Your guess at the question step, and how each judged guess went, by step.
+  const [guess, setGuess] = useState([])
+  const [guessed, setGuessed] = useState({})
   const timer = useRef(null)
   const top = useRef(null)
 
@@ -53,6 +58,7 @@ export default function Lesson({ lesson, onClose, onDrill = null }) {
       stop()
       const next = Math.max(0, Math.min(i, steps.length - 1))
       setAt(next)
+      setGuess([])
       if (steps[next].mode === 'break' && lesson.flaws.length) {
         const f = lesson.flaws[0]
         const w = survivorOf(f)
@@ -122,7 +128,30 @@ export default function Lesson({ lesson, onClose, onDrill = null }) {
     top.current?.scrollIntoView?.({ block: 'nearest' })
   }, [at])
 
-  const scene = useMemo(() => drawScene(lesson, step, mode, A, W, flaw), [lesson, step, mode, A, W, flaw])
+  // The question step waits for a guess before it shows anything that would
+  // give the answer away.
+  const asking = Boolean(step.predict && lesson.predict && !guessed[at])
+  const judged = step.predict ? guessed[at] || null : null
+  const toggleGuess = x => setGuess(g => (g.includes(x) ? g.filter(y => y !== x) : [...g, x]))
+  const check = skipped => {
+    const result = judgePrediction(lesson, skipped ? [] : guess)
+    if (!result) return
+    if (!skipped) {
+      recordPrediction({
+        technique: lesson.technique,
+        hits: result.hits.length,
+        missed: result.missed.length,
+        extra: result.extra.length,
+        source: lesson.source,
+      })
+    }
+    setGuessed(g => ({ ...g, [at]: { ...result, skipped: Boolean(skipped), picks: skipped ? [] : guess } }))
+  }
+
+  const scene = useMemo(
+    () => drawScene(lesson, step, mode, A, W, flaw, { asking, picks: guess, judged }),
+    [lesson, step, mode, A, W, flaw, asking, guess, judged]
+  )
   const sceneKey = `${at}:${world}:${flawId || ''}`
 
   const n = A.worlds.length
@@ -131,7 +160,9 @@ export default function Lesson({ lesson, onClose, onDrill = null }) {
   const killedHere = row.length > 0 && row.every(x => x.dies)
 
   let verdict = null
-  if (mode === 'worlds') {
+  if (judged && !judged.skipped) {
+    verdict = { tone: judged.exact ? 'ok' : 'wait', text: judged.text }
+  } else if (mode === 'worlds') {
     verdict = visited.size >= n
       ? { tone: 'ok', text: lesson.intactLine(n) }
       : { tone: 'wait', text: `Checked ${visited.size} of ${n} worlds.` }
@@ -163,12 +194,28 @@ export default function Lesson({ lesson, onClose, onDrill = null }) {
 
       <div className="lsLesson">
         <div className="lsHead">
-          <div className="lsKicker">{kicker}</div>
-          <h2 className="lsTitle" key={'t' + at}>{step.title}</h2>
+          <div className="lsKicker">
+            <TechGlyph technique={lesson.technique} size={16} />
+            {kicker}
+          </div>
+          {/* The last step stamps the lesson as read: drawn once, then still. */}
+          {last && (
+            <svg className="lsStamp" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false">
+              <circle cx="20" cy="20" r="16" pathLength="1" />
+              <path d="M13 20.5l4.6 4.6L27.5 15" pathLength="1" />
+            </svg>
+          )}
+          <h2 className="lsTitle" key={'t' + at + (asking ? 'a' : '')}>{asking && step.askTitle ? step.askTitle : step.title}</h2>
         </div>
 
         <div className="lsBoardArea">
-          <LessonBoard lesson={lesson} scene={scene} sceneKey={sceneKey} label={`${step.title}. ${step.text}`} />
+          <LessonBoard
+            lesson={lesson}
+            scene={scene}
+            sceneKey={sceneKey}
+            label={`${step.title}. ${asking ? step.askText || step.text : step.text}`}
+            onPick={asking && lesson.predict.kind === 'cells' ? toggleGuess : null}
+          />
           <p className="lsShowing">
             {lesson.lens
               ? lesson.focus
@@ -223,7 +270,31 @@ export default function Lesson({ lesson, onClose, onDrill = null }) {
         )}
 
         <div className="lsText" key={'x' + at}>
-          <p>{step.text}</p>
+          <p>{asking ? step.askText || step.text : step.text}</p>
+          {asking && (
+            <div className="lsGuess">
+              {lesson.predict.kind === 'digits' && (
+                <div className="lsGuessDigits" role="group" aria-label="Digits that go">
+                  {lesson.predict.offer.map(d => (
+                    <button
+                      key={d}
+                      className={'lsChip' + (guess.includes(d) ? ' on' : '')}
+                      aria-pressed={guess.includes(d)}
+                      onClick={() => toggleGuess(d)}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="dataRow">
+                <button className="newBtn" disabled={!guess.length} onClick={() => check(false)}>
+                  Check
+                </button>
+                <button className="linkBtn" onClick={() => check(true)}>show me</button>
+              </div>
+            </div>
+          )}
           {mode === 'apply' && step.payoff && <p className="lsPayoff">{step.payoff}</p>}
         </div>
 
@@ -276,8 +347,11 @@ export default function Lesson({ lesson, onClose, onDrill = null }) {
               />
             ))}
           </div>
-          <button className="newBtn lsNext" onClick={() => (last ? onClose?.() : enter(at + 1))}>
-            {last ? 'Done' : 'Next'}
+          <button
+            className="newBtn lsNext"
+            onClick={() => (last ? (onFinish ? onFinish() : onClose?.()) : enter(at + 1))}
+          >
+            {last ? finishLabel || 'Done' : 'Next'}
           </button>
         </nav>
       </div>
@@ -309,7 +383,7 @@ const key = (c, d) => c + ':' + d
  * are dropped in, and every line on the overlay. Kept out of the render so the
  * board is a dumb function of it.
  */
-function drawScene(lesson, step, mode, A, W, flaw) {
+function drawScene(lesson, step, mode, A, W, flaw, { asking = false, picks = [], judged = null } = {}) {
   const { board, topo, slots } = lesson
   const cands = A.cands
   const lens = lesson.lens
@@ -336,6 +410,17 @@ function drawScene(lesson, step, mode, A, W, flaw) {
     hits: [],
     tags: [],
     crosses: [],
+    // The guess at the question step: what you picked, and after the check,
+    // which of the picks were right, which you missed and which keep their notes.
+    picks: new Map(),
+  }
+  if (lesson.predict?.kind === 'cells') {
+    if (asking) for (const c of picks) s.picks.set(c, 'pick')
+    else if (judged && !judged.skipped) {
+      for (const c of judged.hits) s.picks.set(c, 'pickHit')
+      for (const c of judged.missed) s.picks.set(c, 'pickMiss')
+      for (const c of judged.extra) s.picks.set(c, 'pickWrong')
+    }
   }
   const mark = (c, d, cls, delay) => {
     const k = key(c, d)
@@ -363,10 +448,11 @@ function drawScene(lesson, step, mode, A, W, flaw) {
     setBand(hi.band)
     for (const c of hi.pat === 'slots' ? patternCellsOf(slots, board, cands) : hi.pat || []) s.pat.add(c)
     s.what = Boolean(hi.what)
-    for (const c of hi.tgt || []) s.tgt.add(c)
+    // While a guess is pending, nothing that points at the answer is drawn.
+    if (!asking) for (const c of hi.tgt || []) s.tgt.add(c)
     for (const [c, d] of hi.lit === 'slotNotes' ? slotNotes() : hi.lit || []) mark(c, d, 'lit')
-    for (const [c, d] of hi.probe === 'targets' ? lesson.targets : hi.probe || []) mark(c, d, 'probe')
-    ;(hi.links || []).forEach((ln, i) => {
+    if (!asking) for (const [c, d] of hi.probe === 'targets' ? lesson.targets : hi.probe || []) mark(c, d, 'probe')
+    ;(hi.links || []).filter(ln => !(asking && ln.toTarget)).forEach((ln, i) => {
       const [x1, y1] = center(ln.a)
       const [x2, y2] = center(ln.b)
       s.lines.push({ x1, y1, x2, y2, cls: ln.dashed ? 'lsLink dashed' : 'lsLink', delay: 0.08 + i * 0.12 })
@@ -415,7 +501,7 @@ function drawScene(lesson, step, mode, A, W, flaw) {
   return s
 }
 
-function LessonBoard({ lesson, scene, sceneKey, label }) {
+function LessonBoard({ lesson, scene, sceneKey, label, onPick = null }) {
   const { board, topo } = lesson
   const edges = useMemo(() => regionEdges(topo), [topo])
   const lens = lesson.lens
@@ -450,9 +536,30 @@ function LessonBoard({ lesson, scene, sceneKey, label }) {
           const solved = scene.placed?.cell === c
           if (solved) cls.push('solved')
           const v = board[c]
+          if (scene.picks.has(c)) cls.push(scene.picks.get(c))
+          const pickable = onPick && v === 0
+          if (pickable) cls.push('pickable')
           const notes = v === 0 && shows(c) ? noteList(lesson, scene, c) : []
           return (
-            <div key={c} className={cls.join(' ')}>
+            <div
+              key={c}
+              className={cls.join(' ')}
+              {...(pickable
+                ? {
+                    role: 'button',
+                    tabIndex: 0,
+                    'aria-pressed': scene.picks.has(c),
+                    'aria-label': `Mark r${rowOf(c) + 1}c${colOf(c) + 1} as losing a note`,
+                    onClick: () => onPick(c),
+                    onKeyDown: e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        onPick(c)
+                      }
+                    },
+                  }
+                : {})}
+            >
               {v !== 0 && <span className={'lsG' + (lens && v === lens ? ' lensDigit' : '')}>{v}</span>}
               {notes.length > 0 && (
                 <span className={'lsNotes' + (lens ? ' solo' : '')} key={sceneKey}>

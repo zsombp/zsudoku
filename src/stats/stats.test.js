@@ -114,7 +114,7 @@ describe('per tier', () => {
 
   it('gives every tier a row even with no games', () => {
     const rows = c.byTier([])
-    expect(rows).toHaveLength(6)
+    expect(rows).toHaveLength(7)
     for (const r of rows) expect(r.played).toBe(0)
   })
 })

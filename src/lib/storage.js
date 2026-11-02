@@ -18,6 +18,12 @@ export const KEYS = {
   daily: `${NS}.daily.v1`,
   settings: `${NS}.settings.v1`,
   records: `${NS}.records.v1`,
+  // Position drills and lesson predictions. Small, local, and not part of the
+  // GitHub backup, which carries the game log and the league file and nothing
+  // else: see src/lib/drillLog.js.
+  drills: `${NS}.drills.v1`,
+  // Today's practice session: which pattern, and which stages are done.
+  session: `${NS}.session.v1`,
 }
 
 export const slotFor = mode => (mode === 'daily' ? KEYS.daily : KEYS.game)

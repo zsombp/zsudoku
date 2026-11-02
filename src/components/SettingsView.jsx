@@ -259,6 +259,12 @@ export default function SettingsView({ settings, updateSettings, onClose }) {
         <Row label="Sound" hint="Synthesised, not sampled. Nothing to download.">
           <Switch label="Sound" checked={settings.sound} onChange={v => updateSettings({ sound: v })} />
         </Row>
+        <Row
+          label="Ambience"
+          hint="A slow generated pad while you solve. It thins out when you are on a run and settles into a low drone when you stop to think. It keeps the audio running, which costs some battery, so it plays only on the board with the clock going."
+        >
+          <Switch label="Ambience" checked={settings.ambience} onChange={v => updateSettings({ ambience: v })} />
+        </Row>
       </section>
 
       <section className="statSection">

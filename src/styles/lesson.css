@@ -467,3 +467,34 @@
     transition: none !important;
   }
 }
+
+/* ---- your guess first ----
+ *
+ * The question step takes a guess before it shows anything. A picked cell gets
+ * an ink ring; after the check, right picks take the accent, missed ones the
+ * probe blue, and picks that keep their notes the live red. Rings only, never
+ * fills, so the notes underneath stay readable. */
+
+.lsCell.pickable { cursor: pointer; }
+.lsCell.pickable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.lsCell.pick::after,
+.lsCell.pickHit::after,
+.lsCell.pickMiss::after,
+.lsCell.pickWrong::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2;
+  animation: lsRing 0.2s ease-out backwards;
+}
+.lsCell.pick::after { box-shadow: inset 0 0 0 2px var(--ink); }
+.lsCell.pickHit::after { box-shadow: inset 0 0 0 2.5px var(--accent); }
+.lsCell.pickMiss::after { border: 2px dashed var(--probe); }
+.lsCell.pickWrong::after { box-shadow: inset 0 0 0 2.5px var(--live); }
+@media (hover: hover) and (pointer: fine) {
+  .lsCell.pickable:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+}
+.lsGuess { margin-top: 10px; }
+.lsGuessDigits { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 4px; }

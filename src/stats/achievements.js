@@ -36,7 +36,10 @@ export function achievements(games) {
     return times.length ? Math.min(...times) : Infinity
   }
 
-  const tiersCleared = TIERS.filter(t => finished.some(g => g.graded === t.name)).length
+  // The tiers up to Diabolical. Infernal arrived later and is marked `beyond`,
+  // so adding it could not take Full sweep away from anyone who already had it.
+  const SWEEP = TIERS.filter(t => !t.beyond)
+  const tiersCleared = SWEEP.filter(t => finished.some(g => g.graded === t.name)).length
 
   const nightOwl = finished.some(g => {
     const h = new Date(g.endedAt).getHours()
@@ -52,7 +55,7 @@ export function achievements(games) {
     counter('clean', 'Spotless', 'Finish a puzzle with no mistakes and no hints.', clean.length, 1),
     counter('clean-ten', 'Surgical', 'Finish ten puzzles clean.', clean.length, 10),
 
-    counter('all-tiers', 'Full sweep', 'Finish a puzzle at every tier.', tiersCleared, TIERS.length),
+    counter('all-tiers', 'Full sweep', 'Finish a puzzle at every tier up to Diabolical.', tiersCleared, SWEEP.length),
     {
       id: 'diabolical',
       name: 'Nerves of steel',
@@ -60,6 +63,14 @@ export function achievements(games) {
       earned: finished.some(g => g.graded === 'Diabolical'),
       progress: finished.some(g => g.graded === 'Diabolical') ? 1 : 0,
       detail: finished.some(g => g.graded === 'Diabolical') ? 'done' : 'not yet',
+    },
+    {
+      id: 'infernal',
+      name: 'Into the fire',
+      description: 'Finish an Infernal puzzle.',
+      earned: finished.some(g => g.graded === 'Infernal'),
+      progress: finished.some(g => g.graded === 'Infernal') ? 1 : 0,
+      detail: finished.some(g => g.graded === 'Infernal') ? 'done' : 'not yet',
     },
 
     counter('streak-7', 'Habit', 'Play seven days in a row.', s.longestStreak, 7),

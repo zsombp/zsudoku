@@ -1,9 +1,13 @@
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import ReviewBoard from './ReviewBoard.jsx'
 import { Lesson, lessons } from './lazyLesson.js'
 import { useLessonState } from './useLessonState.js'
 import { cardLabel, isCorrect, removesCorrect, removalCells } from '../logic/flashcards.js'
 import { canTeach } from '../logic/teachable.js'
+import { recordDeck, allDrills } from '../lib/drillLog.js'
+import { learningCurve } from '../stats/drills.js'
+import SpotCurve from './SpotCurve.jsx'
+import { TechGlyph } from './Glyphs.jsx'
 import * as sound from '../lib/sound.js'
 import { Explain, Term, TermGroup } from './Term.jsx'
 import { define, techniqueTerm } from '../logic/glossary.js'
@@ -22,7 +26,7 @@ import { define, techniqueTerm } from '../logic/glossary.js'
  * the move the technique actually fires, so no card is a diagram someone drew
  * to make a point. Any card opens as a lesson on its own board.
  */
-export default function Flashcards({ technique, deck, onClose, onAgain }) {
+export default function Flashcards({ technique, deck, onClose, onAgain, onFinish = null, onNext = null, onLater = null }) {
   const [at, setAt] = useState(0)
   const [phase, setPhase] = useState('find')
   const [picked, setPicked] = useState([])
@@ -31,6 +35,8 @@ export default function Flashcards({ technique, deck, onClose, onAgain }) {
   const [score, setScore] = useState({ found: 0, removed: 0, asked: 0 })
   const [startedAt, setStartedAt] = useState(() => Date.now())
   const [times, setTimes] = useState([])
+  // Patterns found in a row. Shown from two, and replayed on every one after.
+  const [run, setRun] = useState(0)
   const [learning, learn, unlearn] = useLessonState()
 
   const card = deck[at]
@@ -56,6 +62,7 @@ export default function Flashcards({ technique, deck, onClose, onAgain }) {
     setFound(right ? 'right' : 'wrong')
     setScore(s => ({ ...s, found: s.found + (right ? 1 : 0), asked: s.asked + (asksRemoval ? 1 : 0) }))
     setTimes(t => (right ? [...t, Date.now() - startedAt] : t))
+    setRun(r => (right ? r + 1 : 0))
     if (right) sound.unitDone()
     else sound.wrong()
     setPicked([])
@@ -89,6 +96,29 @@ export default function Flashcards({ technique, deck, onClose, onAgain }) {
   }, [card, phase])
 
   const median = times.length ? [...times].sort((a, b) => a - b)[Math.floor(times.length / 2)] : null
+  // The ladder's labels are lowercase, for use mid-sentence. These start one.
+  const Label = cardLabel(technique).charAt(0).toUpperCase() + cardLabel(technique).slice(1)
+
+  // The deck goes on the record once, the moment it ends, so the practice
+  // schedule and the learning curve both know about it. A deck abandoned
+  // halfway records nothing: half a deck is not a sitting's worth of evidence.
+  const recorded = useRef(false)
+  const [curve, setCurve] = useState(null)
+  useEffect(() => {
+    if (!done || recorded.current || !deck.length) return
+    recorded.current = true
+    recordDeck({
+      technique,
+      cards: deck.length,
+      found: score.found,
+      asked: score.asked,
+      removed: score.removed,
+      spotMs: times,
+    })
+    setCurve(learningCurve(allDrills(), technique))
+    onFinish?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done, deck.length, technique, score, times])
 
   if (learning) {
     return (
@@ -118,15 +148,25 @@ export default function Flashcards({ technique, deck, onClose, onAgain }) {
               : score.found >= n / 2 && score.removed < score.asked / 2
                 ? `You can see ${cardLabel(technique)}, but not yet what it buys you. The lesson's world steps are exactly that.`
                 : both >= outOf / 2
-                  ? `${cardLabel(technique)} is coming, but not yet automatic.`
-                  : `${cardLabel(technique)} is not landing yet. Worth a lesson before more drills.`}
+                  ? `${Label} is coming, but not yet automatic.`
+                  : `${Label} is not landing yet. Worth a lesson before more drills.`}
           </p>
+          {curve && <SpotCurve points={curve} />}
           {/* The rung's sentence, through the glossary like everywhere else. */}
           <p className="dataNote">{define(techniqueTerm(technique))?.definition}</p>
-          <div className="dataRow">
-            <button className="newBtn" onClick={onAgain}>Another deck</button>
-            <button className="newBtn" onClick={onClose}>Done</button>
-          </div>
+          {onNext ? (
+            // Inside today's session the deck is the middle step, so the end
+            // of it points at the last one rather than at another deck.
+            <div className="dataRow">
+              <button className="newBtn" onClick={onNext}>Next: one puzzle</button>
+              <button className="linkBtn" onClick={onLater ?? onClose}>not today</button>
+            </div>
+          ) : (
+            <div className="dataRow">
+              <button className="newBtn" onClick={onAgain}>Another deck</button>
+              <button className="newBtn" onClick={onClose}>Done</button>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -147,6 +187,7 @@ export default function Flashcards({ technique, deck, onClose, onAgain }) {
       <TermGroup>
         <div className="cardHead">
           <div className="cardAsk">
+            <TechGlyph technique={technique} size={18} className="techGlyph cardAskGlyph" />
             {phase === 'remove' ? 'What does the ' : 'Find the '}
             <Term id={techniqueTerm(technique)} className="cardAskTerm">
               <strong>{cardLabel(technique)}</strong>
@@ -154,6 +195,11 @@ export default function Flashcards({ technique, deck, onClose, onAgain }) {
             {phase === 'remove' ? ' remove?' : ''}
           </div>
           <div className="cardProgress">
+            {run >= 2 && (
+              <span className="cardRun" key={run}>
+                {run} in a row
+              </span>
+            )}
             {at + 1} of {deck.length} · {score.found} found
             {score.asked > 0 && ` · ${score.removed} removed`}
           </div>

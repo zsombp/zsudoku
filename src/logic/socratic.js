@@ -167,6 +167,22 @@ const ASK = {
     return `Somewhere a cell holds just ${x} and ${y}, and it sees two cells that each hold ${z}. Whichever way that cell falls, what happens to ${z}?`
   },
 
+  skyscraper: step =>
+    `Find two rows, or two columns, where ${step.digits[0]} has exactly two homes, lined up at one end. What can you say about the two ends that do not line up?`,
+
+  twoStringKite: step =>
+    `${step.digits[0]} has exactly two homes in some row and in some column, and one end of each shares a box. What does that say about the two ends left over?`,
+
+  wWing: step => {
+    const [x, y] = step.digits
+    return `Two cells that do not see each other both hold just ${x} and ${y}, and ${x} has only two homes in one unit, one seeing each of them. Whichever way the ${x} goes, what happens to ${y}?`
+  },
+
+  xyzWing: step => {
+    const [x, y, z] = step.digits
+    return `A cell holds just ${x}, ${y} and ${z}, and it sees a ${x}/${z} cell and a ${y}/${z} cell. Wherever ${z} ends up, which cells can never hold it?`
+  },
+
   // The cage rungs. They name a total and never the cage's position, for the
   // same reason the rest name a unit and never the cell: the finding stays
   // yours. A killer board has thirty-odd cages and only a handful share a total,

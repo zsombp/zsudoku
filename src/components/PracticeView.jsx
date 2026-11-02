@@ -3,6 +3,10 @@ import { TECHNIQUES, LADDER, CAGE_TECHNIQUES } from '../logic/techniques.js'
 import * as gameLog from '../lib/gameLog.js'
 import { stuckByTechnique } from '../stats/compute.js'
 import { canTeach } from '../logic/teachable.js'
+import { allDrills } from '../lib/drillLog.js'
+import { drillSummary, learningCurve, predictionSummary } from '../stats/drills.js'
+import SpotCurve from './SpotCurve.jsx'
+import { TechGlyph } from './Glyphs.jsx'
 import { Lesson, bank, moments } from './lazyLesson.js'
 import { useLessonState } from './useLessonState.js'
 import { VARIANT_LIST } from '../logic/variants.js'
@@ -40,8 +44,11 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
   const stuck = useMemo(() => (games ? stuckByTechnique(games) : null), [games])
   // 0.02ms over a real history, so there is nothing to gain by storing it on a
   // record or recomputing it any less often than the screen opens.
-  const due = useMemo(() => (games ? schedule(games) : []), [games])
-  const soonest = useMemo(() => (games ? nextUp(games) : null), [games])
+  // Read once per visit: a deck finished on the drill screen is on the record
+  // by the time this screen comes back, because coming back remounts it.
+  const [drills] = useState(() => allDrills())
+  const due = useMemo(() => (games ? schedule(games, { drills }) : []), [games, drills])
+  const soonest = useMemo(() => (games ? nextUp(games, { drills }) : null), [games, drills])
   const byTechnique = useMemo(() => new Map(due.map(d => [d.technique, d])), [due])
 
   /**
@@ -122,7 +129,10 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
                 when its wait has run out and the record has something to say
                 about it. */}
             <div className="dueKicker"><Term id="due">Due now</Term></div>
-            <div className="dueTitle">{soonest.label}</div>
+            <div className="dueTitle">
+              <TechGlyph technique={soonest.technique} size={22} />
+              {soonest.label.charAt(0).toUpperCase() + soonest.label.slice(1)}
+            </div>
             <div className="dueStrength">
               <Term id="strengthBand">{strengthLabel(soonest.strength)}</Term>
               <span className="dueBar" aria-hidden="true">
@@ -134,7 +144,7 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
             {error && !busyWith && <p className="techError">{error}</p>}
           </div>
         ) : (
-          <p className="dataNote">{nothingDue(games)}</p>
+          <p className="dataNote">{nothingDue(games, { drills })}</p>
         )
       )}
 
@@ -191,9 +201,12 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
                 aria-expanded={isOpen}
                 onClick={() => setOpen(isOpen ? null : key)}
               >
-                <span className="techText">
-                  <span className="techName">{t.label}</span>
-                  <span className="techShort">{t.short}</span>
+                <span className="techLead">
+                  <TechGlyph technique={key} size={20} />
+                  <span className="techText">
+                    <span className="techName">{t.label}</span>
+                    <span className="techShort">{t.short}</span>
+                  </span>
                 </span>
                 {/* The schedule's own word for it, so a row says where it
                     stands without having to be opened. A rung the record has
@@ -219,6 +232,13 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
                   {/* Why it is where it is in the schedule. Every claim states
                       the sample it rests on, the same bar the coach holds to. */}
                   {sched && <p className="techAbout dueReason">{sched.reason}</p>}
+                  {/* What the drills and the lessons' predictions say, which
+                      the schedule above already counts. */}
+                  {drillSummary(drills, key) && <p className="techAbout">{drillSummary(drills, key).text}</p>}
+                  {predictionSummary(drills, key) && <p className="techAbout">{predictionSummary(drills, key).text}</p>}
+                  {learningCurve(drills, key).filter(p => p.medianMs != null).length > 1 && (
+                    <SpotCurve points={learningCurve(drills, key)} />
+                  )}
                   {ways(key)}
                   {error && !busyWith && (
                     <p className="techError">{error}</p>
@@ -244,4 +264,4 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
  * of the time at a 20s budget and everything else 100%; these three are the
  * ones slow enough to be worth warning about.
  */
-const RARE = new Set(['nakedQuad', 'swordfish', 'nakedTriple', 'hiddenTriple', 'xWing'])
+const RARE = new Set(['nakedQuad', 'swordfish', 'nakedTriple', 'hiddenTriple', 'xWing', 'xyzWing'])

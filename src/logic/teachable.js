@@ -19,6 +19,10 @@ export const TEACHABLE = new Set([
   'xWing',
   'swordfish',
   'xyWing',
+  'skyscraper',
+  'twoStringKite',
+  'wWing',
+  'xyzWing',
 ])
 
 export const canTeach = technique => TEACHABLE.has(technique)

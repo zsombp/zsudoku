@@ -50,6 +50,7 @@
 
 import { TECHNIQUES, LADDER } from '../logic/techniques.js'
 import { stuckIn } from './compute.js'
+import { drillEncounters } from './drills.js'
 
 const DAY = 86400000
 
@@ -81,6 +82,14 @@ const PRIOR = 0.5
  * buys outright.
  */
 const EXPOSURE_WEIGHT = 0.4
+
+/**
+ * A finished drill deck counts as direct evidence, at a little over half the
+ * weight of a game. It is a fair test of recognition and an easy one: the card
+ * tells you which pattern is there, and a game never does. At 0.55 two good
+ * decks move a strength about as far as one pattern found unaided in a game.
+ */
+const DRILL_WEIGHT = 0.55
 
 /**
  * The interval, in days, at each end of the strength scale. Geometric between
@@ -125,11 +134,29 @@ const at = game => game?.endedAt || game?.startedAt || 0
  * claim can be checked. It also matches what the data can support, since
  * `hintLog` entries carry no timestamp of their own.
  */
-function walk(games) {
+function walk(games, drills = []) {
   const state = new Map()
-  const ordered = (games || []).filter(g => at(g)).sort((a, b) => at(a) - at(b))
+  // Games and drill decks in one timeline, so a deck done between two games
+  // lands between them rather than all drills arriving at the end.
+  const events = [
+    ...(games || []).filter(g => at(g)).map(g => ({ t: at(g), game: g })),
+    ...drillEncounters(drills).map(d => ({ t: d.t, drill: d })),
+  ].sort((a, b) => a.t - b.t)
 
-  for (const g of ordered) {
+  for (const ev of events) {
+    if (ev.drill) {
+      const d = ev.drill
+      if (NEVER.has(d.technique) || !TECHNIQUES[d.technique]) continue
+      const rec = state.get(d.technique) || blank()
+      rec.strength += ALPHA * DRILL_WEIGHT * (d.outcome - rec.strength)
+      rec.decks++
+      rec.drillRight += d.right
+      rec.drillAsked += d.asked
+      rec.lastSeen = d.t
+      state.set(d.technique, rec)
+      continue
+    }
+    const g = ev.game
     // What stopped you, by the pattern the position needed. This read the
     // hint log until v3.4.0, which labels a hint by the single it filled in:
     // an XY-Wing you could not find went down as a naked single you could not
@@ -156,7 +183,7 @@ function walk(games) {
       // because a hint you took is a hint you took whether or not you finished.
       if (!direct && !(required[key] && g.completed)) continue
 
-      const rec = state.get(key) || { strength: PRIOR, games: 0, stuck: 0, unaided: 0, lastSeen: 0 }
+      const rec = state.get(key) || blank()
       const outcome = direct ? unaided / (unaided + stuck) : 1
       const weight = direct ? 1 : EXPOSURE_WEIGHT
 
@@ -170,6 +197,8 @@ function walk(games) {
   }
   return state
 }
+
+const blank = () => ({ strength: PRIOR, games: 0, stuck: 0, unaided: 0, lastSeen: 0, decks: 0, drillRight: 0, drillAsked: 0 })
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 
@@ -187,15 +216,20 @@ const everyWords = days => {
 }
 
 /** Every claim states the sample it rests on, the same bar the coach holds to. */
-function reasonFor({ stuck, unaided, games, ago, dueNow, interval, dueIn }) {
-  const evidence =
-    stuck && unaided
-      ? `Stopped you ${plural(stuck, 'time')} against ${unaided} found unaided, across ${plural(games, 'game')} with it.`
-      : stuck
-        ? `Stopped you ${plural(stuck, 'time')} and never found unaided, across ${plural(games, 'game')} with it.`
-        : unaided
-          ? `Found unaided ${plural(unaided, 'time')} across ${plural(games, 'game')} with it, and it never stopped you.`
-          : `${plural(games, 'finished game')} needed it and it never stopped you.`
+function reasonFor({ stuck, unaided, games, decks, drillRight, drillAsked, ago, dueNow, interval, dueIn }) {
+  let fromGames
+  if (!games && decks) fromGames = 'Not met in a game yet.'
+  else if (stuck && unaided) {
+    fromGames = `Stopped you ${plural(stuck, 'time')} against ${unaided} found unaided, across ${plural(games, 'game')} with it.`
+  } else if (stuck) {
+    fromGames = `Stopped you ${plural(stuck, 'time')} and never found unaided, across ${plural(games, 'game')} with it.`
+  } else if (unaided) {
+    fromGames = `Found unaided ${plural(unaided, 'time')} across ${plural(games, 'game')} with it, and it never stopped you.`
+  } else fromGames = `${plural(games, 'finished game')} needed it and it never stopped you.`
+  // A drill deck is its own evidence and says so, rather than being folded
+  // into the game counts where it could pass for a game.
+  const drilled = decks ? ` Drilled ${plural(decks, 'deck')}, ${drillRight} of ${drillAsked} right.` : ''
+  const evidence = fromGames + drilled
 
   const timing = dueNow
     ? `Last met ${ago}, and at this strength it ${everyWords(interval)}.`
@@ -238,10 +272,10 @@ export const strengthLabel = strength => ['shaky', 'settling', 'steady', 'solid'
  * Bands rather than raw strength, because two hundredths apart is not a real
  * difference in how well somebody knows a pattern.
  */
-export function schedule(games, { now = Date.now() } = {}) {
+export function schedule(games, { now = Date.now(), drills = [] } = {}) {
   const out = []
 
-  for (const [technique, rec] of walk(games)) {
+  for (const [technique, rec] of walk(games, drills)) {
     const interval = intervalDays(rec.strength)
     const intervalMs = interval * DAY
     const due = rec.lastSeen + intervalMs
@@ -254,7 +288,7 @@ export function schedule(games, { now = Date.now() } = {}) {
     // path. That is a record of what the puzzles contained, not of what you can
     // do, and it is not enough to build a drill on. It still moves the strength,
     // which is what lets a hidden single climb back out of a hint.
-    const thin = rec.stuck === 0 && rec.unaided === 0
+    const thin = rec.stuck === 0 && rec.unaided === 0 && rec.decks === 0
 
     out.push({
       technique,
@@ -266,6 +300,9 @@ export function schedule(games, { now = Date.now() } = {}) {
         stuck: rec.stuck,
         unaided: rec.unaided,
         games: rec.games,
+        decks: rec.decks,
+        drillRight: rec.drillRight,
+        drillAsked: rec.drillAsked,
         ago: agoWords(sinceMs / DAY),
         dueNow,
         interval,
@@ -280,7 +317,10 @@ export function schedule(games, { now = Date.now() } = {}) {
       games: rec.games,
       stuck: rec.stuck,
       unaided: rec.unaided,
-      sample: `${plural(rec.games, 'game')} with it`,
+      decks: rec.decks,
+      sample: rec.decks
+        ? `${plural(rec.games, 'game')} with it, ${plural(rec.decks, 'drill deck')}`
+        : `${plural(rec.games, 'game')} with it`,
     })
   }
 
@@ -301,16 +341,16 @@ export function schedule(games, { now = Date.now() } = {}) {
  * whatever is top of the list. If every pattern you have met is fresher than its
  * own interval then playing is the practice, and there is nothing to add.
  */
-export function nextUp(games, { now = Date.now() } = {}) {
-  return schedule(games, { now }).find(x => x.group === 'due') || null
+export function nextUp(games, { now = Date.now(), drills = [] } = {}) {
+  return schedule(games, { now, drills }).find(x => x.group === 'due') || null
 }
 
 /**
  * What to say when `nextUp` returns null, in the coach's voice: name what is
  * missing rather than showing an empty panel.
  */
-export function nothingDue(games, { now = Date.now() } = {}) {
-  const all = schedule(games, { now })
+export function nothingDue(games, { now = Date.now(), drills = [] } = {}) {
+  const all = schedule(games, { now, drills })
   if (!all.length) {
     return 'Nothing is scheduled yet. This tracks only the patterns your own puzzles have actually contained, so it fills in as you play.'
   }

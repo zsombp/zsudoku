@@ -176,7 +176,7 @@ function restoreOne(puzzle, solution, rng) {
 // The whole scale lives between zero and about eight givens; from twelve up
 // every layout measured graded Easy or Medium. That is the shape to know about
 // killer: a cage layout is a hard puzzle, and clues are how it is made gentle.
-const KILLER_CLUES = { Gentle: 44, Easy: 24, Medium: 8, Hard: 4, Expert: 2, Diabolical: 1 }
+const KILLER_CLUES = { Gentle: 44, Easy: 24, Medium: 8, Hard: 4, Expert: 2, Diabolical: 1, Infernal: 0 }
 
 /** `n` givens taken at random from the solution. */
 function killerClues(solution, n, rng) {
@@ -319,6 +319,12 @@ const TIERS_FOR = {
   xWing: ['Expert', 'Diabolical'],
   xyWing: ['Diabolical', 'Expert'],
   swordfish: ['Diabolical'],
+  // The four above the swordfish only fire where nothing older moves, so they
+  // live in the two hardest tiers. Measured: 33 of 40 Diabolicals use one.
+  skyscraper: ['Diabolical', 'Infernal'],
+  twoStringKite: ['Diabolical', 'Infernal'],
+  wWing: ['Diabolical', 'Infernal'],
+  xyzWing: ['Diabolical', 'Infernal'],
 }
 
 /**

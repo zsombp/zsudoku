@@ -6,6 +6,7 @@ import * as compute from '../stats/compute.js'
 import { dailyStreak } from '../logic/daily.js'
 import { VARIANTS } from '../logic/variants.js'
 import { TierEmblem } from './Emblems.jsx'
+import SessionCard from './SessionCard.jsx'
 
 const boardName = id => (id && id !== 'classic' ? ` · ${VARIANTS[id]?.name}` : '')
 import { stuckByTechnique } from '../stats/compute.js'
@@ -23,7 +24,7 @@ import { Term, TermButton, TermGroup, termLabel } from './Term.jsx'
  * the front door: what is in progress, what today's puzzle is, how you are
  * doing, and every way in.
  */
-export default function Dashboard({ handoff, inProgress, daily, records, variant = 'classic', theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice, onTailored }) {
+export default function Dashboard({ handoff, inProgress, daily, session, sessionBusy, sessionError, onSession, onSkipPuzzle, records, variant = 'classic', theme, onTheme, onResume, onPick, onDaily, onStats, onSettings, onPractice, onTailored }) {
   const [summary, setSummary] = useState(null)
 
   useEffect(() => {
@@ -127,6 +128,19 @@ export default function Dashboard({ handoff, inProgress, daily, records, variant
             </span>
             {daily.done && <span className="cardGo done"><Trophy size={16} /></span>}
           </button>
+
+          {/* Today's ten minutes of practice, decided for you from the same
+              schedule the practice screen shows. */}
+          {onSession && (
+            <SessionCard
+              session={session}
+              busy={sessionBusy}
+              error={sessionError}
+              replacesGame={Boolean(inProgress && inProgress.mode !== 'daily')}
+              onGo={onSession}
+              onSkipPuzzle={onSkipPuzzle}
+            />
+          )}
         </div>
 
         <div className="dashCol">
@@ -147,7 +161,7 @@ export default function Dashboard({ handoff, inProgress, daily, records, variant
               />
             </div>
             <p className="termHint">
-              Tap a figure for what it counts. Also: <Term id="daily" />
+              Tap a figure for what it counts. Also: <Term id="daily" />{' · '}<Term id="session" />
             </p>
           </TermGroup>
 

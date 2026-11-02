@@ -14,6 +14,11 @@
 // there until the score lands in band, so the clue count is an outcome rather
 // than a target.
 
+// Infernal measured 2026-11-02 over 5200 grids on the ladder with the four
+// rungs above the swordfish: p50 score by hardest technique required came out
+// skyscraper 1430, XYZ-Wing 1994, W-Wing 2358, 2-String Kite 2526. Diabolical
+// stops at 2400, which no Diabolical out of 40 reached on the old ladder.
+//
 // Bands measured 2026-07-30 from 520 sampled grids. The p50 score by hardest
 // technique required came out: naked single 0, hidden single 40, pointing 212,
 // claiming 370, naked pair 491, hidden pair 695, hidden triple 756, XY-Wing
@@ -75,12 +80,31 @@ export const TIERS = [
     name: 'Diabolical',
     clues: 22,
     min: 1300,
-    max: Infinity,
+    max: 2400,
     symmetric: false,
     attempts: 140,
     budgetMs: 25000,
-    tech: 'XY-Wing, Swordfish',
+    tech: 'XY-Wing, Swordfish, Skyscraper',
     blurb: 'Chains of implication. Slow, and always solvable.',
+  },
+  {
+    // Added at v4.0.0 with the four rungs above the swordfish, and measured
+    // rather than invented: over 40 Diabolicals generated at fixed seeds, none
+    // scored 2400 or more on the old ladder and 7 did on the new one, every one
+    // of them using a rung above the swordfish. Before those rungs existed a
+    // grid this hard was one the ladder could not finish, so it never shipped.
+    // `beyond` keeps it out of the Full sweep badge, which must never be taken
+    // away from someone who earned it on six tiers.
+    name: 'Infernal',
+    clues: 21,
+    min: 2400,
+    max: Infinity,
+    symmetric: false,
+    beyond: true,
+    attempts: 200,
+    budgetMs: 40000,
+    tech: 'W-Wing, Kite, XYZ-Wing',
+    blurb: 'Patterns past the swordfish, often several. The hardest grid the ladder still finishes.',
   },
 ]
 

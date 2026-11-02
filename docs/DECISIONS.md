@@ -2028,3 +2028,43 @@ announcing a migration it plans to finish by November 19, 2026.
 Rules out: SHA pins without an update bot, pinning `ubuntu-24.04` to quiet a
 notice, and pinning a runner label for any reason the build itself does not
 give.
+
+### The four new rungs sit above the swordfish
+
+2026-11-02. Skyscraper, 2-String Kite, W-Wing and XYZ-Wing are cheaper in a
+textbook than a swordfish, and the ladder would find them first if their costs
+said so. Measured both ways over 120 graded puzzles: between X-Wing and XY-Wing,
+17 scores moved and 9 rose, because an incidental skyscraper fired and the
+XY-Wing was still needed after it. Above the swordfish, 120 of 120 are
+identical. A grade that moves under a player's old games is worse than a ladder
+that reaches for a rarer pattern first, so they go on top. Rules out: reordering
+the ladder to match a textbook.
+
+### Infernal is beyond the sweep
+
+2026-11-02. A seventh tier could have joined Full sweep, which would have
+quietly revoked the badge from anyone holding it. Tiers carry `beyond`, the
+sweep counts only the ones without it, and Infernal has its own achievement.
+
+### A drill is evidence, at a little over half a game
+
+2026-11-02. A deck tells you which pattern to look for and a game never does,
+so a deck is an easier test of recognition than a game. `DRILL_WEIGHT` 0.55:
+two good decks move a strength about as far as one pattern found unaided.
+
+### One session a day, fixed for the day
+
+2026-11-02. The practice screen asks you to choose before you have practised.
+The session chooses once a day from the same schedule and keeps its pattern for
+the day, because its own deck makes the pattern less due and a session that
+changed subject halfway through would be no session. The puzzle can be put off,
+the deck cannot: a day counts once the cards are done.
+
+### Ambience is opt-in and plays only while you solve
+
+2026-11-02. A pad keeps the audio thread running for as long as it plays, which
+the clicks never do. So it is off by default, says so in its settings row, plays
+only on the board with the clock running and the page visible, holds the shared
+context open only while it plays, and runs on timers every few seconds rather
+than a frame loop. Rules out: a pad on the dashboard, a pad behind a paused game,
+and convolution reverb.

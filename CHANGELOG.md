@@ -2,6 +2,66 @@
 
 Newest first.
 
+## v4.0.0 - 2026-11-02 - four rungs past the swordfish, and a session a day
+
+v3.4.0 made every elimination something you can step through. This release
+gives that training a shape you can keep up: drills that count, a guess before
+every reveal, four new patterns with a tier of their own, and one short session
+a day that decides what to practise for you.
+
+**Four new rungs: Skyscraper, 2-String Kite, W-Wing and XYZ-Wing.** Each is a
+real ladder technique with a lesson, a drill deck, Socratic questions and a
+stock example. They sit above the swordfish rather than between the X-Wing and
+the XY-Wing, because that is the only place they leave the old scale alone:
+placed above the swordfish, 120 of 120 previously graded puzzles kept their
+exact score; placed between X-Wing and XY-Wing, 17 of 120 moved and 9 went up,
+an incidental skyscraper firing on a puzzle that still needed the XY-Wing after
+it. `GRADER_VERSION` is 5. Over 520 sampled grids, puzzles whose hardest step is
+one of the four score p50 1478 (skyscraper), 2658 (kite), 3633 (W-Wing) and 1204
+(XYZ-Wing). The lessons needed the worlds engine to treat a strong link as the
+whole line it lives on, or a "third home" flaw had nowhere to open a world.
+
+**Infernal, a seventh tier,** from score 2400 up: patterns past the swordfish,
+often several. At 12 puzzles a tier every tier hit its band 100% of the time,
+Infernal generating in a median 781ms (worst 2714ms), with no guess reaching the
+caller. It is marked beyond the sweep, so Full sweep still means Gentle to
+Diabolical and nobody loses a badge. New achievement: Into the fire. Decks for
+the four new rungs deal from grids dug straight to 22 to 27 clues, which took a
+deck from 2 to 4 cards in 13 seconds to 8 cards in 0.9 to 4.2.
+
+**Drills count.** A finished deck is recorded (`src/lib/drillLog.js`, local
+only, not in the backup) and feeds the schedule as evidence at 0.55 of a game's
+weight, merged into the same timeline as the games. Each pattern gets a learning
+curve, seconds to spot per deck, on the drill's end screen and in the practice
+row, with a table behind it for screen readers.
+
+**Your guess first.** Every lesson's question step now waits for a guess before
+it shows anything that gives the answer away: tap the cells that lose a note,
+or, on a hidden set, pick the digits that leave. Check rings what you got, what
+you missed and what you added, in words as well; "show me" skips it. Guesses are
+recorded beside the drills and summarised per pattern.
+
+**Today's session.** A card on the home screen picks one pattern a day from the
+schedule (due first, then the shakiest you have met, then the next rung up) and
+walks it: a lesson on the last position it stopped you in, or the stock one;
+five drill cards; then the shortest practice puzzle the generator finds that
+needs it. The deck and the puzzle are built in the background while you read the
+lesson, so neither step waits. The puzzle can be put off; a day counts once the
+cards are done, and the card keeps a streak.
+
+**Ambience, opt-in.** A slow generated pad under the game: four oscillators, one
+filter, one echo, a chord change every few seconds and no frame loop. It thins
+out on a run of placements and settles into a low drone after a minute without
+one. It plays only on the board with the clock running and the page visible, and
+the shared audio context suspends the moment it stops. The settings row says it
+costs battery.
+
+**Small things, each played once.** A drawn glyph for every rung beside its name
+in practice, lessons, drills and the session card. The last copy of a digit
+sweeps its key on the pad. A drill counts patterns found in a row. A lesson's
+last step stamps itself. All of it rests in its end state and sits behind
+reduced motion.
+
 ## v3.4.0 - 2026-11-02 - lessons that show every way it can go
 
 The training side was text: a sentence per technique, a whole puzzle to practise

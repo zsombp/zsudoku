@@ -36,11 +36,11 @@ export function useGenerator() {
   }, [])
 
   const generate = useCallback(
-    (tier, seed, practice, variant = 'classic', tailored = null, cards = null) =>
+    (tier, seed, practice, variant = 'classic', tailored = null, cards = null, count = undefined) =>
       new Promise((resolve, reject) => {
         const id = nextIdRef.current++
         pendingRef.current.set(id, { resolve, reject })
-        ensureWorker().postMessage({ id, tier, seed, practice, variant, tailored, cards })
+        ensureWorker().postMessage({ id, tier, seed, practice, variant, tailored, cards, count })
       }),
     [ensureWorker]
   )
@@ -54,7 +54,10 @@ export function useGenerator() {
 
   /** A deck of positions where one pattern is present. Slow enough to warrant
    *  the worker: a rare rung can take ten seconds to find eight of. */
-  const deck = useCallback(technique => generate(null, undefined, null, 'classic', null, technique), [generate])
+  const deck = useCallback(
+    (technique, { count } = {}) => generate(null, undefined, null, 'classic', null, technique, count),
+    [generate]
+  )
 
   /** A whole game built around what this player is worst at. Never cached. */
   const tailored = useCallback(

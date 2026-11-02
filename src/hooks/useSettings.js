@@ -24,6 +24,10 @@ export const DEFAULTS = {
   // Synthesised, and off by default: a sudoku that makes noise you did not ask
   // for is worse than a silent one.
   sound: false,
+  // A generated pad under the game. Off by default for the same reason as the
+  // sound, and for a second one: it keeps the audio running while it plays,
+  // which costs battery that the clicks do not.
+  ambience: false,
   // Hints point at the pattern before they give up the digit. Off by default
   // because Phase 3 settled that the plain hint is better for flow, and that
   // has not changed. Practice mode turns it on regardless.
