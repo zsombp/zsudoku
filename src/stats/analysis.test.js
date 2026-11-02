@@ -251,7 +251,9 @@ describe('the stored summary', () => {
     expect(summaryIsCurrent({ summary: { v: 0 }, graderVersion: 2 })).toBe(false)
   })
 
-  it('records which patterns were found unaided', () => {
+  // Grades every placement of a real solve, which takes about five seconds
+  // when the whole suite runs in parallel: over the default limit, not slow.
+  it('records which patterns were found unaided', { timeout: 30000 }, () => {
     // A grid solved in reading order will need more than a scan somewhere.
     const made = makePuzzle('Expert', { seed: 8 })
     const log = []
