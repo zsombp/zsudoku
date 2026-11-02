@@ -317,6 +317,13 @@ function fish(size, technique) {
             eliminations: elim,
             cells: inFish,
             digits: [digit],
+            // Which lines the fish stands on and which it covers. An X-Wing is
+            // the same four cells read either way, but the eliminations are
+            // not, so anything explaining one has to know which reading fired.
+            // Added for the lessons, and changes nothing the grader reads.
+            base: orientation,
+            lines: combo.map(c => c.l),
+            cover: [...positions].sort((a, b) => a - b),
             detail: `${digit} in ${lineLabel} ${combo.map(c => c.l + 1).join(', ')} is locked to ${crossLabel} ${[...positions].map(p => p + 1).join(', ')}`,
           })
         }
@@ -773,4 +780,8 @@ export const CAGE_TECHNIQUES = LADDER.filter(k => TECHNIQUES[k].cages)
  * anyway, because a stamp that only moves when a number changes is a stamp
  * nobody can trust when one does.
  */
-export const GRADER_VERSION = 3
+// Bumped to 4 when the fish steps gained `base`, `lines` and `cover` for the
+// lessons. Nothing the grader reads changed, and it was measured anyway: 28
+// puzzles at fixed seeds across five boards graded byte identical before and
+// after. The rule is the rule for the reason given above.
+export const GRADER_VERSION = 4

@@ -110,7 +110,30 @@ describe('strength', () => {
     const fiveTimes = [game(1, { needed: { xWing: 1 }, hints: { xWing: 5 } })]
     expect(row(fiveTimes, 'xWing').strength).toBeCloseTo(row(once, 'xWing').strength)
     // The raw count is still reported, so the claim can be checked.
-    expect(row(fiveTimes, 'xWing').hints).toBe(5)
+    expect(row(fiveTimes, 'xWing').stuck).toBe(5)
+  })
+
+  it('blames the pattern the position needed, not the single a hint filled in', () => {
+    // The real failure, from October 2026: two hints at an XY-Wing and a hidden
+    // triple were logged as a naked single and a hidden single. Reading the
+    // label rated XY-Wing 0.90 and hidden single as the weakest rung. The
+    // summary is recomputed from the move log and names what was needed.
+    const mislabelled = Array.from({ length: 4 }, (_, i) => ({
+      ...game(i + 1, { needed: { xyWing: 1, hiddenSingle: 6 }, hints: { hiddenSingle: 1 } }),
+      summary: { v: 3, placements: 45, counts: {}, sharpBy: {}, stuckBy: { xyWing: 1 } },
+    }))
+    const xy = row(mislabelled, 'xyWing')
+    const hs = row(mislabelled, 'hiddenSingle')
+    expect(xy.stuck).toBe(4)
+    expect(xy.strength).toBeLessThan(0.3)
+    // Hidden single was only ever the label on the hint, so it is not blamed.
+    expect(hs.stuck).toBe(0)
+    expect(hs.strength).toBeGreaterThan(xy.strength)
+  })
+
+  it('reads hints logged with what they needed when a game has no summary', () => {
+    const g = { ...game(1, { needed: { xyWing: 1 } }), summary: null, hintLog: [{ cell: 3, technique: 'nakedSingle', needed: 'xyWing' }] }
+    expect(row([g], 'xyWing').stuck).toBe(1)
   })
 })
 
@@ -154,7 +177,7 @@ describe('what to drill next', () => {
     const games = Array.from({ length: 4 }, (_, i) => game(i + 1, { needed: { xyWing: 2 }, hints: { xyWing: 2 } }))
     const up = nextUp(games, { now: NOW })
     expect(up.technique).toBe('xyWing')
-    expect(up.reason).toMatch(/8 hints/)
+    expect(up.reason).toMatch(/Stopped you 8 times/)
     expect(up.reason).toMatch(/across 4 games with it/)
     expect(up.sample).toBe('4 games with it')
   })

@@ -17,6 +17,7 @@ import { topologyFromRecord } from '../logic/variants.js'
 import { marksToList } from '../logic/marks.js'
 import { justification, cellName } from '../logic/explain.js'
 import { boardAt } from './replay.js'
+import { pathToNextDigit, NOT_A_SKILL } from '../logic/bottleneck.js'
 
 export { settledCands } from '../logic/explain.js'
 
@@ -77,6 +78,10 @@ export function analyseGame(record) {
   const moves = []
   const counts = {}
   const toldAbout = new Set()
+  // Cells the hint button drew the pattern for, by cell. The digit you then
+  // write there was found with the way already drawn, which is not the same
+  // thing as finding it, even though no hint was spent.
+  const shown = new Map()
   let prevT = 0
   let missed = 0
 
@@ -85,7 +90,10 @@ export function analyseGame(record) {
     const isPlacement = m.kind === 'place' || m.kind === 'hint'
     const gap = Math.max(0, m.t - prevT)
     prevT = m.t
+    if (m.kind === 'shown') shown.set(m.cell, m.value)
     if (!isPlacement) continue
+    const helped = m.kind === 'place' && shown.get(m.cell) === m.value
+    shown.delete(m.cell)
 
     const before = boardAt(record, i - 1)
     const state = createState(before, topo)
@@ -94,12 +102,31 @@ export function analyseGame(record) {
     const best = nextStep(state)
     const bestPlacement = best?.placements?.[0] || null
 
+    // What finding any next digit took from here: the hardest rung on the
+    // ladder's path to it. Usually the cheapest step is already a placement and
+    // this is free; at a hard spot the path runs through eliminations first, and
+    // the hardest of those is the thing a wrong digit or a hint here is
+    // evidence about. See src/logic/bottleneck.js for why the label on the
+    // final single is the wrong one to read.
+    const needed = best
+      ? best.placements?.length
+        ? best.technique
+        : pathToNextDigit(before, topo)?.needed || best.technique
+      : null
+
     let cls
     let why
     let pattern = null
     if (m.kind === 'hint') {
       cls = 'hint'
-      why = m.technique ? `Found by ${TECHNIQUES[m.technique]?.label || m.technique}.` : 'You asked for this one.'
+      const label = k => TECHNIQUES[k]?.label || k
+      // At a hard spot the hint fills a single that an elimination uncovered,
+      // and the elimination is the part worth naming.
+      why = !m.technique
+        ? 'You asked for this one.'
+        : needed && needed !== m.technique && !NOT_A_SKILL.has(needed)
+          ? `Found by ${label(m.technique)}, once ${/^[aeiouAEIOUX]/.test(label(needed)) ? 'an' : 'a'} ${label(needed)} had cleared the way.`
+          : `Found by ${label(m.technique)}.`
     } else if (m.correct === false || solution[m.cell] !== m.value) {
       cls = 'mistake'
       why = faultOf(state, m.cell, m.value, solution)
@@ -108,6 +135,7 @@ export function analyseGame(record) {
       cls = j ? j.kind : 'lucky'
       why = j ? j.why : `Nothing on the board proved ${m.value} here yet.`
       pattern = j?.pattern || null
+      if (helped) why = `Shown the pattern first. ${why}`
     }
 
     // Only worth mentioning an alternative when yours was not the easy one.
@@ -148,6 +176,8 @@ export function analyseGame(record) {
       why,
       pattern,
       alternative,
+      needed,
+      helped,
     })
   }
 
@@ -248,8 +278,10 @@ export function timeShape({ moves }) {
  *
  * 2: the classifier reads the topology off the record. Every summary written
  * for a variant game before this was computed against classic rules.
+ * 3: summaries carry `stuckBy`, the pattern each wrong digit, guess and hint
+ * was really up against. Recomputed from the move log, so old games get it too.
  */
-export const ANALYSIS_VERSION = 2
+export const ANALYSIS_VERSION = 3
 
 /**
  * A game's classification, small enough to keep on the record.
@@ -273,8 +305,21 @@ export function summariseAnalysis(record) {
   // The interesting comparison is against the hints you spent on each.
   const sharpBy = {}
   for (const m of moves) {
-    if (m.cls !== 'sharp' || !m.pattern?.technique) continue
+    if (m.cls !== 'sharp' || m.helped || !m.pattern?.technique) continue
     sharpBy[m.pattern.technique] = (sharpBy[m.pattern.technique] || 0) + 1
+  }
+
+  // What beat you, as opposed to what the hint happened to fill in. A wrong
+  // digit, a guess that came off and a hint all count against the pattern the
+  // position actually needed. Naked singles are left out: a wrong digit with a
+  // single on the board is a slip, not a pattern you could not see. A digit you
+  // placed after asking to be shown the pattern counts too, since asking is
+  // the same evidence a hint is.
+  const stuckBy = {}
+  for (const m of moves) {
+    if (m.cls !== 'hint' && m.cls !== 'mistake' && m.cls !== 'lucky' && !m.helped) continue
+    if (!m.needed || NOT_A_SKILL.has(m.needed)) continue
+    stuckBy[m.needed] = (stuckBy[m.needed] || 0) + 1
   }
 
   // The same relative thresholds the per-game notes use, so a claim in the
@@ -291,6 +336,7 @@ export function summariseAnalysis(record) {
     counts,
     missed,
     sharpBy,
+    stuckBy,
     medianGap: Math.round(median),
     slowEasy: timed.filter(m => m.gap > long && (m.cls === 'routine' || m.cls === 'solid')).length,
     fastGuess: timed.filter(m => m.gap < quick && m.cls === 'lucky').length,

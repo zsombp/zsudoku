@@ -48,7 +48,12 @@ board as well as tier through the week (v2.2.0), and statistics filter by board
 **Pillar 3, the teacher.** A curriculum scheduled against your own failures
 (v2.14.0), Socratic questions as the rung below the hint (v2.13.0), pattern
 flashcards (v2.9.0), and the narrated match report (v2.3.0). All of it on screen
-at v2.17.0.
+at v2.17.0. At v3.4.0 the teacher learned to teach rather than describe: lessons
+that step through every way a pattern can go on a real position, opened from the
+hint, the review, practice or a drill; drills that ask what a pattern removes as
+well as where it is; and a diagnosis that blames the pattern a position needed
+rather than the single a hint filled in, which is what the curriculum schedules
+from.
 
 **Pillar 4, the instrument.** Keyboard speedrunning (v2.8.0), the solve path as
 generative art, saveable as an SVG (v2.15.0, v2.17.0), handwritten digits from a
@@ -170,11 +175,9 @@ and the constraint engine with variants all shipped.
 
 The honest ranking of what is left:
 
-1. **Wire voice input, or delete it.** Checked rather than assumed:
-   `VoiceButton.jsx` is the only module under `src/` with no importer outside its
-   own test, so it is the only thing here that is written, tested and
-   unreachable. That state is the one this project has already been bitten by
-   once, at v1.7.1. Either answer is defensible; leaving it as it is, is not.
+1. **Lessons for the cage rungs.** The worlds engine cannot enumerate a sum, so
+   the five killer rungs still teach in text. They need their own argument
+   shape: every way to make the cage total, rather than every way to place.
 2. **The setter.** The largest gain per unit of new machinery, because the
    uniqueness check, the grader and the explanation engine are all already there,
    and it unlocks the puzzle exchange behind it.

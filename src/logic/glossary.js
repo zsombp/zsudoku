@@ -661,9 +661,25 @@ const WRITTEN = {
       'The wait a pattern’s strength earns before it is worth looking at again, from half a day at the bottom of the scale to three weeks at the top.',
   },
   flashcards: {
-    label: 'Flashcards',
+    label: 'Position drill',
     definition:
-      'A real position from a real puzzle, shown for a few seconds, where you name the cells the pattern uses rather than the digit it places.',
+      'A real position from a real puzzle where you tap the cells the pattern uses, then the cells it removes a candidate from, against the clock.',
+  },
+  lesson: {
+    label: 'Lesson',
+    definition:
+      'One pattern on one real position, taught by laying out every way its cells can be filled and showing which candidates die in all of them.',
+  },
+  worlds: {
+    label: 'Worlds',
+    definition:
+      'The ways a pattern can be filled in without breaking a rule; a candidate can only be removed if it dies in every one.',
+  },
+  stuck: {
+    label: 'Stuck',
+    definition:
+      'A hint, a wrong digit, a guess or a shown pattern at a spot in your games where finding the next digit took this pattern.',
+    scope: MANY,
   },
   socraticQuestion: {
     label: 'Question',

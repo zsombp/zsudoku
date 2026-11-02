@@ -49,6 +49,7 @@
 // that lets the bottom of the ladder recover.
 
 import { TECHNIQUES, LADDER } from '../logic/techniques.js'
+import { stuckIn } from './compute.js'
 
 const DAY = 86400000
 
@@ -129,10 +130,12 @@ function walk(games) {
   const ordered = (games || []).filter(g => at(g)).sort((a, b) => at(a) - at(b))
 
   for (const g of ordered) {
-    const hinted = {}
-    for (const h of g.hintLog || []) {
-      if (h?.technique) hinted[h.technique] = (hinted[h.technique] || 0) + 1
-    }
+    // What stopped you, by the pattern the position needed. This read the
+    // hint log until v3.4.0, which labels a hint by the single it filled in:
+    // an XY-Wing you could not find went down as a naked single you could not
+    // find, and wrong digits at a hard spot counted for nothing at all. On real
+    // games that rated XY-Wing 0.90 for someone who had never found one.
+    const hinted = stuckIn(g)
     // `sharpBy` sometimes names a rung the grader's own solve path never needed,
     // because the classifier asks what proved this cell rather than what the
     // cheapest solve used. That is the same definition the coach already reports
@@ -144,22 +147,22 @@ function walk(games) {
     for (const key of new Set([...Object.keys(hinted), ...Object.keys(sharp), ...Object.keys(required)])) {
       if (NEVER.has(key) || !TECHNIQUES[key]) continue
 
-      const hints = hinted[key] || 0
+      const stuck = hinted[key] || 0
       const unaided = sharp[key] || 0
-      const direct = hints > 0 || unaided > 0
+      const direct = stuck > 0 || unaided > 0
 
       // A puzzle you walked away from proves nothing about a pattern that was in
       // it: you may never have reached the cell. Direct evidence still counts,
       // because a hint you took is a hint you took whether or not you finished.
       if (!direct && !(required[key] && g.completed)) continue
 
-      const rec = state.get(key) || { strength: PRIOR, games: 0, hints: 0, unaided: 0, lastSeen: 0 }
-      const outcome = direct ? unaided / (unaided + hints) : 1
+      const rec = state.get(key) || { strength: PRIOR, games: 0, stuck: 0, unaided: 0, lastSeen: 0 }
+      const outcome = direct ? unaided / (unaided + stuck) : 1
       const weight = direct ? 1 : EXPOSURE_WEIGHT
 
       rec.strength += ALPHA * weight * (outcome - rec.strength)
       rec.games++
-      rec.hints += hints
+      rec.stuck += stuck
       rec.unaided += unaided
       rec.lastSeen = at(g)
       state.set(key, rec)
@@ -184,15 +187,15 @@ const everyWords = days => {
 }
 
 /** Every claim states the sample it rests on, the same bar the coach holds to. */
-function reasonFor({ hints, unaided, games, ago, dueNow, interval, dueIn }) {
+function reasonFor({ stuck, unaided, games, ago, dueNow, interval, dueIn }) {
   const evidence =
-    hints && unaided
-      ? `${plural(hints, 'hint')} against ${unaided} you found unaided, across ${plural(games, 'game')} with it.`
-      : hints
-        ? `${plural(hints, 'hint')} on it and nothing found unaided, across ${plural(games, 'game')} with it.`
+    stuck && unaided
+      ? `Stopped you ${plural(stuck, 'time')} against ${unaided} found unaided, across ${plural(games, 'game')} with it.`
+      : stuck
+        ? `Stopped you ${plural(stuck, 'time')} and never found unaided, across ${plural(games, 'game')} with it.`
         : unaided
-          ? `Found unaided ${plural(unaided, 'time')} across ${plural(games, 'game')} with it, never hinted.`
-          : `${plural(games, 'finished game')} needed it and you took no hints on it.`
+          ? `Found unaided ${plural(unaided, 'time')} across ${plural(games, 'game')} with it, and it never stopped you.`
+          : `${plural(games, 'finished game')} needed it and it never stopped you.`
 
   const timing = dueNow
     ? `Last met ${ago}, and at this strength it ${everyWords(interval)}.`
@@ -251,7 +254,7 @@ export function schedule(games, { now = Date.now() } = {}) {
     // path. That is a record of what the puzzles contained, not of what you can
     // do, and it is not enough to build a drill on. It still moves the strength,
     // which is what lets a hidden single climb back out of a hint.
-    const thin = rec.hints === 0 && rec.unaided === 0
+    const thin = rec.stuck === 0 && rec.unaided === 0
 
     out.push({
       technique,
@@ -260,7 +263,7 @@ export function schedule(games, { now = Date.now() } = {}) {
       due,
       lastSeen: rec.lastSeen,
       reason: reasonFor({
-        hints: rec.hints,
+        stuck: rec.stuck,
         unaided: rec.unaided,
         games: rec.games,
         ago: agoWords(sinceMs / DAY),
@@ -275,7 +278,7 @@ export function schedule(games, { now = Date.now() } = {}) {
       band: bandOf(rec.strength),
       intervalDays: Math.round(interval * 10) / 10,
       games: rec.games,
-      hints: rec.hints,
+      stuck: rec.stuck,
       unaided: rec.unaided,
       sample: `${plural(rec.games, 'game')} with it`,
     })
@@ -314,7 +317,7 @@ export function nothingDue(games, { now = Date.now() } = {}) {
 
   const real = all.filter(x => !x.thin)
   if (!real.length) {
-    return `Nothing to drill yet. Your puzzles have needed ${plural(all.length, 'pattern')} so far and not one of them has cost you a hint or been credited to you unaided, which is all there would be to schedule against.`
+    return `Nothing to drill yet. Your puzzles have needed ${plural(all.length, 'pattern')} so far and not one of them has stopped you or been credited to you unaided, which is all there would be to schedule against.`
   }
 
   const waiting = real.filter(x => !x.dueNow).sort((a, b) => a.due - b.due)[0]

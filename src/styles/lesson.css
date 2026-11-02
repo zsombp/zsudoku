@@ -1,0 +1,469 @@
+/* ---- lessons ----
+ *
+ * One pattern on one real position, walked through as every way it can go.
+ * src/components/Lesson.jsx.
+ *
+ * Colours come from tokens.css like everything else. The lesson needs two
+ * roles the game never did: a "probe" for the notes the question is about,
+ * which borrows the blue tint, and a "live" for a note that survives a world,
+ * which is the error colour because a survivor is exactly what stops an
+ * elimination. Both are mixed from their token rather than written out, so all
+ * six themes carry them.
+ *
+ * Every animated thing rests in its END state, and its keyframes run from the
+ * start state with `backwards` fill. A frame that never plays the animation
+ * (reduced motion, a tab in the background, a screenshot) shows the finished
+ * picture rather than an invisible one. Nothing loops. */
+
+.lessonView {
+  --probe: var(--t2);
+  --probe-soft: color-mix(in srgb, var(--t2) 18%, transparent);
+  --live: var(--error);
+  --live-soft: color-mix(in srgb, var(--error) 18%, transparent);
+  --band: color-mix(in srgb, var(--accent) 8%, transparent);
+  --glow: color-mix(in srgb, var(--accent) 40%, transparent);
+  --faint: color-mix(in srgb, var(--sub) 55%, transparent);
+}
+
+.lsLede { margin-top: 0; }
+
+.lsLesson {
+  display: grid;
+  gap: 12px 30px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "head" "board" "worlds" "text" "verdict" "flaws" "after" "nav";
+}
+.lsHead { grid-area: head; min-width: 0; }
+.lsBoardArea { grid-area: board; min-width: 0; }
+.lsWorlds { grid-area: worlds; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.lsText { grid-area: text; min-width: 0; animation: lsRise 0.28s ease-out backwards; }
+.lsVerdict { grid-area: verdict; }
+.lsFlaws { grid-area: flaws; min-width: 0; }
+.lsAfter { grid-area: after; margin-top: 0; }
+.lsNav { grid-area: nav; }
+
+/* The same 900px every other wide layout in app.css uses: they are one layout. */
+@media (min-width: 900px) {
+  .lsLesson {
+    grid-template-columns: minmax(0, 470px) minmax(0, 1fr);
+    grid-template-areas:
+      "board head"
+      "board text"
+      "board verdict"
+      "board flaws"
+      "board after"
+      "worlds nav";
+    grid-template-rows: auto auto auto auto 1fr auto;
+    align-items: start;
+  }
+}
+
+.lsKicker {
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.lsTitle {
+  font-family: var(--display);
+  font-weight: 750;
+  font-size: clamp(21px, 5.4vw, 27px);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 6px 0 0;
+  text-wrap: balance;
+  animation: lsRise 0.28s ease-out backwards;
+}
+.lsText p { margin: 0; font-size: 15px; line-height: 1.55; max-width: 56ch; color: var(--ink); }
+.lsText .lsPayoff { margin-top: 9px; color: var(--sub); }
+.lsSmall {
+  display: block;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sub);
+  margin-bottom: 6px;
+}
+.lsShowing { margin: 6px 0 0 20px; font-size: 11px; color: var(--sub); min-height: 1.5em; }
+
+/* ---- board ---- */
+
+.lsFrame {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-rows: 16px auto;
+  column-gap: 4px;
+  row-gap: 3px;
+  width: 100%;
+  max-width: 470px;
+}
+.lsCols { grid-column: 2; display: grid; grid-template-columns: repeat(9, 1fr); }
+.lsRows { grid-row: 2; display: grid; grid-template-rows: repeat(9, 1fr); }
+.lsLab {
+  font-family: var(--ui);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 16px;
+  color: var(--faint);
+  display: grid;
+  place-items: center;
+  transition: color 0.2s ease;
+}
+.lsLab.on { color: var(--accent); }
+
+.lsBoard {
+  grid-column: 2;
+  grid-row: 2;
+  position: relative;
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  background: var(--panel);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--board-radius);
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 var(--sheen), 0 10px 26px var(--cast);
+}
+.lsCell {
+  position: relative;
+  aspect-ratio: 1;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.lsCell:nth-child(9n) { border-right: 0; }
+.lsCell:nth-child(n + 73) { border-bottom: 0; }
+.lsCell.bR { border-right: 2px solid var(--line-strong); }
+.lsCell.bB { border-bottom: 2px solid var(--line-strong); }
+.lsCell.band { background: var(--band); }
+
+.lsG {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: calc(100cqw / 9 * 0.52);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+/* Looking at one digit, every other digit on the board is context. The copies
+ * of the digit itself are what block cells, so they stay at full strength. */
+.lensed .lsG { color: var(--faint); font-weight: 500; }
+.lensed .lsG.lensDigit { color: var(--ink); font-weight: 650; }
+
+.lsNotes {
+  position: absolute;
+  inset: 5%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  font-family: var(--display);
+  font-weight: 650;
+  /* A notch bigger than the game's pencil marks: here the notes are the point. */
+  font-size: calc(100cqw / 9 * 0.29);
+  font-variant-numeric: tabular-nums;
+  color: var(--sub);
+  transition: opacity 0.25s ease;
+}
+.lsNotes.solo {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  inset: 18%;
+  font-size: calc(100cqw / 9 * 0.4);
+}
+.lsN { font-style: normal; display: grid; place-items: center; position: relative; border-radius: 4px; line-height: 1; }
+.lsN.lit { color: var(--accent); font-weight: 800; }
+.lsN.probe { color: var(--probe); font-weight: 800; background: var(--probe-soft); }
+.lsN.keep { color: var(--ink); font-weight: 800; }
+.lsN.dead { color: var(--faint); background: transparent; }
+.lsN.dead::after {
+  content: "";
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 50%;
+  height: max(1.5px, 0.6cqw);
+  margin-top: -0.3cqw;
+  background: var(--accent);
+  border-radius: 2px;
+  transform-origin: left center;
+  animation: lsStrike 0.24s ease-out var(--delay, 0s) backwards;
+}
+.lsN.dead.soft::after { background: var(--sub); }
+.lsN.live {
+  color: var(--live);
+  background: var(--live-soft);
+  font-weight: 800;
+  animation: lsPing 0.9s ease-out var(--delay, 0s) 1 backwards;
+}
+.lsN.stray { color: var(--live); font-weight: 800; }
+.lsN.stray::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  border-radius: 50%;
+  border: 1.5px dotted var(--live);
+  animation: lsPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+.lsN.gone { opacity: 0; transform: scale(0.3); animation: lsGone 0.32s ease-in var(--delay, 0s) backwards; }
+
+.lsCell::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 7px;
+  pointer-events: none;
+  z-index: 1;
+}
+.lsCell.pat::before { box-shadow: inset 0 0 0 2px var(--accent); animation: lsRing 0.26s ease-out backwards; }
+.lsCell.pat.what::before { box-shadow: none; border: 1.6px dashed var(--accent); }
+.lsCell.tgt::before { box-shadow: inset 0 0 0 2px var(--probe); animation: lsRing 0.26s ease-out backwards; }
+.lsCell.hasGhost .lsNotes { opacity: 0.13; }
+.lsCell.solved .lsNotes { opacity: 0; animation: lsFadeOut 0.3s ease 0.5s backwards; }
+
+.lsGhost,
+.lsPlaced {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 4;
+  font-family: var(--display);
+  font-weight: 750;
+  font-size: calc(100cqw / 9 * 0.56);
+  color: var(--accent);
+  animation: lsLand 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.35) var(--delay, 0s) backwards;
+}
+.lsGhost { text-shadow: 0 0 calc(100cqw / 9 * 0.2) var(--glow); }
+
+.lsWires {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 3;
+}
+.lsBeam {
+  stroke: var(--accent);
+  stroke-width: 0.075;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  opacity: 0.9;
+  animation: lsDraw 0.4s ease-out var(--delay, 0s) backwards;
+}
+.lsBeam.faint { stroke-width: 0.045; opacity: 0.45; }
+.lsHit {
+  fill: var(--accent);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lsPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) var(--delay, 0s) backwards;
+}
+.lsLink {
+  stroke: var(--accent);
+  stroke-width: 0.055;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  opacity: 0.8;
+  animation: lsDraw 0.45s ease-out var(--delay, 0s) backwards;
+}
+.lsLink.dashed {
+  stroke: var(--probe);
+  stroke-dasharray: 0.1 0.09;
+  animation: lsFadeIn 0.4s ease-out var(--delay, 0s) backwards;
+}
+.lsBlock {
+  stroke: var(--sub);
+  stroke-width: 0.04;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  opacity: 0.7;
+  animation: lsDraw 0.4s ease-out var(--delay, 0s) backwards;
+}
+.lsCross path { stroke: var(--live); stroke-width: 0.06; stroke-linecap: round; fill: none; }
+.lsCross { animation: lsFadeIn 0.25s ease-out var(--delay, 0s) backwards; }
+.lsTag rect { fill: var(--accent); }
+.lsTag text { fill: var(--accent-ink); font: 800 0.28px var(--display); }
+.lsTag { animation: lsFadeIn 0.3s ease-out var(--delay, 0s) backwards; }
+
+/* ---- worlds ---- */
+
+.lsWorldRow { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.lsWorldLabel {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sub);
+  margin-right: 2px;
+}
+.lsChip {
+  height: 36px;
+  min-width: 40px;
+  padding: 0 10px;
+  border-radius: var(--ctl-radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--panel);
+  background-image: var(--raise);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 var(--sheen), 0 2px 0 var(--lip), 0 5px 13px var(--cast);
+  cursor: pointer;
+  transition:
+    transform 170ms cubic-bezier(0.2, 0.9, 0.3, 1.25),
+    box-shadow 170ms cubic-bezier(0.2, 0.9, 0.3, 1.25),
+    border-color 0.14s ease;
+}
+.lsChip:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 1px 0 transparent, 0 0 0 var(--lip), 0 1px 3px var(--cast);
+  transition-duration: 60ms;
+}
+.lsChip.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent), inset 0 1px 0 var(--sheen), 0 2px 0 var(--lip), 0 5px 13px var(--cast);
+}
+.lsPlayAll { margin-left: auto; font-family: var(--ui); font-size: 13px; font-weight: 600; }
+.lsMk { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.lsMk.die { background: var(--accent); }
+.lsMk.live { background: var(--live); }
+.lsMk.unk { box-shadow: inset 0 0 0 1.5px var(--faint); }
+.lsCaption {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 4.5em;
+  color: var(--ink);
+  animation: lsRise 0.24s ease-out backwards;
+}
+.lsKill { color: var(--accent); font-weight: 600; }
+.lsLive { color: var(--live); font-weight: 600; }
+
+/* ---- verdict and flaws ---- */
+
+.lsVerdict {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  max-width: 56ch;
+  min-width: 0;
+}
+.lsVerdict svg { flex: 0 0 auto; margin-top: 1px; }
+.lsVerdict.ok { color: var(--accent); }
+.lsVerdict.bad { color: var(--live); }
+.lsVerdict.wait { color: var(--sub); font-weight: 500; }
+
+.lsFlawList { display: flex; flex-direction: column; gap: 8px; max-width: 470px; }
+.lsOpt {
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--ui);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--panel);
+  background-image: var(--raise);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 var(--sheen), 0 2px 0 var(--lip), 0 5px 13px var(--cast);
+  cursor: pointer;
+  transition:
+    transform 170ms cubic-bezier(0.2, 0.9, 0.3, 1.25),
+    box-shadow 170ms cubic-bezier(0.2, 0.9, 0.3, 1.25),
+    border-color 0.14s ease;
+}
+.lsOpt:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 1px 0 transparent, 0 0 0 var(--lip), 0 1px 3px var(--cast);
+  transition-duration: 60ms;
+}
+.lsOpt i { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; box-shadow: inset 0 0 0 1.5px var(--line-strong); transition: box-shadow 0.15s ease; }
+.lsOpt.on { border-color: var(--accent); }
+.lsOpt.on i { box-shadow: inset 0 0 0 5px var(--accent); }
+
+/* ---- step bar ---- */
+
+.lsNav {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--bg) 72%, transparent);
+}
+.lsNav .newBtn { height: 42px; padding: 0 18px; font-size: 14px; }
+.lsNav .newBtn:disabled { opacity: 0.4; box-shadow: none; background-image: none; cursor: default; }
+/* The one filled control on the screen. The raise gradient is drawn for a
+ * panel-coloured button and muddies a brass one on the light themes. */
+.lsNav .lsNext { background-color: var(--accent); background-image: none; color: var(--accent-ink); border-color: transparent; }
+.lsDots { flex: 1; display: flex; justify-content: center; gap: 6px; min-width: 0; }
+.lsDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  border: 0;
+  padding: 0;
+  background: var(--line-strong);
+  cursor: pointer;
+  transition: width 0.2s ease, background-color 0.2s ease;
+}
+.lsDot.on { width: 20px; background: var(--accent); }
+.lsDot.past { background: var(--sub); }
+
+@media (hover: hover) and (pointer: fine) {
+  .lsChip:hover, .lsOpt:hover { border-color: var(--line-strong); }
+  .lsChip.on:hover, .lsOpt.on:hover { border-color: var(--accent); }
+}
+
+@keyframes lsLand {
+  0% { transform: translateY(-38%) scale(1.4); opacity: 0; }
+  55% { transform: translateY(0) scale(0.94); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes lsDraw { from { stroke-dashoffset: 1; } }
+@keyframes lsStrike { from { transform: scaleX(0); } }
+@keyframes lsGone { from { opacity: 1; transform: none; } }
+@keyframes lsFadeOut { from { opacity: 1; } }
+@keyframes lsFadeIn { from { opacity: 0; } }
+@keyframes lsPop { from { transform: scale(0.2); opacity: 0; } }
+@keyframes lsPing {
+  from { box-shadow: 0 0 0 0 var(--live); }
+  to { box-shadow: 0 0 0 calc(100cqw / 9 * 0.22) transparent; }
+}
+@keyframes lsRing { from { opacity: 0; transform: scale(0.86); } }
+@keyframes lsRise { from { opacity: 0; transform: translateY(5px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lessonView *,
+  .lessonView *::before,
+  .lessonView *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

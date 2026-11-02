@@ -12,7 +12,7 @@ It costs nothing and must keep costing nothing. Seven dependencies; adding an ei
 
 Six boards: classic, jigsaw, X-Sudoku, Windoku, anti-knight and killer. Seventeen techniques on the ladder, five of them arithmetic and only reachable on a caged board.
 
-Beyond playing: a post-game review that draws its evidence, a coach that reasons across games, belief archaeology, self-experiments with a permutation test, a curriculum scheduled against your own failures, flashcards, Socratic questions as the rung below the hint, ghost racing, a private league over the sync repository, the solve path as a saveable picture, handwritten digit entry, spoken moves where the browser can recognise speech without sending it anywhere, and a glossary every screen reads from. `docs/VISION.md` records what shipped against the original ambition and what genuinely remains.
+Beyond playing: a post-game review that draws its evidence, a coach that reasons across games, belief archaeology, self-experiments with a permutation test, a curriculum scheduled against your own failures, lessons that step through every way a pattern can go on a real position (from the hint, the review, practice or a drill), position drills that ask what a pattern removes as well as where it is, Socratic questions as the rung below the hint, ghost racing, a private league over the sync repository, the solve path as a saveable picture, handwritten digit entry, spoken moves where the browser can recognise speech without sending it anywhere, and a glossary every screen reads from. `docs/VISION.md` records what shipped against the original ambition and what genuinely remains.
 
 ## Non-negotiables
 
@@ -23,8 +23,8 @@ Beyond playing: a post-game review that draws its evidence, a coach that reasons
    - A third exception needs the backup's bar, not voice's: opt-in, the user's own infrastructure, and useless to anyone else.
 2. **Honest difficulty.** The difficulty shown is always the grader's verdict on the puzzle in front of you, never the difficulty that was requested. No puzzle ships that the technique ladder cannot finish by pure logic. `requested` and `graded` stay separate fields everywhere; when they disagree the interface says so.
    - Score measures deduction, never board size and never board shape. Naked singles cost zero on purpose: see `docs/DECISIONS.md`. A regression test asserts naked-singles-only puzzles score exactly 0 at any clue count. The same disease nearly returned with killer, where the two routine cage rungs fire once per cage.
-   - Techniques return structured steps, so the grader, the hint engine, the Socratic questions, the post-game review and the drawn explanations are all the same code and cannot disagree. `src/logic/explain.js` is the single answer to "why does this digit go here"; never write a second one.
-   - **Bump `GRADER_VERSION` (currently 3) whenever a technique, a cost or a band changes, even if you have proved no score moved.** Killer added five rungs and left the classic scale byte identical over 168 puzzles, and the stamp still went to 3: a version that only changes when a number changes is a version nobody can trust when one does. The stamp is cheap, it regrades saves and drops the pre-generated cache.
+   - Techniques return structured steps, so the grader, the hint engine, the Socratic questions, the post-game review, the drawn explanations and the lessons are all the same code and cannot disagree. `src/logic/explain.js` is the single answer to "why does this digit go here"; never write a second one. `src/logic/bottleneck.js` is the single answer to "what did finding the next digit take from here", and everything that judges the player reads it rather than the label of the digit a hint placed.
+   - **Bump `GRADER_VERSION` (currently 4) whenever a technique, a cost or a band changes, even if you have proved no score moved.** Killer added five rungs and left the classic scale byte identical over 168 puzzles, and the stamp still went to 3: a version that only changes when a number changes is a version nobody can trust when one does. The stamp is cheap, it regrades saves and drops the pre-generated cache.
    - Recalibration is a separate question from the stamp, and it is answered by measurement. Generate the same fixed seeds before and after and diff the JSON. If scores moved, `npm run calibrate -- explore` and re-derive the bands; if they did not, say so in the CHANGELOG with the numbers.
 3. **Honest timing.** Timestamp-based, not interval ticks, auto-paused on `visibilitychange`. Every statistic depends on this.
 4. **Nothing leaves the device except to the user's own repository.** Analytics are local and are never sent anywhere. Export is a file the user saves themselves. The GitHub backup writes the same data to a repo they own and control. The one thing that could ever leave for anyone else is speech, under non-negotiable 1, and only behind its own switch with the consequence spelled out.
@@ -40,9 +40,10 @@ Vite + React, plain JS. `vite-plugin-pwa` with `registerType: 'autoUpdate'`. `@f
 
 ```
 src/logic/      topology, solver, generator, grader, techniques, explain,
+                bottleneck, worlds, lessons, teachable, lessonBank,
                 variants, killer, socratic, flashcards, share, glossary
 src/stats/      analysis, replay, coach, beliefs, experiments, curriculum,
-                ghost, league, flow, solveart, narrate   (recorded games)
+                moments, ghost, league, flow, solveart, narrate   (recorded games)
 src/lib/        storage, idb, prng, format, backup, sound, voice, handwriting
 src/state/      gameReducer
 src/components/ Board, NumberPad, Toolbar, StatusBar, Dashboard, GameReview,
@@ -67,6 +68,8 @@ Dark by default: ink-blue `#14161d`, brass `#e2a63d`. Restrained. The win screen
 **Motion is transient, never ambient.** Every animation runs on an interaction, finishes, and lets the display drop back to idle; the only looping ones are the generating spinner and the microphone pulse, and both stop on their own. This is a battery rule, not a taste one, and a 120Hz screen held awake by a decorative loop is the thing it exists to prevent. Transform and opacity only, so it stays compositor work.
 
 **The drawn marks.** `src/components/Emblems.jsx` holds one emblem per tier, escalating in geometric complexity rather than ornament: Gentle is a circle with a centre, Diabolical is that centre buried in a lattice. They stroke in `currentColor` so they take any theme's accent. A tier with no emblem draws nothing rather than a placeholder, and a test asserts the set tracks `difficulty.js` and that no two are identical.
+
+**Lessons draw the argument, they do not illustrate it.** `src/components/Lesson.jsx` renders what `src/logic/lessons.js` hands it, and every beam, strike and surviving note comes from `worlds.js` enumerating the candidates. Animated things rest in their end state with keyframes running from the start (`backwards` fill), so a frame that never animates still shows the finished picture. The lesson code is a lazy chunk: decide whether to offer a lesson with `canTeach` from `teachable.js`, and never import `lessons.js` from the main bundle.
 
 **The companion appears on the win screen and on empty screens, and nowhere else.** `src/components/Companion.jsx`. Never during a solve and it never speaks. A character that reacts while you are thinking is a character that interrupts you, during the exact minutes you decided you did not want to be told how you are doing. `thinking` and `stuck` are drawn and mounted nowhere on purpose.
 

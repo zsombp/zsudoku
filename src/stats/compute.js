@@ -223,15 +223,66 @@ export function mistakeBoxes(games) {
   return { boxes, total }
 }
 
-/** How often each technique needed a hint. */
+/**
+ * How often each technique needed a hint.
+ *
+ * Keyed by what the position needed rather than by what the hint filled in.
+ * Hints logged before v3.4.0 carry only the label of the single they placed,
+ * which at a hard spot is the wrong pattern; `stuckByTechnique` below reads
+ * the recomputed summaries instead and is what anything judging you should use.
+ */
 export function hintsByTechnique(games) {
   const counts = {}
   let total = 0
   for (const g of games) {
     for (const h of g.hintLog || []) {
-      const key = h.technique || 'unknown'
+      const key = h.needed || h.technique || 'unknown'
       counts[key] = (counts[key] || 0) + 1
       total++
+    }
+  }
+  return { counts, total }
+}
+
+/**
+ * What actually stopped you, per pattern, in one game.
+ *
+ * Every wrong digit, every guess that happened to work and every hint, at a
+ * moment where finding the next digit needed that pattern. Read from the
+ * summary, which is recomputed from the move log whenever the classifier
+ * changes, so games played before this existed are counted the same way.
+ * Falls back to the hint log only for a game with no move log at all.
+ */
+/**
+ * A move that counts against the pattern its position needed: a hint, a wrong
+ * digit, a guess that came off, or a digit placed after the hint button drew
+ * the pattern. Naked singles are never a pattern you could not see.
+ */
+export const isStuck = m =>
+  Boolean(m) &&
+  (m.cls === 'hint' || m.cls === 'mistake' || m.cls === 'lucky' || m.helped) &&
+  Boolean(m.needed) &&
+  m.needed !== 'nakedSingle'
+
+export function stuckIn(game) {
+  if (game?.summary?.stuckBy) return game.summary.stuckBy
+  const out = {}
+  for (const h of game?.hintLog || []) {
+    const key = h.needed || h.technique
+    if (!key || key === 'nakedSingle') continue
+    out[key] = (out[key] || 0) + 1
+  }
+  return out
+}
+
+/** `stuckIn`, added up across games. */
+export function stuckByTechnique(games) {
+  const counts = {}
+  let total = 0
+  for (const g of games) {
+    for (const [k, n] of Object.entries(stuckIn(g))) {
+      counts[k] = (counts[k] || 0) + n
+      total += n
     }
   }
   return { counts, total }

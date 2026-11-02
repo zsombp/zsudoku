@@ -1,84 +1,127 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import ReviewBoard from './ReviewBoard.jsx'
-import { cardLabel, isCorrect } from '../logic/flashcards.js'
+import { Lesson, lessons } from './lazyLesson.js'
+import { useLessonState } from './useLessonState.js'
+import { cardLabel, isCorrect, removesCorrect, removalCells } from '../logic/flashcards.js'
+import { canTeach } from '../logic/teachable.js'
 import * as sound from '../lib/sound.js'
 import { Explain, Term, TermGroup } from './Term.jsx'
 import { define, techniqueTerm } from '../logic/glossary.js'
 
 /**
- * Find the pattern, as fast as you can.
+ * Position drills: find the pattern, then say what it removes.
  *
  * Practice mode gives you a whole puzzle that needs a technique, which takes
  * ten minutes and teaches the pattern once. This shows a position where the
- * pattern is present and asks one question: where. Twenty of those in three
- * minutes builds recognition in a way one long solve does not.
+ * pattern is present and asks two questions. Where is it: tap its cells. And
+ * what does it buy you: tap the cells it removes a candidate from. The first is
+ * recognition, the second is the half a hint never asks, and knowing an X-Wing
+ * is there without knowing which notes it kills is not knowing an X-Wing.
  *
  * Every position is real. They come from generated puzzles walked forward to
  * the move the technique actually fires, so no card is a diagram someone drew
- * to make a point.
+ * to make a point. Any card opens as a lesson on its own board.
  */
 export default function Flashcards({ technique, deck, onClose, onAgain }) {
   const [at, setAt] = useState(0)
+  const [phase, setPhase] = useState('find')
   const [picked, setPicked] = useState([])
-  const [judged, setJudged] = useState(null)
-  const [score, setScore] = useState({ right: 0, wrong: 0 })
+  const [found, setFound] = useState(null)
+  const [removed, setRemoved] = useState(null)
+  const [score, setScore] = useState({ found: 0, removed: 0, asked: 0 })
   const [startedAt, setStartedAt] = useState(() => Date.now())
   const [times, setTimes] = useState([])
+  const [learning, learn, unlearn] = useLessonState()
 
   const card = deck[at]
   const done = at >= deck.length
+  // A single places a digit and removes nothing, so it only gets the first question.
+  const asksRemoval = Boolean(card?.eliminations?.length)
 
   // A fresh card is a fresh clock: the whole point is how fast you see it.
   useEffect(() => {
+    setPhase('find')
     setPicked([])
-    setJudged(null)
+    setFound(null)
+    setRemoved(null)
     setStartedAt(Date.now())
   }, [at])
 
   const toggle = cell => {
-    if (judged) return
+    if (phase === 'done') return
     setPicked(p => (p.includes(cell) ? p.filter(c => c !== cell) : [...p, cell]))
   }
 
-  const check = () => {
-    if (!card || judged) return
-    const right = isCorrect(card, picked)
-    setJudged(right ? 'right' : 'wrong')
-    setScore(s => ({ right: s.right + (right ? 1 : 0), wrong: s.wrong + (right ? 0 : 1) }))
+  const judgeFind = right => {
+    setFound(right ? 'right' : 'wrong')
+    setScore(s => ({ ...s, found: s.found + (right ? 1 : 0), asked: s.asked + (asksRemoval ? 1 : 0) }))
     setTimes(t => (right ? [...t, Date.now() - startedAt] : t))
     if (right) sound.unitDone()
     else sound.wrong()
+    setPicked([])
+    setPhase(asksRemoval ? 'remove' : 'done')
   }
 
-  const pattern = useMemo(
-    () => (card && judged ? { cells: card.cells, digits: card.digits, unit: card.unit, eliminations: [] } : null),
-    [card, judged]
-  )
+  const judgeRemove = right => {
+    setRemoved(right ? 'right' : 'wrong')
+    setScore(s => ({ ...s, removed: s.removed + (right ? 1 : 0) }))
+    if (right) sound.unitDone()
+    else sound.wrong()
+    setPhase('done')
+  }
 
-  const median = times.length
-    ? [...times].sort((a, b) => a - b)[Math.floor(times.length / 2)]
-    : null
+  const check = () => {
+    if (!card) return
+    if (phase === 'find') judgeFind(isCorrect(card, picked))
+    else if (phase === 'remove') judgeRemove(removesCorrect(card, picked))
+  }
+
+  // The pattern is outlined once the first question is answered, and what it
+  // removes is struck through once the second one is.
+  const pattern = useMemo(() => {
+    if (!card || phase === 'find') return null
+    return {
+      cells: card.cells,
+      digits: card.digits,
+      unit: card.unit,
+      eliminations: phase === 'done' ? card.eliminations || [] : [],
+    }
+  }, [card, phase])
+
+  const median = times.length ? [...times].sort((a, b) => a - b)[Math.floor(times.length / 2)] : null
+
+  if (learning) {
+    return (
+      <Suspense fallback={null}>
+        <Lesson lesson={learning} onClose={unlearn} />
+      </Suspense>
+    )
+  }
 
   if (done) {
+    const n = deck.length
+    const both = score.found + score.removed
+    const outOf = n + score.asked
     return (
       <div className="statsView">
         <header className="top">
-          <div className="brand">FLASHCARDS</div>
+          <div className="brand">DRILL</div>
           <button className="newBtn" onClick={onClose}>Back</button>
         </header>
         <div className="cardDone">
-          <div className="cardScore">{score.right}<span>/{deck.length}</span></div>
+          <div className="cardScore">{score.found}<span>/{n}</span></div>
           <p className="cardVerdict">
-            {score.right === deck.length
-              ? `Every one, ${median ? `${(median / 1000).toFixed(1)}s a card` : ''}. You know this pattern.`
-              : score.right >= deck.length / 2
-                ? `${cardLabel(technique)} is coming, but not yet automatic.`
-                : `${cardLabel(technique)} is not landing yet. Worth a full puzzle rather than more cards.`}
+            Found {score.found} of {n}
+            {score.asked > 0 && `, and named what it removes ${score.removed} of ${score.asked} times`}.{' '}
+            {both === outOf
+              ? `Every one${median ? `, ${(median / 1000).toFixed(1)}s a card` : ''}. You know this pattern.`
+              : score.found >= n / 2 && score.removed < score.asked / 2
+                ? `You can see ${cardLabel(technique)}, but not yet what it buys you. The lesson's world steps are exactly that.`
+                : both >= outOf / 2
+                  ? `${cardLabel(technique)} is coming, but not yet automatic.`
+                  : `${cardLabel(technique)} is not landing yet. Worth a lesson before more drills.`}
           </p>
-          {/* The rung's sentence, through the glossary like everywhere else.
-              No fallback to `TECHNIQUES.about`: a second source that only
-              appears when the first one fails is a second source, and
-              glossary.test.js already fails if a rung has no entry. */}
+          {/* The rung's sentence, through the glossary like everywhere else. */}
           <p className="dataNote">{define(techniqueTerm(technique))?.definition}</p>
           <div className="dataRow">
             <button className="newBtn" onClick={onAgain}>Another deck</button>
@@ -89,33 +132,36 @@ export default function Flashcards({ technique, deck, onClose, onAgain }) {
     )
   }
 
+  const want = phase === 'remove' ? removalCells(card).length : card.cells.length
+
   return (
     <div className="statsView">
       <header className="top">
-        <div className="brand">FLASHCARDS</div>
+        <div className="brand">DRILL</div>
         <button className="newBtn" onClick={onClose}>Back</button>
       </header>
 
       {/* The pattern being asked for is the one thing you may not know, and
           the card is timed, so it has to be one press away rather than
-          somewhere else. The deck's own definition sits under the head, where
-          there is the full column for it. */}
+          somewhere else. */}
       <TermGroup>
         <div className="cardHead">
           <div className="cardAsk">
-            Find the{' '}
+            {phase === 'remove' ? 'What does the ' : 'Find the '}
             <Term id={techniqueTerm(technique)} className="cardAskTerm">
               <strong>{cardLabel(technique)}</strong>
             </Term>
+            {phase === 'remove' ? ' remove?' : ''}
           </div>
           <div className="cardProgress">
-            {at + 1} of {deck.length} · {score.right} right
+            {at + 1} of {deck.length} · {score.found} found
+            {score.asked > 0 && ` · ${score.removed} removed`}
           </div>
         </div>
       </TermGroup>
       {/* Once, on the first card. The same line under all twenty would be
           twenty copies of a thing you read in the first three seconds. */}
-      {at === 0 && <Explain id="flashcards" />}
+      {at === 0 && phase === 'find' && <Explain id="flashcards" />}
 
       <div className="moveStage">
         <ReviewBoard
@@ -124,33 +170,59 @@ export default function Flashcards({ technique, deck, onClose, onAgain }) {
           cands={card.cands}
           showing="cands"
           pattern={pattern}
-          onCell={toggle}
-          picked={picked}
-          cellAction="choose this cell"
+          onCell={phase === 'done' ? null : toggle}
+          picked={phase === 'done' ? null : picked}
+          cellAction={phase === 'remove' ? 'mark as losing a candidate' : 'choose this cell'}
         />
         <div className="stageSide">
-          {judged ? (
+          {found && (
+            <p className={'cardResult ' + found}>
+              {found === 'right' ? 'That is it.' : 'Not quite. It is outlined now.'}
+            </p>
+          )}
+          {phase === 'find' && (
             <>
-              <p className={'cardResult ' + judged}>
-                {judged === 'right' ? 'That is it.' : 'Not quite. It is outlined now.'}
-              </p>
-              <p className="stageWhy">{card.detail}</p>
-              <button className="newBtn" onClick={() => setAt(a => a + 1)}>
-                {at + 1 === deck.length ? 'Finish' : 'Next card'}
-              </button>
+              <p className="stageNote">Tap the cells the pattern is made of. {want} of them.</p>
+              <div className="dataRow">
+                <button className="newBtn" disabled={!picked.length} onClick={check}>Check</button>
+                <button className="linkBtn" onClick={() => judgeFind(false)}>show me</button>
+              </div>
             </>
-          ) : (
+          )}
+          {phase === 'remove' && (
             <>
               <p className="stageNote">
-                Tap the cells the pattern is made of. {card.cells.length} of them.
+                Now tap every cell it removes a candidate from. {want === 1 ? 'There is one.' : `There are ${want}.`}
               </p>
               <div className="dataRow">
-                <button className="newBtn" disabled={!picked.length} onClick={check}>
-                  Check
+                <button className="newBtn" disabled={!picked.length} onClick={check}>Check</button>
+                <button className="linkBtn" onClick={() => judgeRemove(false)}>show me</button>
+              </div>
+            </>
+          )}
+          {phase === 'done' && (
+            <>
+              {removed && (
+                <p className={'cardResult ' + removed}>
+                  {removed === 'right' ? 'And that is what it removes.' : 'What it removes is struck through now.'}
+                </p>
+              )}
+              <p className="stageWhy">{card.detail}</p>
+              <div className="dataRow">
+                <button className="newBtn" onClick={() => setAt(a => a + 1)}>
+                  {at + 1 === deck.length ? 'Finish' : 'Next card'}
                 </button>
-                <button className="linkBtn" onClick={() => { setJudged('wrong'); setScore(s => ({ ...s, wrong: s.wrong + 1 })) }}>
-                  show me
-                </button>
+                {card.step && canTeach(card.technique) && (
+                  <button
+                    className="newBtn"
+                    onClick={async () => {
+                      const { buildLesson } = await lessons()
+                      learn(buildLesson({ board: card.board, cands: card.cands, step: card.step, source: 'card' }))
+                    }}
+                  >
+                    Learn it on this board
+                  </button>
+                )}
               </div>
             </>
           )}

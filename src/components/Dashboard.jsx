@@ -8,7 +8,7 @@ import { VARIANTS } from '../logic/variants.js'
 import { TierEmblem } from './Emblems.jsx'
 
 const boardName = id => (id && id !== 'classic' ? ` · ${VARIANTS[id]?.name}` : '')
-import { hintsByTechnique } from '../stats/compute.js'
+import { stuckByTechnique } from '../stats/compute.js'
 import { TECHNIQUES } from '../logic/techniques.js'
 import { Calendar, Chart, Gear, Play, Trophy } from './Icons.jsx'
 import { recordKey } from './NewGameSheet.jsx'
@@ -28,9 +28,10 @@ export default function Dashboard({ handoff, inProgress, daily, records, variant
 
   useEffect(() => {
     gameLog.all().then(games => {
-      // Surface the pattern that has cost the most hints, so the practice card
-      // says something specific rather than advertising a feature.
-      const { counts } = hintsByTechnique(games)
+      // Surface the pattern that stops you most, so the practice card says
+      // something specific rather than advertising a feature. Read off what
+      // the positions needed, not off the label of the single a hint filled in.
+      const { counts } = stuckByTechnique(games)
       const ranked = Object.entries(counts)
         .filter(([k]) => TECHNIQUES[k])
         .sort((a, b) => b[1] - a[1])
@@ -152,11 +153,11 @@ export default function Dashboard({ handoff, inProgress, daily, records, variant
 
           <button className="card cardPractice" onClick={onPractice}>
             <span className="cardKicker">Practice</span>
-            <span className="cardTitle">Drill a pattern</span>
+            <span className="cardTitle">Learn a pattern</span>
             <span className="cardMeta">
               {summary?.weak
-                ? `You have needed ${summary.weak.count} hints on ${summary.weak.label}`
-                : 'Pick a technique and get a puzzle that needs it'}
+                ? `${summary.weak.label.charAt(0).toUpperCase() + summary.weak.label.slice(1)} has stopped you ${summary.weak.count} times`
+                : 'Lessons on real positions, then drills'}
             </span>
           </button>
 

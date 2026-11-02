@@ -182,6 +182,11 @@ export const allCellsForced = board => forcedFills(board) !== null
  */
 export function hintPlacement(board, solution, topo = CLASSIC) {
   const state = createState(board, topo)
+  // The hardest step walked past on the way to the digit. At a hard spot that
+  // is the pattern the player could not find, and the single at the end is
+  // only what fell out of it. Logging the single's label instead is how an
+  // XY-Wing you could not see used to be recorded as a naked single.
+  let via = null
 
   for (let n = 0; n < 300; n++) {
     if (broken(state)) break
@@ -194,9 +199,24 @@ export function hintPlacement(board, solution, topo = CLASSIC) {
       // ladder can derive something confidently and be wrong. Check before
       // handing it over.
       if (digit === solution[cell]) {
-        return { cell, digit, technique: step.technique, detail: step.detail, unit: step.unit, derived: true }
+        const harder = via && LADDER.indexOf(via.step.technique) > LADDER.indexOf(step.technique)
+        return {
+          cell,
+          digit,
+          technique: step.technique,
+          detail: step.detail,
+          unit: step.unit,
+          derived: true,
+          needed: harder ? via.step.technique : step.technique,
+          // Only when an elimination was the real work, with the candidates it
+          // fired on, so the hint can draw it and a lesson can open on it.
+          via: harder ? via : null,
+        }
       }
       break
+    }
+    if (!via || LADDER.indexOf(step.technique) > LADDER.indexOf(via.step.technique)) {
+      via = { step, board: state.board.slice(), cands: Array.from(state.cands) }
     }
     applyStep(state, step)
   }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, Suspense } from 'react'
 import Board from './components/Board.jsx'
 import NumberPad from './components/NumberPad.jsx'
 import HandwritingPad from './components/HandwritingPad.jsx'
@@ -40,6 +40,8 @@ import Dashboard from './components/Dashboard.jsx'
 import ThemeMenu from './components/ThemeMenu.jsx'
 import PracticeView from './components/PracticeView.jsx'
 import Flashcards from './components/Flashcards.jsx'
+import { Lesson, lessons } from './components/lazyLesson.js'
+import { canTeach } from './logic/teachable.js'
 import * as sound from './lib/sound.js'
 import Companion from './components/Companion.jsx'
 import { PLAIN, shortcutLine } from './logic/shortcuts.js'
@@ -349,6 +351,14 @@ export default function App() {
     },
     [generator, recordAbandon, updateSettings, enrolGame]
   )
+
+  /**
+   * A lesson opened from the hint panel, on the exact position the hint was
+   * about. Its own view rather than an overlay, so the game's timer stops while
+   * it is open: `useTimer` only runs on the game view, and time spent learning
+   * the pattern is not time spent solving.
+   */
+  const [lessonOpen, setLessonOpen] = useState(null)
 
   /** A deck of positions to drill one pattern against the clock. */
   const [cards, setCards] = useState(null)
@@ -882,6 +892,16 @@ export default function App() {
     )
   }
 
+  if (view === 'lesson' && lessonOpen) {
+    return (
+      <div className="app wide">
+        <Suspense fallback={null}>
+          <Lesson lesson={lessonOpen} onClose={() => setView('game')} />
+        </Suspense>
+      </div>
+    )
+  }
+
   if (view === 'cards' && cards) {
     return (
       <div className="app wide">
@@ -1133,6 +1153,27 @@ export default function App() {
                 used to reach for hintPlacement itself, which meant two places
                 could disagree about what the answer was. */}
             <button className="newBtn" onClick={onHint}>Fill it in</button>
+            {/* The same moment as a lesson: every way the pattern can go,
+                on this board, with the notes the hint was talking about. */}
+            {state.explain.lesson && canTeach(state.explain.lesson.step?.technique) && (
+              <button
+                className="newBtn"
+                onClick={async () => {
+                  const { buildLesson } = await lessons()
+                  const l = buildLesson({
+                    ...state.explain.lesson,
+                    topo: state.topo,
+                    source: 'hint',
+                    hint: { cell: state.explain.cell, digit: state.explain.digit },
+                  })
+                  if (!l) return
+                  setLessonOpen(l)
+                  setView('lesson')
+                }}
+              >
+                Learn this
+              </button>
+            )}
             <button className="linkBtn" onClick={() => dispatch({ type: 'clearExplain' })}>
               I see it
             </button>

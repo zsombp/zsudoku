@@ -10,7 +10,7 @@
 import { createState, nextStep } from './grader.js'
 import { TECHNIQUES, LADDER } from './techniques.js'
 import { CLASSIC, unitName, rowOf, colOf } from './topology.js'
-import { hasMark, marksToList, countMarks, removeMark } from './marks.js'
+import { hasMark, marksToList, countMarks, removeMark, addMark } from './marks.js'
 
 export const cellName = i => `r${rowOf(i) + 1}c${colOf(i) + 1}`
 
@@ -162,6 +162,13 @@ function directJustification(state, cell, digit) {
   return false
 }
 
+/** Candidates as they were before these eliminations. */
+function before(cands, eliminations = []) {
+  const out = Int16Array.from(cands)
+  for (const e of eliminations) out[e.cell] = addMark(out[e.cell], e.digit)
+  return out
+}
+
 /**
  * What to show a player who asks why, rather than what.
  *
@@ -174,7 +181,57 @@ export function explainPlacement(board, cell, digit, topo = CLASSIC) {
   const state = createState(board, topo)
   const j = justification(state, cell, digit)
   if (!j) return null
-  return { kind: j.kind, why: j.why, pattern: j.pattern, technique: j.pattern?.technique || null }
+  return {
+    kind: j.kind,
+    why: j.why,
+    pattern: j.pattern,
+    technique: j.pattern?.technique || null,
+    // The position the pattern is true in, so a lesson can be opened on it. A
+    // derived pattern carries the candidates left after it fired, so its own
+    // eliminations go back in: a lesson has to show the notes it removes. A
+    // single is true in the raw candidates, and needs to know where it lands.
+    lesson: {
+      board: board.slice(),
+      cands: j.pattern?.cands ? before(j.pattern.cands, j.pattern.eliminations) : state.cands.slice(),
+      step: { placements: [{ cell, digit }], eliminations: [], ...j.pattern },
+    },
+  }
+}
+
+/** "9 from r2c2", "6 from r4c3 and r6c3", grouped by digit. */
+export function removalPhrase(eliminations) {
+  const byDigit = new Map()
+  for (const e of eliminations) byDigit.set(e.digit, [...(byDigit.get(e.digit) || []), e.cell])
+  const list = xs => (xs.length <= 1 ? xs[0] : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
+  const groups = [...byDigit].map(([d, cs]) => `${d} from ${list(cs.map(cellName))}`)
+  // Past three groups the sentence stops being readable; the board shows the rest.
+  return groups.length > 3 ? `${eliminations.length} notes, ${groups[0]} among them` : list(groups)
+}
+
+const article = label => (/^[aeiouAEIOUX]/.test(label) ? 'An' : 'A')
+
+/**
+ * The hard step behind a hint, as an explanation.
+ *
+ * At a hard spot the digit a hint fills is a single that only exists once an
+ * elimination has happened, and pointing at the single explains the easy half.
+ * This points at the elimination instead: its pattern, drawn in the candidates
+ * it fired in, and what it removes. `via` is what `hintPlacement` hands back
+ * when the hardest step on its path was harder than the placement.
+ *
+ * `lesson` carries the position and the step whole, so the lesson screen can
+ * open on exactly this moment.
+ */
+export function explainBottleneck(via, cell, digit) {
+  const { step, cands, board } = via
+  const label = TECHNIQUES[step.technique]?.label || step.technique
+  return {
+    kind: 'sharp',
+    why: `${article(label)} ${label} removes ${removalPhrase(step.eliminations)}. That is what lets ${digit} go in ${cellName(cell)}.`,
+    technique: step.technique,
+    pattern: { ...step, cands, derived: true, target: { cell, digit } },
+    lesson: { board, cands, step },
+  }
 }
 
 /**

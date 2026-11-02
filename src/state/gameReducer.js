@@ -461,7 +461,17 @@ function reduce(state, action) {
      */
     case 'explain': {
       if (!state.board || state.status !== 'playing' || !action.explain) return state
-      return { ...state, explain: action.explain, selected: action.explain.cell }
+      const e = action.explain
+      return {
+        ...state,
+        explain: e,
+        selected: e.cell,
+        // Being shown the pattern is help, even though no digit was handed
+        // over. Logged so the review and the diagnosis can tell a digit found
+        // alone from one found after the app drew the way to it. Nothing else
+        // reads it: it changes no cell and no statistic counts it as a hint.
+        moveLog: logMove(state, { kind: 'shown', cell: e.cell, value: e.digit, technique: e.technique || null }, action.t),
+      }
     }
 
     case 'clearExplain':
@@ -480,10 +490,13 @@ function reduce(state, action) {
         selected: h.cell,
         hintCell: h.cell,
         hints: state.hints + 1,
-        hintLog: [...state.hintLog, { cell: h.cell, technique: h.technique, derived: h.derived }],
+        // `needed` is the pattern the position actually needed, which at a hard
+        // spot is not the single the hint filled in. Everything that judges
+        // you reads that one.
+        hintLog: [...state.hintLog, { cell: h.cell, technique: h.technique, derived: h.derived, needed: h.needed || h.technique }],
         // Overwrite the 'place' entry placeDigit just wrote: a hinted cell was
         // not solved by the player and must not count as their placement.
-        moveLog: logMove(state, { kind: 'hint', cell: h.cell, value: h.digit, correct: true, technique: h.technique }, action.t),
+        moveLog: logMove(state, { kind: 'hint', cell: h.cell, value: h.digit, correct: true, technique: h.technique, needed: h.needed || h.technique }, action.t),
       }
     }
 

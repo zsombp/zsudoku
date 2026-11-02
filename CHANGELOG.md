@@ -2,6 +2,100 @@
 
 Newest first.
 
+## v3.4.0 - 2026-11-02 - lessons that show every way it can go
+
+The training side was text: a sentence per technique, a whole puzzle to practise
+on, and flashcards that asked where a pattern was and nothing else. XY-Wings and
+swordfish did not stick, and a paragraph was never going to make them stick,
+because the argument behind them is a case split and a paragraph can only walk
+one case at a time. This release turns every elimination into something you can
+step through, and first fixes the diagnosis that decides what to teach.
+
+**The diagnosis blamed the wrong pattern.** At a hard spot the ladder makes an
+elimination (an XY-Wing, a hidden pair) and only then can a digit be placed,
+usually as a single. A hint walks past the elimination and fills the single, and
+the hint log recorded the single. So an XY-Wing you could not find went down as
+a naked single you could not find. Measured on the synced history in October:
+both hints sat at an XY-Wing and a hidden triple, and both were logged as
+singles. The curriculum then rated XY-Wing 0.90 for someone who had never found
+one.
+
+`src/logic/bottleneck.js` now answers "what did finding the next digit take from
+here": the ladder's path to its first placement and the hardest rung on it. The
+hint logs it as `needed`; the analysis computes it for every move (2.4ms a game);
+summaries carry `stuckBy`, the pattern each hint, wrong digit and lucky guess was
+really up against; and `ANALYSIS_VERSION` went to 3, so every old game is
+recomputed from its move log. On the real history the curriculum now rates
+hidden pair 0.46, hidden triple 0.53 and XY-Wing 0.58, where it said 0.91, 0.84
+and 0.90. What stops you is spread across seven patterns, hidden pair the most
+at 6, and the coach now says it is spread rather than naming one.
+
+Being shown the pattern counts too. The pattern rung of the hint button used to
+leave no trace, so a digit placed right after it was scored as found alone. It
+logs a `shown` entry now; the digit that follows is marked helped in the review,
+counts as stuck, and never counts as a pattern found unaided. It is not a hint
+and no hint statistic moves.
+
+**The hint teaches the hard step.** Where the digit only exists after an
+elimination, the pattern rung now draws the elimination: "An XY-Wing removes 6
+from r2c2. That is what lets 9 go in r1c4." It used to point at the single, which
+explained the easy half. A hint move in the review says the same: "Found by
+naked single, once an XY-Wing had cleared the way."
+
+**Lessons.** One pattern, on one real position, as every way it can go.
+`src/logic/worlds.js` reduces every elimination on the ladder to a few
+constraints (these cells each take one of their notes, this digit lands
+somewhere in this line) and lists every way to meet them. A note that dies in
+all of those worlds can go; a note that lives in even one cannot. That is the
+whole argument of every rung from pointing to swordfish, so nothing is drawn by
+hand. A lesson walks you through what to look at, the question the pattern
+answers, every world side by side with a digit dropped into each cell and a beam
+from it to every note it kills, what goes, and then "break it": switch on a flaw
+(the pivot gains a third note, a row reaches outside the columns) and watch a
+world open where the note survives. A hidden single is taught as the scan it is,
+with a line from each blocking digit to the cell it blocks.
+
+Lessons open from four places. The practice list ("Learn it", a stock example
+picked out of real solves by `scripts/lessonbank.mjs`, and "Where it stopped
+you", the last game moment that pattern beat you). The review, on any move where
+something stopped you ("Learn the XY-Wing this needed") and on every worked
+example. The hint panel ("Learn this", on the position you are stuck at, with the
+clock stopped while you are in it). And any drill card.
+
+Every lesson holds its own argument before it is shown. A property test walks
+every step of sixteen real solves, classic and four variants, and for each of
+the 361 teachable steps builds the lesson and checks that its worlds kill every
+elimination the ladder made, that every flaw it offers opens a world, that a
+"control" note really survives somewhere, that the digit it ends on is really
+placeable, and that no sentence has a hole in it.
+
+**Drill positions ask what the pattern removes.** Flashcards became position
+drills with two questions: tap the cells the pattern is made of, then tap the
+cells it removes a candidate from. Knowing an X-Wing is there without knowing
+which notes it kills is not knowing an X-Wing, and it is the half a hint never
+asks. Either answer, right or wrong, can open as a lesson on the same board.
+
+**Practice puts the fast ways first.** Each rung offers Learn it, Where it
+stopped you (when it has), Drill positions, then Full puzzle. Ten minutes for one
+sighting of the pattern was the only option once; it is the slowest of the four.
+The rows count how often each pattern stopped you rather than how many hints it
+cost, since a hint filled a single and the single was not the problem.
+
+**Grader version 4.** The fish steps gained `base`, `lines` and `cover`, which
+the lessons need and the grader never reads. Measured anyway: 28 puzzles at fixed
+seeds across five boards grade byte identical before and after. The stamp moved
+because the rule says a technique change moves it.
+
+**The lesson screen is its own chunk.** It took the main bundle past Vite's
+500KB warning. Split out, the code that loads at start is 490KB against 481KB
+before this release (the diagnosis, the drills and the hint changes), the lesson
+screen and engine (about 37KB) arrive the first time a lesson opens, and the
+service worker precaches them like everything else, so lessons still work in
+airplane mode.
+
+Glossary: lesson, worlds and stuck are defined, and flashcards are labelled
+"Position drill".
+
 ## v3.3.0 - 2026-08-13 - the audio stops, and every achievement has a face
 
 **The AudioContext now stops instead of going quiet.** It was created on the

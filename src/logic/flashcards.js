@@ -41,6 +41,12 @@ export function cardFrom(puzzle, technique, topo = CLASSIC) {
         digits: [...(step.digits || [])],
         unit: step.unit || null,
         detail: step.detail,
+        // The second question: what does it remove. Finding a pattern and
+        // knowing what it buys you are separate skills, and the second is the
+        // one a hint never asks.
+        eliminations: step.eliminations.map(e => ({ cell: e.cell, digit: e.digit })),
+        // The step whole, so the card can open as a lesson on the same board.
+        step: JSON.parse(JSON.stringify(step)),
       }
     }
 
@@ -98,6 +104,17 @@ export const isCorrect = (card, picked) => {
   if (picked.length !== card.cells.length) return false
   const want = new Set(card.cells)
   return picked.every(c => want.has(c))
+}
+
+/** The cells a card's pattern removes at least one candidate from. */
+export const removalCells = card => [...new Set((card.eliminations || []).map(e => e.cell))].sort((a, b) => a - b)
+
+/** Did the player name the cells that lose a note? Again only the set matters. */
+export const removesCorrect = (card, picked) => {
+  const want = removalCells(card)
+  if (picked.length !== want.length) return false
+  const set = new Set(want)
+  return picked.every(c => set.has(c))
 }
 
 export const cardLabel = technique => TECHNIQUES[technique]?.label || technique

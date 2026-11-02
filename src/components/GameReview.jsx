@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { rowOf, colOf } from '../logic/topology.js'
 import { VARIANTS, topologyFromRecord } from '../logic/variants.js'
 import { fmtMs } from '../lib/format.js'
@@ -12,6 +12,10 @@ import { narrate, headline } from '../stats/narrate.js'
 import { flowSummary } from '../stats/flow.js'
 import { EmptyMark } from './Emblems.jsx'
 import ReviewBoard from './ReviewBoard.jsx'
+import { Lesson, lessons, moments } from './lazyLesson.js'
+import { useLessonState } from './useLessonState.js'
+import { canTeach } from '../logic/teachable.js'
+import { isStuck } from '../stats/compute.js'
 import FlowStrip from './FlowStrip.jsx'
 import SolveArt from './SolveArt.jsx'
 import { Play, Pause } from './Icons.jsx'
@@ -206,6 +210,17 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
   }
 
   const noLog = !game.moveLog?.length
+
+  // A lesson opened from this review replaces it until it is closed, and the
+  // review comes back where it was, tab, move and scroll included.
+  const [learning, learn, unlearn] = useLessonState()
+  if (learning) {
+    return (
+      <Suspense fallback={null}>
+        <Lesson lesson={learning} onClose={unlearn} />
+      </Suspense>
+    )
+  }
 
   return (
     <div className="review">
@@ -470,11 +485,32 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
                         This is the one from this grid, at the point it came up. The outlined cells
                         are the pattern; anything struck through is a candidate it rules out.
                       </p>
-                      {onPractice && (
-                        <button className="newBtn" onClick={() => onPractice(example.technique)}>
-                          Practise {TECHNIQUES[example.technique]?.label}
-                        </button>
-                      )}
+                      <div className="dataRow">
+                        {canTeach(example.technique) && (
+                          <button
+                            className="newBtn"
+                            onClick={async () => {
+                              const { buildLesson } = await lessons()
+                              learn(
+                                buildLesson({
+                                  board: example.board,
+                                  cands: example.cands,
+                                  step: example.step,
+                                  topo,
+                                  source: 'game',
+                                })
+                              )
+                            }}
+                          >
+                            Learn it on this board
+                          </button>
+                        )}
+                        {onPractice && (
+                          <button className="newBtn" onClick={() => onPractice(example.technique)}>
+                            Practise {TECHNIQUES[example.technique]?.label}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -591,6 +627,15 @@ export default function GameReview({ game, onBack, onPractice, onDelete }) {
                     <p className="stageNote">
                       {CLASSES[move.cls].label}: {classAbout(move.cls)}
                     </p>
+                    {/* The moment something stopped you, as a lesson on this
+                        exact board: what finding the next digit took from
+                        here, which at a hard spot is not the single the move
+                        itself was. */}
+                    {isStuck(move) && canTeach(move.needed) && (
+                      <button className="newBtn lsLearnBtn" onClick={async () => learn((await moments()).lessonAtMove(game, move, topo))}>
+                        Learn the {TECHNIQUES[move.needed]?.label} this needed
+                      </button>
+                    )}
                     {move.alternative && (
                       <p className="moveAlt">
                         <Term id="easierWas">Easier was</Term> {move.alternative.digit} to

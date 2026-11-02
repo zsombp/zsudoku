@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { hintPlacement } from '../logic/grader.js'
-import { explainPlacement } from '../logic/explain.js'
+import { explainPlacement, explainBottleneck } from '../logic/explain.js'
 import { askAbout } from '../logic/socratic.js'
 
 /**
@@ -96,7 +96,13 @@ export function useHint({ stateRef, settingsRef, dispatch, moveCount, status, se
     if (!hint) return
 
     if (rung !== 'answer') {
-      const ex = explainPlacement(s.board, hint.cell, hint.digit, s.topo)
+      // At a hard spot the digit is a single that an elimination uncovered, and
+      // the elimination is the part worth showing. Pointing at the single there
+      // explained the easy half and drew a pattern that was not the one the
+      // position needed.
+      const ex = hint.via
+        ? explainBottleneck(hint.via, hint.cell, hint.digit)
+        : explainPlacement(s.board, hint.cell, hint.digit, s.topo)
       // Nothing proves it, which in practice means a wrong digit is poisoning
       // the position. There is nothing honest to point at, so just place it.
       if (ex) {

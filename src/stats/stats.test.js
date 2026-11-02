@@ -201,7 +201,7 @@ describe('coach', () => {
     const weak = found.find(i => i.id === 'hints-technique')
     expect(weak).toBeTruthy()
     expect(weak.title).toMatch(/pointing pair/i)
-    expect(weak.sample).toMatch(/8 hints/)
+    expect(weak.sample).toMatch(/8 times stuck/)
   })
 
   it('spots mistakes clustering in the endgame', () => {

@@ -15,7 +15,8 @@ import { TECHNIQUES } from '../logic/techniques.js'
 import { fmtMs } from '../lib/format.js'
 import {
   byTier,
-  hintsByTechnique,
+  stuckByTechnique,
+  stuckIn,
   mistakeBoxes,
   pace,
   median,
@@ -36,10 +37,18 @@ const sentence = s => s.charAt(0).toUpperCase() + s.slice(1)
  */
 const an = word => (/^[aeiou]/i.test(word) || /^x/i.test(word) ? 'an' : 'a')
 
-/** Hints cluster on one technique: that is the pattern you are not spotting. */
+/**
+ * What stops you clusters on one technique: that is the pattern you are not
+ * spotting.
+ *
+ * Counted by the pattern the position needed, across wrong digits, lucky
+ * guesses and hints, rather than by the label on the hints alone. The hint
+ * labels named the single a hint filled in, so this used to tell a player who
+ * could not find XY-Wings that naked singles were their weak spot.
+ */
 function hintWeakness(games) {
   const MIN = 5
-  const { counts, total } = hintsByTechnique(games)
+  const { counts, total } = stuckByTechnique(games)
   if (total < MIN) return null
 
   const ranked = Object.entries(counts)
@@ -52,9 +61,9 @@ function hintWeakness(games) {
   if (share < 35) {
     return {
       id: 'hints-spread',
-      title: 'Your hints are spread evenly',
-      body: `No single pattern dominates: ${total} hints across ${ranked.length} techniques. That usually means you are reaching for hints out of impatience rather than because a particular pattern defeats you.`,
-      sample: `${total} hints`,
+      title: 'What stops you is spread evenly',
+      body: `No single pattern dominates: ${total} hard spots across ${ranked.length} techniques ended in a wrong digit, a guess or a hint. That usually means rushing rather than one particular pattern defeating you.`,
+      sample: `${total} times stuck`,
     }
   }
   return {
@@ -62,8 +71,8 @@ function hintWeakness(games) {
     // The whole point of naming it is being able to act on it.
     practice: key,
     title: `${sentence(TECHNIQUES[key].label)} is your weak spot`,
-    body: `${share}% of your hints (${n} of ${total}) were on ${an(TECHNIQUES[key].label)} ${TECHNIQUES[key].label}. That is the pattern to learn next: when you get stuck, look for it before reaching for the bulb.`,
-    sample: `${total} hints`,
+    body: `${share}% of the spots that stopped you (${n} of ${total}) needed ${an(TECHNIQUES[key].label)} ${TECHNIQUES[key].label}, and ended in a wrong digit, a guess or a hint. That is the pattern to learn next.`,
+    sample: `${total} times stuck`,
   }
 }
 
@@ -461,14 +470,14 @@ function fatigue(games) {
  */
 function nemesis(games) {
   const MIN = 10
-  const recent = games.filter(g => g.hintLog?.length).slice(-40)
+  const recent = games.filter(g => Object.keys(stuckIn(g)).length).slice(-40)
   if (recent.length < 6) return null
 
   const half = Math.floor(recent.length / 2)
   const countIn = list => {
     const counts = {}
-    for (const g of list) for (const h of g.hintLog || []) {
-      if (h.technique && TECHNIQUES[h.technique]) counts[h.technique] = (counts[h.technique] || 0) + 1
+    for (const g of list) for (const [k, n] of Object.entries(stuckIn(g))) {
+      if (TECHNIQUES[k]) counts[k] = (counts[k] || 0) + n
     }
     return counts
   }
@@ -490,11 +499,11 @@ function nemesis(games) {
     id: 'nemesis',
     practice: key,
     title: `${sentence(TECHNIQUES[key].label)} has beaten you ${n} times now`,
-    body: `It has been your worst pattern across both halves of your recent games, ${early[key] || 0} hints then and ${late[key] || 0} since. ${
+    body: `It has been your worst pattern across both halves of your recent games: it stopped you ${early[key] || 0} times then and ${late[key] || 0} since. ${
       gettingWorse
-        ? 'It is not getting better on its own, and it will not: the hint fills the cell and moves on without ever making you find one.'
-        : 'It is easing, but it is still the one that costs you most.'
-    } Drill it deliberately rather than meeting it by accident.`,
-    sample: `${recent.length} recent games with hints`,
+        ? 'It is not getting better on its own, and meeting it by accident will not change that.'
+        : 'It is easing, but it is still the one that stops you most.'
+    } Learn it once properly, then drill positions.`,
+    sample: `${recent.length} recent games where something stopped you`,
   }
 }

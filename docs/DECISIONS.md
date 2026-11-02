@@ -1884,3 +1884,109 @@ mark whose achievement has been deleted.
 
 Rules out: a padlock, a generic fallback shape for an unmapped id, and putting
 the art name in `achievements.js`.
+
+### Blame the bottleneck, not the single
+
+Resolved at v3.4.0. Everything that judged a hint read the label of the digit
+the hint placed. At a hard spot that digit is a single which only exists after
+an elimination, so an XY-Wing nobody could find was recorded as a naked single
+nobody could find, and the curriculum rated XY-Wing 0.90 for someone who had
+never found one.
+
+**What a position needed is the hardest rung on the ladder's path to its next
+placement**, computed by `src/logic/bottleneck.js` and nowhere else. The hint
+logs it, the analysis computes it for every move, and every judgement of the
+player (curriculum, coach, practice counts) reads it rather than the placed
+technique. A wrong digit, a guess that came off, a hint, and a digit placed right
+after the hint button drew the pattern all count against it. Naked singles never
+do: a wrong digit with a single on the board is a slip.
+
+Being shown the pattern is logged as `shown` and is not a hint. It changes no
+cell and no hint statistic, because the player did not take the digit; it only
+stops the digit that follows from counting as found alone.
+
+Rules out: keying anything about the player on `technique` from a hint, and
+counting the explain rung as a hint.
+
+### Every elimination is one argument
+
+Resolved at v3.4.0. The lessons rest on `src/logic/worlds.js`: a step reduces to
+slots (a cell that takes one of its notes, or a digit that lands somewhere in a
+set of cells), every consistent assignment of the slots is a world, and a note
+can be removed exactly when it dies in every world. Pointing, claiming, every
+subset, both fish and the XY-Wing are the same function with different slots.
+
+**Nothing in a lesson is drawn by hand.** Every beam, strike and survivor on the
+board comes from enumerating the worlds over the candidates, and a property test
+holds the engine to the ladder on every step of sixteen real solves, classic and
+four variants. If a technique changes and its slots do not, that test fails at
+the first step where they disagree.
+
+The cage rungs have no lesson: their argument is a sum, which a list of
+placements cannot show. A hidden single has no worlds or flaws either; it is
+taught as the scan it is, with a line from each blocking digit.
+
+Rules out: hand-authored diagrams per technique, and a lesson for a rung whose
+argument the engine cannot enumerate.
+
+### A lesson that does not hold is not shown
+
+Resolved at v3.4.0. `buildLesson` checks its own argument before returning: the
+worlds must kill every elimination, every flaw must open at least one world, and
+a control note must survive somewhere or it is dropped. Anything that fails
+returns null rather than a lesson with a hole in it, and the tests assert that
+never happens on a real solve.
+
+Flaws prefer notes that could honestly have been there (no peer holds the digit)
+and fall back to any empty cell when no such note exists, which is common late in
+a solve. The break step frames them as what-ifs either way.
+
+Rules out: showing a flaw that changes nothing, and inventing positions: every
+lesson is a position that arose in a real solve, including the stock ones in
+`lessonBank.json`.
+
+### An animated thing rests where it ends
+
+Resolved at v3.4.0. Every animated element in a lesson sits in its END state in
+CSS, and its keyframes run from the start state with `backwards` fill. A frame
+that never plays the animation (reduced motion, a backgrounded tab, a
+screenshot) then shows the finished picture. The prototype did it the other way
+round and showed an empty board to anything that did not animate.
+
+Rules out: keyframes that end where the element starts, and a resting state that
+depends on an animation having run.
+
+### Drill positions before whole puzzles
+
+Resolved at v3.4.0. Practice offers, in order: a lesson, the moment the pattern
+stopped you, a position drill, then a full puzzle. A full puzzle is ten minutes
+for one sighting and was the only option; it is now the last.
+
+A drill asks two questions: where is the pattern, and which cells does it remove
+a candidate from. Recognising an X-Wing without knowing what it kills is not
+knowing an X-Wing, and the hint ladder never asks the second question.
+
+The game clock stops while a lesson opened from the hint is on screen, because
+`useTimer` only runs on the game view and learning the pattern is not solving.
+
+Rules out: timing a lesson as part of a solve, and a drill that only asks the
+first question.
+
+### The lesson engine loads when it is needed
+
+Resolved at v3.4.0. The lesson screen, the engine and the stock positions are a
+lazily imported chunk (`src/components/lazyLesson.js`); screens decide whether to
+offer a lesson with `canTeach` from the tiny `src/logic/teachable.js`. Together
+they had pushed the main bundle past Vite's 500KB warning. The service worker
+precaches every chunk, so offline is unchanged.
+
+Rules out: raising `chunkSizeWarningLimit` to make the warning go away, and
+importing `lessons.js` from anything in the main bundle.
+
+### Grader version 4 for a change the grader cannot see
+
+Resolved at v3.4.0. The fish steps gained `base`, `lines` and `cover` for the
+lessons. Nothing the grader reads changed, and 28 puzzles at fixed seeds across
+five boards graded byte identical before and after. The stamp moved anyway,
+because the rule is that a technique change moves it, and a rule with
+exceptions argued case by case is no rule.
