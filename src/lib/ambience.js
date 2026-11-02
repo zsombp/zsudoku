@@ -31,6 +31,42 @@ export const CHORDS = [
   [87.31, 130.81, 220.0, 329.63],
   [130.81, 196.0, 293.66, 392.0],
 ]
+const notes = rows => rows.map(row => row.map(midi => 440 * 2 ** ((midi - 69) / 12)))
+
+export const PALETTES = {
+  ink: {
+    chords: CHORDS, types: ['sine', 'triangle', 'triangle', 'triangle'],
+    cutoff: 900, q: 0.4, echo: 0.42, feedback: 0.28, dull: 700,
+  },
+  paper: {
+    chords: notes([[48, 55, 64, 71], [53, 60, 64, 69], [45, 52, 60, 67], [55, 62, 64, 69]]),
+    types: ['triangle', 'sine', 'sine', 'triangle'],
+    cutoff: 1200, q: 0.3, echo: 0.25, feedback: 0.16, dull: 950,
+  },
+  midnight: {
+    chords: notes([[40, 47, 54, 62], [36, 43, 52, 59], [43, 50, 57, 62], [38, 45, 52, 57]]),
+    types: ['sine', 'sine', 'sine', 'sine'],
+    cutoff: 620, q: 0.25, echo: 0.58, feedback: 0.32, dull: 480,
+  },
+  nord: {
+    chords: notes([[50, 57, 64, 69], [43, 50, 59, 66], [47, 54, 62, 69], [45, 52, 59, 64]]),
+    types: ['triangle', 'triangle', 'sine', 'sine'],
+    cutoff: 1050, q: 0.5, echo: 0.48, feedback: 0.24, dull: 800,
+  },
+  newsprint: {
+    chords: notes([[45, 52, 60, 64], [50, 57, 60, 65], [43, 50, 59, 65], [48, 55, 57, 64]]),
+    types: ['sine', 'triangle', 'sawtooth', 'sine'],
+    cutoff: 720, q: 0.35, echo: 0.18, feedback: 0.12, dull: 550,
+  },
+  contrast: {
+    chords: notes([[45, 52, 57, 64], [48, 55, 60, 67], [43, 50, 55, 62], [40, 47, 52, 59]]),
+    types: ['sine', 'sine', 'triangle', 'sine'],
+    cutoff: 1500, q: 0.2, echo: 0.12, feedback: 0.04, dull: 1100,
+  },
+}
+let theme = 'ink'
+const palette = () => PALETTES[theme]
+
 const VOICE_GAIN = [0.32, 0.24, 0.17, 0.12]
 const LEVEL = 0.05
 const STEADY_MS = 9000
@@ -66,7 +102,8 @@ function sync() {
 }
 
 /** On or off. Called by the app with whether you are solving right now. */
-export function setActive(on) {
+export function setActive(on, nextTheme) {
+  if (nextTheme !== undefined) setTheme(nextTheme)
   const was = wanted
   wanted = Boolean(on)
   // Coming back to the board is a fresh start, not a minute-long stall: a
@@ -76,6 +113,23 @@ export function setActive(on) {
     placedAt = []
   }
   sync()
+}
+
+/** The current voices glide; changing a theme never recreates the graph. */
+export function setTheme(next) {
+  const chosen = Object.hasOwn(PALETTES, next) ? next : 'ink'
+  if (theme === chosen) return
+  theme = chosen
+  if (!live) return
+  const t = live.c.currentTime
+  const p = palette()
+  live.filter.Q.setTargetAtTime(p.q, t, 1.5)
+  live.delay.delayTime.setTargetAtTime(p.echo, t, 1.5)
+  live.feedback.gain.setTargetAtTime(p.feedback, t, 1.5)
+  live.dull.frequency.setTargetAtTime(p.dull, t, 1.5)
+  live.nextAt = null
+  shape(live.mood, true)
+  schedule()
 }
 
 /** A digit went in. Feeds the flow and stall reading; costs nothing when off. */
@@ -91,24 +145,25 @@ function start() {
   if (!c) return
   try {
     const t = c.currentTime
+    const p = palette()
     const master = c.createGain()
     master.gain.setValueAtTime(0.0001, t)
     master.gain.exponentialRampToValueAtTime(LEVEL, t + 4)
 
     const filter = c.createBiquadFilter()
     filter.type = 'lowpass'
-    filter.frequency.setValueAtTime(900, t)
-    filter.Q.setValueAtTime(0.4, t)
+    filter.frequency.setValueAtTime(p.cutoff, t)
+    filter.Q.setValueAtTime(p.q, t)
 
     // A short echo for space: one delay line feeding back through a darker
     // filter, so each repeat is quieter and duller than the last.
     const delay = c.createDelay(1)
-    delay.delayTime.setValueAtTime(0.42, t)
+    delay.delayTime.setValueAtTime(p.echo, t)
     const feedback = c.createGain()
-    feedback.gain.setValueAtTime(0.28, t)
+    feedback.gain.setValueAtTime(p.feedback, t)
     const dull = c.createBiquadFilter()
     dull.type = 'lowpass'
-    dull.frequency.setValueAtTime(700, t)
+    dull.frequency.setValueAtTime(p.dull, t)
 
     filter.connect(master)
     filter.connect(delay)
@@ -116,10 +171,10 @@ function start() {
     feedback.connect(master)
     master.connect(c.destination)
 
-    const chord = Math.floor(Math.random() * CHORDS.length)
-    const voices = CHORDS[chord].map((f, i) => {
+    const chord = Math.floor(Math.random() * p.chords.length)
+    const voices = p.chords[chord].map((f, i) => {
       const osc = c.createOscillator()
-      osc.type = i === 0 ? 'sine' : 'triangle'
+      osc.type = p.types[i]
       osc.frequency.setValueAtTime(f, t)
       // A few cents apart, so the voices beat slowly against each other.
       osc.detune.setValueAtTime((i % 2 ? 1 : -1) * (3 + i), t)
@@ -130,7 +185,7 @@ function start() {
       return { osc, amp }
     })
 
-    live = { c, master, filter, delay, feedback, dull, voices, chord, mood: 'steady', timer: null }
+    live = { c, master, filter, delay, feedback, dull, voices, chord, mood: 'steady', timer: null, nextAt: null, changingVoice: -1 }
     shape(moodAt(placedAt, lastPlaced, Date.now()))
     schedule()
   } catch {
@@ -142,45 +197,71 @@ function start() {
 function schedule() {
   if (!live) return
   clearTimeout(live.timer)
-  live.timer = setTimeout(tick, live.mood === 'flow' ? FLOW_MS : STEADY_MS)
+  const ms = live.mood === 'flow' ? FLOW_MS : STEADY_MS
+  live.nextAt = live.c.currentTime + ms / 1000
+  prepareVoiceChange()
+  live.timer = setTimeout(tick, ms)
 }
 
 function tick() {
   if (!live) return
   const mood = moodAt(placedAt, lastPlaced, Date.now())
+  if (live.changingVoice >= 0) {
+    const i = live.changingVoice
+    const voice = live.voices[i]
+    voice.osc.type = palette().types[i]
+    voice.amp.gain.cancelScheduledValues(live.c.currentTime)
+    voice.amp.gain.setTargetAtTime(gainsFor(mood)[i], live.c.currentTime, 0.3)
+    live.changingVoice = -1
+  }
+  live.nextAt = null
   shape(mood)
   if (mood !== 'stall') {
-    live.chord = (live.chord + 1) % CHORDS.length
-    const t = live.c.currentTime
-    // A glide rather than a cut: every voice slides to its next note.
-    CHORDS[live.chord].forEach((f, i) => live.voices[i].osc.frequency.setTargetAtTime(f, t, 1.1))
+    live.chord = (live.chord + 1) % palette().chords.length
+    glideNotes()
   }
   schedule()
 }
 
 /** Move the voices and the filter to a mood. Ramps only, never a jump. */
-function shape(mood) {
-  if (!live || live.mood === mood) return
+function shape(mood, force = false) {
+  if (!live || (!force && live.mood === mood)) return
   live.mood = mood
   const t = live.c.currentTime
-  const gains =
-    mood === 'flow'
-      ? [VOICE_GAIN[0], VOICE_GAIN[1], 0.0001, 0.0001]
-      : mood === 'stall'
-        ? [VOICE_GAIN[0] * 1.2, 0.0001, 0.0001, 0.0001]
-        : VOICE_GAIN
+  const gains = gainsFor(mood)
   live.voices.forEach((v, i) => {
     v.amp.gain.cancelScheduledValues(t)
     v.amp.gain.setTargetAtTime(gains[i], t, 1.5)
   })
   live.filter.frequency.cancelScheduledValues(t)
-  live.filter.frequency.setTargetAtTime(mood === 'flow' ? 1400 : mood === 'stall' ? 450 : 900, t, 2)
-  if (mood === 'stall') {
-    // The drone sits an octave under the chord's root.
-    live.voices[0].osc.frequency.setTargetAtTime(CHORDS[live.chord][0] / 2, t, 2)
-  } else {
-    live.voices[0].osc.frequency.setTargetAtTime(CHORDS[live.chord][0], t, 1.1)
-  }
+  live.filter.frequency.setTargetAtTime(palette().cutoff * (mood === 'flow' ? 14 / 9 : mood === 'stall' ? 0.5 : 1), t, 2)
+  glideNotes()
+  prepareVoiceChange()
+}
+
+const gainsFor = mood => mood === 'flow'
+  ? [VOICE_GAIN[0], VOICE_GAIN[1], 0.0001, 0.0001]
+  : mood === 'stall'
+    ? [VOICE_GAIN[0] * 1.2, 0.0001, 0.0001, 0.0001]
+    : VOICE_GAIN
+
+function glideNotes() {
+  if (!live) return
+  palette().chords[live.chord].forEach((f, i) => {
+    const pitch = i === 0 && live.mood === 'stall' ? f / 2 : f
+    live.voices[i].osc.frequency.setTargetAtTime(pitch, live.c.currentTime, 1.1)
+  })
+}
+
+function prepareVoiceChange() {
+  if (!live || live.nextAt == null) return
+  const i = live.voices.findIndex((v, n) => v.osc.type !== palette().types[n])
+  live.changingVoice = i
+  if (i < 0) return
+  // Waveform type is not an AudioParam. Quiet one voice just before the
+  // existing chord tick changes it, then bring it back while the others keep
+  // sounding. This adds neither nodes nor timer callbacks to a theme change.
+  live.voices[i].amp.gain.setTargetAtTime(0.0001, Math.max(live.c.currentTime, live.nextAt - 0.4), 0.04)
 }
 
 function stop({ now = false } = {}) {

@@ -2150,3 +2150,15 @@ times compare first and last timed decks of the same pattern, using correct
 cards only and printing both sample sizes. Fewer than three games and decks
 combined is too little for trend claims. Opening or dismissing the card starts
 a seven-day local wait, with no cloud state or background polling.
+
+
+### A theme changes the existing pad rather than starting another one
+
+2026-11-02. Six palettes share four oscillators, six gains, two filters and one
+delay. Pitch, filter and echo changes use AudioParam targets. Waveform type
+cannot ramp, so the existing chord timer changes one quieted voice per tick;
+the other voices remain audible and the changed voice rises back in. Timbre
+can take several chords to settle, deliberately, with no additional timer
+callbacks, nodes or continuous animation. Hidden-page stopping and the shared
+context's suspension rules remain in force. This verifies graph and timer
+cost, not actual battery consumption or how the transitions sound.

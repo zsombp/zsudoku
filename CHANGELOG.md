@@ -4,6 +4,20 @@ Newest first.
 
 ## Unreleased
 
+### Ambience per theme
+
+Each of the six themes has its own four-chord palette, oscillator types,
+filter and echo settings. Changing theme glides pitches and filter parameters
+without rebuilding the graph. Waveform changes quiet one voice before an
+existing chord tick and restore it afterwards while the others keep sounding.
+
+Stub WebAudio checks across all six themes: 13 nodes, four oscillators and one
+active chord timer each, unchanged during palette changes; steady ticks remain
+9s, flow ticks 7s, with no frame loop or extra timer callbacks. All 864 tests
+and the production build pass. The final main chunk is 373.23kB (119.97kB gzip),
+and every emitted JS/CSS asset is precached. Audio quality, transition smoothness
+and actual device energy use need listening and device measurements.
+
 ### Weekly review
 
 A home card opens a review of the last seven days: recorded games played and
@@ -27,7 +41,7 @@ Navigation is a transition under a shared Suspense boundary, keeping the
 current screen until the destination is ready. Theme metadata moved out of
 SettingsView so the header picker no longer pulls settings into first paint.
 
-Vite's main chunk fell from 487.66kB (154.50kB gzip) to 372.09kB (119.50kB gzip),
+Vite's main chunk fell from 487.66kB (154.50kB gzip) to 372.10kB (119.52kB gzip),
 23.7% smaller before compression. The generated service worker contains all
 18 JavaScript and CSS assets, including the worker and lazy chunks; 38 total
 precache entries. scripts/check-precache.mjs checks this against the build.

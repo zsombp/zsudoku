@@ -883,8 +883,8 @@ function AppContent() {
   // The pad plays only while you are solving: this screen, the clock going.
   // The module itself stops it when the page is hidden.
   useEffect(() => {
-    ambience.setActive(Boolean(settings.ambience) && view === 'game' && state.status === 'playing')
-  }, [settings.ambience, view, state.status])
+    ambience.setActive(Boolean(settings.ambience) && view === 'game' && state.status === 'playing', settings.theme)
+  }, [settings.ambience, settings.theme, view, state.status])
   useEffect(() => () => ambience.setActive(false), [])
 
   // Driven off the move log rather than sprinkled through the handlers: the

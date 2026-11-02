@@ -10,13 +10,15 @@ import fs from 'fs'
  */
 function stubAudio() {
   const param = () => ({
-    setValueAtTime() {},
+    setValueAtTime: vi.fn(),
     exponentialRampToValueAtTime() {},
-    setTargetAtTime() {},
+    setTargetAtTime: vi.fn(),
     cancelScheduledValues() {},
   })
-  const made = { oscillators: 0, started: 0, stopped: 0 }
-  const node = () => ({
+  const made = { oscillators: 0, started: 0, stopped: 0, nodes: 0, voices: [], filters: [], delays: [] }
+  const node = () => {
+    made.nodes++
+    return ({
     connect(next) { return next },
     disconnect() {},
     start() { made.started++ },
@@ -28,14 +30,16 @@ function stubAudio() {
     delayTime: param(),
     type: '',
   })
+  }
+  const started = Date.now()
   const ctx = {
     state: 'running',
-    currentTime: 0,
+    get currentTime() { return (Date.now() - started) / 1000 },
     destination: {},
-    createOscillator() { made.oscillators++; return node() },
+    createOscillator() { made.oscillators++; const n = node(); made.voices.push(n); return n },
     createGain: node,
-    createBiquadFilter: node,
-    createDelay: node,
+    createBiquadFilter() { const n = node(); made.filters.push(n); return n },
+    createDelay() { const n = node(); made.delays.push(n); return n },
     suspends: 0,
     suspend() { this.state = 'suspended'; this.suspends++ },
     resume() { this.state = 'running' },
@@ -170,5 +174,79 @@ describe('it follows the solve', () => {
       ambience.placed()
     }
     expect(ambience.currentMood()).toBe('flow')
+  })
+})
+
+describe('one palette for each theme with the same running cost', () => {
+  it('covers exactly the themes in the tokens, with distinct chords and timbres', () => {
+    const css = fs.readFileSync(new URL('../styles/tokens.css', import.meta.url), 'utf8')
+    const themes = [...css.matchAll(/\[data-theme="([^"]+)"\]/g)].map(m => m[1])
+    expect(Object.keys(ambience.PALETTES).sort()).toEqual([...new Set(themes)].sort())
+    const palettes = Object.values(ambience.PALETTES)
+    expect(new Set(palettes.map(p => JSON.stringify(p.chords))).size).toBe(6)
+    expect(new Set(palettes.map(p => JSON.stringify(p.types))).size).toBe(6)
+    for (const p of palettes) {
+      expect(p.chords).toHaveLength(4)
+      expect(p.types).toHaveLength(4)
+      expect(p.feedback).toBeLessThan(1)
+      expect(p.echo).toBeLessThan(1)
+      for (const chord of p.chords) {
+        expect(chord).toHaveLength(4)
+        expect(chord.every(f => Number.isFinite(f) && f > 0)).toBe(true)
+      }
+    }
+  })
+
+  it.each(['ink', 'paper', 'midnight', 'nord', 'newsprint', 'contrast'])('%s uses thirteen nodes and the same chord timer', theme => {
+    ambience.setActive(true, theme)
+    expect(made.nodes).toBe(13)
+    expect(made.oscillators).toBe(4)
+    expect(made.voices.map(v => v.type)).toEqual(ambience.PALETTES[theme].types)
+    expect(vi.getTimerCount()).toBe(1)
+    vi.advanceTimersByTime(9000)
+    expect(made.nodes).toBe(13)
+    expect(vi.getTimerCount()).toBe(1)
+  })
+
+  it('glides parameters immediately, then changes quieted voices on existing ticks', () => {
+    ambience.setActive(true, 'midnight')
+    const timers = vi.getTimerCount()
+    ambience.setTheme('paper')
+    expect(made.nodes).toBe(13)
+    expect(made.stopped).toBe(0)
+    expect(vi.getTimerCount()).toBe(timers)
+    expect(made.voices.map(v => v.type)).toEqual(ambience.PALETTES.midnight.types)
+    for (const voice of made.voices) expect(voice.frequency.setTargetAtTime).toHaveBeenCalled()
+    expect(made.filters[0].frequency.setTargetAtTime).toHaveBeenCalledWith(1200, 0, 2)
+    expect(made.delays[0].delayTime.setTargetAtTime).toHaveBeenCalledWith(0.25, 0, 1.5)
+    vi.advanceTimersByTime(9000)
+    expect(made.voices[0].type).toBe('triangle')
+    expect(made.voices[3].type).toBe('sine')
+    vi.advanceTimersByTime(9000)
+    expect(made.voices.map(v => v.type)).toEqual(ambience.PALETTES.paper.types)
+    expect(made.nodes).toBe(13)
+    expect(vi.getTimerCount()).toBe(timers)
+  })
+
+  it('changes no nodes or timers while stopped and falls back to ink for an unknown theme', () => {
+    ambience.setTheme('paper')
+    expect(made.nodes).toBe(0)
+    expect(vi.getTimerCount()).toBe(0)
+    ambience.setActive(true, 'unknown')
+    expect(made.voices.map(v => v.type)).toEqual(ambience.PALETTES.ink.types)
+  })
+
+  it('survives rapid theme changes, flow, a stall and hiding during the glide', () => {
+    ambience.setActive(true, 'newsprint')
+    ambience.setTheme('nord')
+    ambience.setTheme('contrast')
+    for (let i = 0; i < 4; i++) ambience.placed()
+    vi.advanceTimersByTime(70000)
+    expect(made.voices.map(v => v.type)).toEqual(ambience.PALETTES.contrast.types)
+    expect(ambience.currentMood()).toBe('stall')
+    expect(made.nodes).toBe(13)
+    setHidden(true)
+    expect(ctx.state).toBe('suspended')
+    expect(vi.getTimerCount()).toBe(0)
   })
 })
