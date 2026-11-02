@@ -2,6 +2,22 @@
 
 Newest first.
 
+## Unreleased
+
+### Killer drill cards
+
+All five cage rungs deal generated killer positions, carry their cages into
+both the drill board and its lesson, and offer drills from practice. Bounded
+layout searches discard unfinished uniqueness proofs rather than calling them
+unique. Detectors, costs and the grader stamp are unchanged.
+
+Five-card decks at seeds 1234, 7001 and 42: cageCombo 52 to 73ms, cageSum 84 to
+176ms, cageSingle 131 to 330ms, sum45 198 to 304ms, cageLocked 728 to 3272ms.
+All 15 cage decks were full. Classic pointing at the same seeds took 1579 to
+9268ms. These are local Node measurements, with the test runner also active.
+833 tests pass; the production build passes. Drill taps and cage spacing need
+browser verification.
+
 ## v4.1.0 - 2026-11-02 - killer cage lessons
 
 All five cage rungs now offer lessons from practice and cage hints. Their

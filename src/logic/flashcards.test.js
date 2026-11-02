@@ -59,3 +59,20 @@ describe('marking an answer', () => {
     expect(isCorrect(card, [1, 2, 3])).toBe(false)
   })
 })
+
+describe('killer decks carry their real constraints', () => {
+  it.each(['cageCombo', 'cageSum', 'cageSingle', 'sum45', 'cageLocked'])('deals %s positions that replay on their saved cages', { timeout: 15000 }, async technique => {
+    const { topologyFromRecord } = await import('./variants.js')
+    const { countKillerSolutions } = await import('./killer.js')
+    const cards = buildDeck(technique, { count: 2, budgetMs: 5000, seed: 1234 })
+    expect(cards).toHaveLength(2)
+    for (const card of cards) {
+      const topo = topologyFromRecord(JSON.parse(JSON.stringify(card)))
+      expect(card.variant).toBe('killer')
+      expect(countKillerSolutions(card.board, card.cages)).toBe(1)
+      const step = nextStep({ board: card.board, cands: card.cands, topo })
+      expect(step.technique).toBe(technique)
+      expect([...step.cells].sort((a, b) => a - b)).toEqual(card.cells)
+    }
+  })
+})

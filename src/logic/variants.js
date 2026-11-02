@@ -191,7 +191,7 @@ const orthogonal = cell => {
  */
 const NO_CLUES = new Array(81).fill(0)
 
-export function killerLayout(seed, base = CLASSIC, { candidates = 4 } = {}) {
+export function killerLayout(seed, base = CLASSIC, { candidates = 4, maxNodes = Infinity } = {}) {
   let best = null
   let tried = 0
   // Four extra passes on top, because `uniqueCageLayout` can return null on a
@@ -202,7 +202,7 @@ export function killerLayout(seed, base = CLASSIC, { candidates = 4 } = {}) {
     const s = (seed + attempt * 0x9e3779b9) >>> 0
     const solution = generateFull(mulberry32(s), base)
     if (!solution) continue
-    const made = uniqueCageLayout(s, solution, { topo: base })
+    const made = uniqueCageLayout(s, solution, { topo: base, maxNodes })
     if (!made) continue
     tried++
 
@@ -425,7 +425,7 @@ export function makeVariantPuzzle(variantId, tier, opts = {}) {
   }
 
   if (variant.id === 'killer') {
-    const layout = killerLayout(seed)
+    const layout = killerLayout(seed, CLASSIC, opts.layoutOptions)
     if (!layout) return null
     const topo = killerTopology(layout.cages)
     // A wider search than the shared default, because the tiers are not evenly
@@ -499,7 +499,7 @@ export function makeVariantPractice(variantId, technique, opts = {}) {
   }
 
   if (variant.id === 'killer') {
-    const layout = killerLayout(seed)
+    const layout = killerLayout(seed, CLASSIC, opts.layoutOptions)
     if (!layout) return null
     const topo = killerTopology(layout.cages)
     const made = makePracticePuzzle(technique, { ...opts, seed, topo, solution: layout.solution })
@@ -522,7 +522,7 @@ export function makeVariantTailored(variantId, opts = {}) {
     return made && { ...made, variant: 'jigsaw', regions }
   }
   if (variant.id === 'killer') {
-    const layout = killerLayout(seed)
+    const layout = killerLayout(seed, CLASSIC, opts.layoutOptions)
     if (!layout) return null
     const topo = killerTopology(layout.cages)
     const made = makeTailoredPuzzle({ ...opts, seed, topo, solution: layout.solution })

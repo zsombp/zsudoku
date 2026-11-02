@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { topologyFromRecord } from '../logic/variants.js'
 import ReviewBoard from './ReviewBoard.jsx'
 import { Lesson, lessons } from './lazyLesson.js'
 import { useLessonState } from './useLessonState.js'
@@ -40,6 +41,7 @@ export default function Flashcards({ technique, deck, onClose, onAgain, onFinish
   const [learning, learn, unlearn] = useLessonState()
 
   const card = deck[at]
+  const topo = useMemo(() => topologyFromRecord(card), [card])
   const done = at >= deck.length
   // A single places a digit and removes nothing, so it only gets the first question.
   const asksRemoval = Boolean(card?.eliminations?.length)
@@ -211,6 +213,7 @@ export default function Flashcards({ technique, deck, onClose, onAgain, onFinish
 
       <div className="moveStage">
         <ReviewBoard
+          topo={topo}
           puzzle={card.board}
           board={card.board}
           cands={card.cands}
@@ -263,7 +266,7 @@ export default function Flashcards({ technique, deck, onClose, onAgain, onFinish
                     className="newBtn"
                     onClick={async () => {
                       const { buildLesson } = await lessons()
-                      learn(buildLesson({ board: card.board, cands: card.cands, step: card.step, source: 'card' }))
+                      learn(buildLesson({ board: card.board, cands: card.cands, step: card.step, topo, source: 'card' }))
                     }}
                   >
                     Learn it on this board

@@ -11,10 +11,11 @@
 // than a diagram someone drew.
 
 import { createState, nextStep } from './grader.js'
-import { TECHNIQUES } from './techniques.js'
+import { TECHNIQUES, CAGE_TECHNIQUES } from './techniques.js'
 import { removeMark } from './marks.js'
 import { CLASSIC } from './topology.js'
 import { makePuzzle, generateFull, dig } from './generator.js'
+import { makeVariantPuzzle, topologyFromRecord } from './variants.js'
 import { randomSeed, mulberry32 } from '../lib/prng.js'
 
 /**
@@ -34,6 +35,7 @@ export function cardFrom(puzzle, technique, topo = CLASSIC) {
     if (step.technique === technique) {
       return {
         technique,
+        ...(topo.cages ? { variant: 'killer', cages: structuredClone(topo.cages) } : {}),
         board: state.board.slice(),
         cands: state.cands.slice(),
         // What the player has to find: the cells the pattern is made of.
@@ -72,6 +74,22 @@ export function buildDeck(technique, { count = 8, budgetMs = 8000, seed = random
   const cards = []
   const t0 = Date.now()
   let n = 0
+
+  if (CAGE_TECHNIQUES.includes(technique)) {
+    while (cards.length < count && Date.now() - t0 < budgetMs) {
+      // A card needs a real position, not an exact tier. One shaping attempt
+      // avoids spending the deck's budget chasing an irrelevant score band.
+      const made = makeVariantPuzzle('killer', ['cageCombo', 'cageSum'].includes(technique) ? 'Medium' : 'Expert', {
+        seed: (seed + n++ * 7919) >>> 0, attempts: 1,
+        layoutOptions: { candidates: 1, maxNodes: 2000 },
+        budgetMs: Math.max(1, budgetMs - (Date.now() - t0)),
+      })
+      if (!made) continue
+      const card = cardFrom(made.puzzle, technique, topologyFromRecord(made))
+      if (card) cards.push({ ...card, seed: made.seed })
+    }
+    return cards
+  }
 
   // The rungs above the swordfish only fire where nothing older can move, so
   // a puzzle shaped to a tier band contains one rarely: an XYZ-Wing deck came

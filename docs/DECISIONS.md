@@ -2105,3 +2105,13 @@ It previously skipped every placement while looking for a proof, so a cage
 single or 45-rule hint could fill a digit without offering its explanation.
 Recognising the detector's placement fixes that route without introducing a
 second explanation or changing a technique.
+
+
+### Cage decks do not need a tier match
+
+2026-11-02. A drill needs a real, unique position where its rung fires, not a
+particular difficulty label. Each cage attempt uses one layout candidate and
+one tier-shaping attempt. A deterministic 2000-node limit abandons expensive
+uniqueness searches without returning a partial solution count. Full-game
+layout generation keeps its existing defaults. The saved cage list, rather
+than regeneration from the seed, is the drill and lesson's topology.

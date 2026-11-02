@@ -561,7 +561,7 @@ const lowestDigit = mask => 32 - Math.clz32(mask & -mask)
  * Same shape of mistake as filling a jigsaw in reading order, recorded in
  * generator.js.
  */
-export function killerSolutions(bd, cages, limit = 2, topo = CLASSIC) {
+export function killerSolutions(bd, cages, limit = 2, topo = CLASSIC, maxNodes = Infinity) {
   const owner = cageOf(cages)
   // Refused rather than answered. A cage list that has lost a cell on its way
   // through a saved game would otherwise reach `narrowCage` as cage number -1
@@ -577,7 +577,9 @@ export function killerSolutions(bd, cages, limit = 2, topo = CLASSIC) {
   const found = []
   if (!root) return found
 
+  let nodes = 0
   const step = st => {
+    if (++nodes > maxNodes) throw new RangeError('Cage search budget reached')
     if (!propagate(st)) return
     let best = -1
     let bestN = 10
@@ -682,7 +684,15 @@ export function uniqueCageLayout(seed, solution, opts = {}) {
 
   // 81 is the ceiling by construction, not a guess: every pass adds a cage.
   for (let round = 0; round < 81; round++) {
-    const found = killerSolutions(empty, cages, 2, topo)
+    let found
+    try {
+      found = killerSolutions(empty, cages, 2, topo, opts.maxNodes)
+    } catch (error) {
+      // A bounded generation search can abandon a layout, but must never
+      // mistake an unfinished uniqueness check for a unique answer.
+      if (error instanceof RangeError && error.message === 'Cage search budget reached') return null
+      throw error
+    }
     if (found.length === 1) return { cages, splits, rounds: round }
     if (found.length === 0) return null
 

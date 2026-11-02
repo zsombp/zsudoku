@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { CAGE_TECHNIQUES } from '../logic/techniques.js'
 import * as cache from '../lib/puzzleCache.js'
 
 // Owns the generator worker and the pre-generation cache.
@@ -55,7 +56,7 @@ export function useGenerator() {
   /** A deck of positions where one pattern is present. Slow enough to warrant
    *  the worker: a rare rung can take ten seconds to find eight of. */
   const deck = useCallback(
-    (technique, { count } = {}) => generate(null, undefined, null, 'classic', null, technique, count),
+    (technique, { count } = {}) => generate(null, undefined, null, CAGE_TECHNIQUES.includes(technique) ? 'killer' : 'classic', null, technique, count),
     [generate]
   )
 

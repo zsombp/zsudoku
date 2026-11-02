@@ -22,7 +22,7 @@ self.onmessage = event => {
     if (cards) {
       // Eight from the practice screen, five for today's session.
       const n = Number.isInteger(count) && count > 0 && count <= 20 ? count : 8
-      const deck = buildDeck(cards, { count: n, budgetMs: n < 8 ? 9000 : 12000, ...(seed === undefined ? {} : { seed }) })
+      const deck = buildDeck(cards, { variant, count: n, budgetMs: n < 8 ? 9000 : 12000, ...(seed === undefined ? {} : { seed }) })
       if (!deck.length) {
         self.postMessage({ id, error: `could not deal any ${cards} positions. It is a rare pattern; try again.` })
         return

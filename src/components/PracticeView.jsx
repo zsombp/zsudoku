@@ -65,9 +65,8 @@ export default function PracticeView({ onPractice, onCards, onClose, busyWith, e
     [variant]
   )
 
-  // Cards deal from classic grids and need something to point at, so not the
-  // naked single and not the cage rungs.
-  const drillable = key => key !== 'nakedSingle' && !CAGE_TECHNIQUES.includes(key)
+  // Naked singles need no pattern search. Cage cards carry their own board.
+  const drillable = key => key !== 'nakedSingle'
 
   if (learning) {
     return (
